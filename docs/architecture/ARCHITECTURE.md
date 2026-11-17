@@ -242,4 +242,17 @@ UI toolkit: **Jetpack Compose** for new screens (gesture-heavy mechanics are muc
 
 One server process (Ktor fat JAR or container) + SQLite file + blob directory on a persistent disk. In-process worker pool for compile jobs — no queue service yet; the job table *is* the queue, so a restart resumes `queued` jobs. Upgrade path when needed: Postgres, object storage, a separate worker — none of it changes the contract.
 
-LLM provider is behind `LlmClient`; choose by (a) where the server runs and whether phones in mainland China can reach both, (b) structured-output support, (c) cost of strong vs flash tier. Decision recorded in decisions.md once tested.
+**Where**: Alibaba Cloud or Kingsoft Cloud, Hong Kong region preferred (no ICP filing) — see decision 011.
+
+**LLM adapters** (`server/llm`):
+
+```kotlin
+interface LlmClient {
+    suspend fun completeJson(req: JsonCompletion): LlmResult   // system + user text in, raw JSON text out
+}
+// OpenAiCompatibleLlmClient — DeepSeek, Qwen (DashScope compatible mode): base URL + model + key from config
+// AnthropicLlmClient       — official Anthropic Java SDK, claude-sonnet-5-5, dev/eval only
+// FakeLlmClient            — replays recorded responses in tests (no network, no cost)
+```
+
+Config selects an adapter + model per tier (`compile`, `flash`). The validator, not the provider, is the source of truth for output shape.
