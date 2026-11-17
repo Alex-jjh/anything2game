@@ -1,0 +1,105 @@
+{
+  "schema": "a2g.package/v1",
+  "packageId": "pkg_demo_courtyard_zh",
+  "contentVersion": "1",
+  "documentId": "doc_demo_courtyard",
+  "documentVersion": "sha256:demo-courtyard-notes-v1",
+  "title": "树荫下的温度",
+  "language": "zh",
+  "generation": { "mode": "pre-generated", "model": "hand-written", "promptVersion": "none", "review": "human-approved" },
+  "sources": [
+    {
+      "chunkId": "c1",
+      "pageIndex": 0,
+      "pageLabel": "1",
+      "text": "下午三点，我在树荫下读到 28 ℃，在阳光下读到 31 ℃。今天只在这个时刻各读了一次，其他时段没有记录。"
+    },
+    {
+      "chunkId": "c2",
+      "pageIndex": 0,
+      "pageLabel": "1",
+      "text": "比较读数时，保留观察发生的时间和地点。一次测量可以支持当时的比较，推断其他时段还需要更多记录。"
+    }
+  ],
+  "levels": [
+    {
+      "levelId": "L1",
+      "title": "一次观察能说明什么？",
+      "goal": "分清一次记录能支持的结论和不能支持的结论。",
+      "units": [
+        {
+          "unitId": "L1U1",
+          "knowledgeType": "claim",
+          "mechanic": "swipe",
+          "mechanicReason": "单条结论与常见的过度推广，适合判断真伪。",
+          "item": {
+            "type": "swipe",
+            "cards": [
+              { "id": "s1", "statement": "下午三点，树荫下比阳光下低 3 ℃。", "supported": true,
+                "why": "同一时刻的两个读数是 28 ℃ 和 31 ℃，相差 3 ℃。", "sourceRefs": [{ "chunkId": "c1", "quote": "下午三点，我在树荫下读到 28 ℃，在阳光下读到 31 ℃。" }] },
+              { "id": "s2", "statement": "一天中，树荫下始终更凉。", "supported": false,
+                "why": "手记只在下午三点各读了一次，其他时段没有记录。", "sourceRefs": [{ "chunkId": "c1", "quote": "今天只在这个时刻各读了一次，其他时段没有记录。" }] },
+              { "id": "s3", "statement": "明天下午，两处也会相差 3 ℃。", "supported": false,
+                "why": "一次测量只能支持当时的比较，推断其他时段需要更多记录。", "sourceRefs": [{ "chunkId": "c2", "quote": "推断其他时段还需要更多记录" }] }
+            ]
+          },
+          "hints": ["先看记录是在什么时候读的。", "读了几次？"],
+          "variants": []
+        },
+        {
+          "unitId": "L1U2",
+          "knowledgeType": "category",
+          "mechanic": "sort",
+          "mechanicReason": "把信息分成“记录直接给出”和“需要更多记录”两类。",
+          "item": {
+            "type": "sort",
+            "prompt": "把每条信息归档。",
+            "bins": [
+              { "id": "recorded", "label": "记录直接给出" },
+              { "id": "needs_more", "label": "需要更多记录" }
+            ],
+            "cards": [
+              { "id": "k1", "text": "树荫下的读数是 28 ℃", "binId": "recorded" },
+              { "id": "k2", "text": "早上树荫下的温度", "binId": "needs_more" },
+              { "id": "k3", "text": "测量的时间是下午三点", "binId": "recorded" },
+              { "id": "k4", "text": "这个庭院一周的温差规律", "binId": "needs_more" }
+            ],
+            "why": "手记只有下午三点的一次读数；其他时段、其他日子都没有记录。",
+            "sourceRefs": [{ "chunkId": "c1", "quote": "其他时段没有记录" }]
+          },
+          "hints": ["问问自己：手记里写了这个数字吗？"],
+          "variants": []
+        },
+        {
+          "unitId": "L1U3",
+          "knowledgeType": "reasoning",
+          "mechanic": "deduce",
+          "mechanicReason": "在证据范围内选出能被直接支持的结论。",
+          "item": {
+            "type": "deduce",
+            "scenario": "小禾想在班会上分享这次观察。",
+            "prompt": "哪一句能由这次记录直接支持？",
+            "options": [
+              { "id": "always", "text": "一天中，树荫下始终更凉。", "correct": false,
+                "feedback": "手记只记录了下午三点这一次，无法说明一天中的其他时段。" },
+              { "id": "at_three", "text": "这天下午三点，树荫下的读数低了 3 ℃。", "correct": true,
+                "feedback": "同一时刻的两个读数是 28 ℃ 和 31 ℃，相差 3 ℃，正是记录能直接支持的范围。" },
+              { "id": "tomorrow", "text": "明天下午，两处也会相差 3 ℃。", "correct": false,
+                "feedback": "一次测量不能预测第二天的温度。" }
+            ],
+            "sourceRefs": [{ "chunkId": "c1", "quote": "下午三点，我在树荫下读到 28 ℃，在阳光下读到 31 ℃。" }]
+          },
+          "hints": ["结论有没有超出“下午三点”这个时刻？"],
+          "variants": []
+        }
+      ],
+      "recap": {
+        "points": [
+          "一次读数可以支持当时、当地的比较。",
+          "推断其他时段或其他日子，需要更多记录。",
+          "比较时记清时间和地点。"
+        ]
+      }
+    }
+  ]
+}
