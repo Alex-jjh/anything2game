@@ -1,0 +1,109 @@
+{
+  "schema": "a2g.frame/v1",
+  "frameId": "escape",
+  "packageId": "pkg_demo_retrieval",
+  "contentVersion": "1",
+  "generation": {
+    "mode": "pre-generated",
+    "model": "hand-written",
+    "promptVersion": "none",
+    "review": "human-approved"
+  },
+  "cast": [
+    {
+      "id": "archive",
+      "name": "The Archive",
+      "role": "narrator"
+    }
+  ],
+  "levels": [
+    {
+      "levelId": "L1",
+      "intro": [
+        {
+          "speaker": "archive",
+          "text": "You're locked in the archive with one study. Each room opens when you've understood one part of it."
+        }
+      ],
+      "rooms": [
+        {
+          "id": "r1",
+          "title": "The timing room",
+          "description": "Two clocks on the wall: five minutes and one week.",
+          "unitIds": [
+            "L1U1"
+          ]
+        },
+        {
+          "id": "r2",
+          "title": "The filing room",
+          "description": "Two cabinets, labelled RETRIEVAL and RE-EXPOSURE.",
+          "unitIds": [
+            "L1U2"
+          ]
+        },
+        {
+          "id": "r3",
+          "title": "The planning room",
+          "description": "A metro map and a note: exam next week.",
+          "unitIds": [
+            "L1U3"
+          ]
+        }
+      ],
+      "boss": {
+        "unitId": "L1LOCK",
+        "knowledgeType": "process",
+        "mechanic": "order",
+        "mechanicReason": "Frame boss: rebuild the sequence.",
+        "item": {
+          "type": "order",
+          "prompt": "The exit lock wants the study in the right order.",
+          "steps": [
+            {
+              "id": "p1",
+              "text": "Students read a short passage"
+            },
+            {
+              "id": "p2",
+              "text": "One group re-reads; the other writes down what they remember"
+            },
+            {
+              "id": "p3",
+              "text": "Five-minute test: re-reading slightly ahead"
+            },
+            {
+              "id": "p4",
+              "text": "One-week test: the recall group clearly ahead"
+            }
+          ],
+          "why": "That is the order the passage reports.",
+          "sourceRefs": [
+            {
+              "chunkId": "c1",
+              "quote": "In the study, students read a short passage. One group read it again; the other group wrote down everything they could remember."
+            },
+            {
+              "chunkId": "c1",
+              "quote": "Five minutes later the re-reading group did slightly better."
+            },
+            {
+              "chunkId": "c1",
+              "quote": "One week later the recall group remembered clearly more."
+            }
+          ]
+        },
+        "hints": [
+          "What happened first, and which test came last?"
+        ],
+        "variants": []
+      },
+      "outro": [
+        {
+          "speaker": "archive",
+          "text": "The door clicks open. You rebuilt the study from memory — which is the whole point."
+        }
+      ]
+    }
+  ]
+}

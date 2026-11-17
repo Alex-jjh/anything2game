@@ -1,0 +1,68 @@
+{
+  "schema": "a2g.frame/v1",
+  "frameId": "companion",
+  "packageId": "pkg_demo_courtyard_zh",
+  "contentVersion": "1",
+  "generation": {
+    "mode": "pre-generated",
+    "model": "hand-written",
+    "promptVersion": "none",
+    "review": "human-approved"
+  },
+  "cast": [
+    {
+      "id": "aya",
+      "name": "阿雅",
+      "role": "companion"
+    }
+  ],
+  "levels": [
+    {
+      "levelId": "L1",
+      "intro": [
+        {
+          "speaker": "aya",
+          "text": "我陪你看这份手记。很短，三个要点，每个都玩一下。"
+        }
+      ],
+      "leadIns": {
+        "L1U1": [
+          {
+            "speaker": "aya",
+            "text": "注意时间：只有下午三点这一次。",
+            "sourceRefs": [
+              {
+                "chunkId": "c1",
+                "quote": "今天只在这个时刻各读了一次"
+              }
+            ]
+          }
+        ],
+        "L1U2": [
+          {
+            "speaker": "aya",
+            "text": "手记写了什么、没写什么，要分清。",
+            "sourceRefs": [
+              {
+                "chunkId": "c1",
+                "quote": "其他时段没有记录"
+              }
+            ]
+          }
+        ],
+        "L1U3": [
+          {
+            "speaker": "aya",
+            "text": "现在用起来：班会上说哪句最稳？"
+          }
+        ]
+      },
+      "outro": [
+        {
+          "speaker": "aya",
+          "text": "三个要点都过了。记住：一次读数只说明当时。"
+        }
+      ]
+    }
+  ]
+}

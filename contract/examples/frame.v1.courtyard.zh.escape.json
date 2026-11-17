@@ -1,0 +1,105 @@
+{
+  "schema": "a2g.frame/v1",
+  "frameId": "escape",
+  "packageId": "pkg_demo_courtyard_zh",
+  "contentVersion": "1",
+  "generation": {
+    "mode": "pre-generated",
+    "model": "hand-written",
+    "promptVersion": "none",
+    "review": "human-approved"
+  },
+  "cast": [
+    {
+      "id": "archive",
+      "name": "档案室",
+      "role": "narrator"
+    }
+  ],
+  "levels": [
+    {
+      "levelId": "L1",
+      "intro": [
+        {
+          "speaker": "archive",
+          "text": "你被锁在档案室里，手里只有一本观察手记。每弄懂一部分，就能打开一扇门。"
+        }
+      ],
+      "rooms": [
+        {
+          "id": "r1",
+          "title": "读数室",
+          "description": "墙上挂着两支温度计。",
+          "unitIds": [
+            "L1U1"
+          ]
+        },
+        {
+          "id": "r2",
+          "title": "归档室",
+          "description": "两个柜子：「记录直接给出」和「需要更多记录」。",
+          "unitIds": [
+            "L1U2"
+          ]
+        },
+        {
+          "id": "r3",
+          "title": "结论室",
+          "description": "桌上有一张班会发言稿。",
+          "unitIds": [
+            "L1U3"
+          ]
+        }
+      ],
+      "boss": {
+        "unitId": "L1LOCK",
+        "knowledgeType": "process",
+        "mechanic": "order",
+        "mechanicReason": "Frame boss: rebuild the sequence.",
+        "item": {
+          "type": "order",
+          "prompt": "出口的锁要你按顺序复原这次观察。",
+          "steps": [
+            {
+              "id": "p1",
+              "text": "下午三点来到庭院"
+            },
+            {
+              "id": "p2",
+              "text": "在树荫下读温度计：28 ℃"
+            },
+            {
+              "id": "p3",
+              "text": "在阳光下读温度计：31 ℃"
+            },
+            {
+              "id": "p4",
+              "text": "只得出当时的比较"
+            }
+          ],
+          "why": "手记就是按这个顺序记录的，结论只到当时为止。",
+          "sourceRefs": [
+            {
+              "chunkId": "c1",
+              "quote": "下午三点，我在树荫下读到 28 ℃，在阳光下读到 31 ℃。"
+            },
+            {
+              "chunkId": "c2",
+              "quote": "一次测量可以支持当时的比较"
+            }
+          ]
+        },
+        "hints": [
+          "先读的是哪里的温度？"
+        ],
+        "variants": []
+      },
+      "outro": [
+        {
+          "speaker": "archive",
+          "text": "门开了。你把一次观察从头到尾复原了出来。"
+        }
+      ]
+    }
+  ]
+}

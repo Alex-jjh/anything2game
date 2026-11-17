@@ -1,0 +1,145 @@
+{
+  "schema": "a2g.frame/v1",
+  "frameId": "case",
+  "packageId": "pkg_demo_retrieval",
+  "contentVersion": "1",
+  "generation": {
+    "mode": "pre-generated",
+    "model": "hand-written",
+    "promptVersion": "none",
+    "review": "human-approved"
+  },
+  "cast": [
+    {
+      "id": "mira",
+      "name": "Mira",
+      "role": "partner"
+    },
+    {
+      "id": "summary",
+      "name": "The Summary",
+      "role": "suspect"
+    }
+  ],
+  "levels": [
+    {
+      "levelId": "L1",
+      "intro": [
+        {
+          "speaker": "mira",
+          "text": "New case. Lin's seminar is on Thursday, and the paper asks whether testing yourself beats re-reading."
+        },
+        {
+          "speaker": "summary",
+          "text": "No need to read it. I've already summarised it for you."
+        },
+        {
+          "speaker": "mira",
+          "text": "That's exactly what worries me. Let's check the evidence ourselves."
+        }
+      ],
+      "boss": {
+        "unitId": "L1BOSS",
+        "knowledgeType": "claim",
+        "mechanic": "crossexam",
+        "mechanicReason": "Frame boss: spot the overclaim.",
+        "item": {
+          "type": "crossexam",
+          "speaker": "summary",
+          "prompt": "The Summary's version of the study. One claim goes beyond the evidence — present the passage that shows it.",
+          "statements": [
+            {
+              "id": "st1",
+              "text": "Students who wrote down what they remembered did better a week later.",
+              "flawed": false,
+              "why": "That is what the passage reports.",
+              "sourceRefs": [
+                {
+                  "chunkId": "c1",
+                  "quote": "One week later the recall group remembered clearly more."
+                }
+              ]
+            },
+            {
+              "id": "st2",
+              "text": "Re-reading gave a small edge on the five-minute test.",
+              "flawed": false,
+              "why": "True — the advantage flipped only after a delay.",
+              "sourceRefs": [
+                {
+                  "chunkId": "c1",
+                  "quote": "Five minutes later the re-reading group did slightly better."
+                }
+              ]
+            },
+            {
+              "id": "st3",
+              "text": "So recall practice makes you better at solving new problems.",
+              "flawed": true,
+              "why": "The study only measured memory of the same passage; transfer was not tested.",
+              "sourceRefs": [
+                {
+                  "chunkId": "c3",
+                  "quote": "Whether it transfers to new problems was not tested in this study."
+                }
+              ]
+            },
+            {
+              "id": "st4",
+              "text": "Highlighting counts as re-exposure, not retrieval.",
+              "flawed": false,
+              "why": "The passage lists highlighting with re-reading and summaries.",
+              "sourceRefs": [
+                {
+                  "chunkId": "c2",
+                  "quote": "Re-reading, highlighting and reviewing a summary put the information in front of you again without asking you to recall it."
+                }
+              ]
+            }
+          ]
+        },
+        "hints": [
+          "Which claim is about something the study never measured?"
+        ],
+        "variants": []
+      },
+      "outro": [
+        {
+          "speaker": "mira",
+          "text": "Case closed. The Summary got the headline right — then claimed more than the study tested."
+        }
+      ]
+    }
+  ],
+  "board": {
+    "nodes": [
+      {
+        "id": "n1",
+        "label": "Recall wins after a week",
+        "unitId": "L1U1"
+      },
+      {
+        "id": "n2",
+        "label": "Retrieval vs re-exposure",
+        "unitId": "L1U2"
+      },
+      {
+        "id": "n3",
+        "label": "Plan: read once, then recall",
+        "unitId": "L1U3"
+      }
+    ],
+    "edges": [
+      {
+        "from": "n2",
+        "to": "n1",
+        "label": "explains"
+      },
+      {
+        "from": "n1",
+        "to": "n3",
+        "label": "supports"
+      }
+    ]
+  }
+}

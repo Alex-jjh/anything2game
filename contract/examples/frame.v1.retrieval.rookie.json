@@ -1,0 +1,109 @@
+{
+  "schema": "a2g.frame/v1",
+  "frameId": "rookie",
+  "packageId": "pkg_demo_retrieval",
+  "contentVersion": "1",
+  "generation": {
+    "mode": "pre-generated",
+    "model": "hand-written",
+    "promptVersion": "none",
+    "review": "human-approved"
+  },
+  "cast": [
+    {
+      "id": "sam",
+      "name": "Sam",
+      "role": "rookie"
+    }
+  ],
+  "levels": [
+    {
+      "levelId": "L1",
+      "intro": [
+        {
+          "speaker": "sam",
+          "text": "Hi! I'm new to this paper and my notes are a mess. Can you check them with me as we go?"
+        }
+      ],
+      "leadIns": {
+        "L1U1": [
+          {
+            "speaker": "sam",
+            "text": "So… testing yourself is just better, always? Let's see what the study actually says."
+          }
+        ],
+        "L1U2": [
+          {
+            "speaker": "sam",
+            "text": "I filed highlighting under 'active studying'. Was that right?"
+          }
+        ],
+        "L1U3": [
+          {
+            "speaker": "sam",
+            "text": "My friend has a test next week. What should she do on the metro?"
+          }
+        ]
+      },
+      "boss": {
+        "unitId": "L1NOTES",
+        "knowledgeType": "claim",
+        "mechanic": "crossexam",
+        "mechanicReason": "Frame boss: spot the overclaim.",
+        "item": {
+          "type": "crossexam",
+          "speaker": "sam",
+          "prompt": "Sam's notes. One line is wrong — show Sam the passage that proves it.",
+          "statements": [
+            {
+              "id": "n1",
+              "text": "Recall group: remembered clearly more after one week.",
+              "flawed": false,
+              "why": "Correct, straight from the passage.",
+              "sourceRefs": [
+                {
+                  "chunkId": "c1",
+                  "quote": "One week later the recall group remembered clearly more."
+                }
+              ]
+            },
+            {
+              "id": "n2",
+              "text": "Highlighting is retrieval practice because you're being active.",
+              "flawed": true,
+              "why": "Highlighting puts the text in front of you again — it is re-exposure, not recall.",
+              "sourceRefs": [
+                {
+                  "chunkId": "c2",
+                  "quote": "Re-reading, highlighting and reviewing a summary put the information in front of you again without asking you to recall it."
+                }
+              ]
+            },
+            {
+              "id": "n3",
+              "text": "Transfer to new problems: not tested.",
+              "flawed": false,
+              "why": "Correct — the study says so.",
+              "sourceRefs": [
+                {
+                  "chunkId": "c3",
+                  "quote": "Whether it transfers to new problems was not tested in this study."
+                }
+              ]
+            }
+          ]
+        },
+        "hints": [
+          "Does highlighting make you pull anything out of memory?"
+        ],
+        "variants": []
+      },
+      "outro": [
+        {
+          "speaker": "sam",
+          "text": "Thanks! I'll fix my notes. Explaining it to me was probably the best revision you did today."
+        }
+      ]
+    }
+  ]
+}

@@ -105,6 +105,8 @@ enum class Mechanic {
     @SerialName("sort") SORT,
     @SerialName("deduce") DEDUCE,
     @SerialName("order") ORDER,
+    /** Find the one statement the material does not support, and present the passage that shows it. */
+    @SerialName("crossexam") CROSS_EXAM,
 }
 
 /** Mechanic-specific content. JSON discriminator: `type`. */
@@ -183,3 +185,31 @@ data class OrderItem(
 
 @Serializable
 data class OrderStep(val id: String, val text: String)
+
+/**
+ * Cross-examination: a character makes statements; exactly one goes beyond the evidence.
+ * The player picks it and presents a passage (chunk) that shows why.
+ */
+@Serializable
+@SerialName("crossexam")
+data class CrossExamItem(
+    /** Cast id of the character speaking (from the frame overlay), e.g. "summary" or "rookie". */
+    val speaker: String,
+    val prompt: String,
+    val statements: List<Statement>,
+) : Item {
+    override val mechanic get() = Mechanic.CROSS_EXAM
+    override val allSourceRefs get() = statements.flatMap { it.sourceRefs }
+}
+
+@Serializable
+data class Statement(
+    val id: String,
+    val text: String,
+    /** True for the one statement the material does not support. */
+    val flawed: Boolean,
+    /** Why it holds, or why it doesn't. Shown after the answer. */
+    val why: String,
+    /** For the flawed statement: the passages that disprove it. Presenting any of these chunks counts. */
+    val sourceRefs: List<SourceRef>,
+)

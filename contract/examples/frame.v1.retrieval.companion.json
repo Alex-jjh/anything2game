@@ -1,0 +1,68 @@
+{
+  "schema": "a2g.frame/v1",
+  "frameId": "companion",
+  "packageId": "pkg_demo_retrieval",
+  "contentVersion": "1",
+  "generation": {
+    "mode": "pre-generated",
+    "model": "hand-written",
+    "promptVersion": "none",
+    "review": "human-approved"
+  },
+  "cast": [
+    {
+      "id": "aya",
+      "name": "Aya",
+      "role": "companion"
+    }
+  ],
+  "levels": [
+    {
+      "levelId": "L1",
+      "intro": [
+        {
+          "speaker": "aya",
+          "text": "I read the study with you. It's short — three ideas, and we'll test each one."
+        }
+      ],
+      "leadIns": {
+        "L1U1": [
+          {
+            "speaker": "aya",
+            "text": "Two groups, two test times. Keep an eye on the timing.",
+            "sourceRefs": [
+              {
+                "chunkId": "c1",
+                "quote": "Five minutes later the re-reading group did slightly better."
+              }
+            ]
+          }
+        ],
+        "L1U2": [
+          {
+            "speaker": "aya",
+            "text": "The paper splits study activities into two kinds.",
+            "sourceRefs": [
+              {
+                "chunkId": "c2",
+                "quote": "Retrieval practice means pulling information out of memory"
+              }
+            ]
+          }
+        ],
+        "L1U3": [
+          {
+            "speaker": "aya",
+            "text": "Now use it: Lin has a week, and twenty minutes on the metro."
+          }
+        ]
+      },
+      "outro": [
+        {
+          "speaker": "aya",
+          "text": "Three ideas done. Remember the twist: re-reading looks better at first, recall wins later."
+        }
+      ]
+    }
+  ]
+}

@@ -33,13 +33,27 @@ object PackageValidator {
             val lp = "levels[$li]"
             if (level.units.isEmpty()) fail("$lp.units", "level '${level.levelId}' has no units")
             if (level.recap.points.isEmpty()) fail("$lp.recap", "recap has no points")
-            level.units.forEachIndexed { ui, unit ->
-                val up = "$lp.units[$ui]"
-                checkItem("$up.item", unit.mechanic, unit.item, chunks, ::fail)
-                unit.variants.forEachIndexed { vi, v -> checkItem("$up.variants[$vi]", unit.mechanic, v, chunks, ::fail) }
-            }
+            level.units.forEachIndexed { ui, unit -> checkUnit("$lp.units[$ui]", unit, chunks, ::fail) }
         }
         return issues
+    }
+
+    /** Checks one unit (main item + variants) against the package's chunks. Reused for frame bosses. */
+    fun checkUnit(path: String, unit: LearningUnit, chunks: Map<String, SourceChunk>, fail: (String, String) -> Unit) {
+        checkItem("$path.item", unit.mechanic, unit.item, chunks, fail)
+        unit.variants.forEachIndexed { vi, v -> checkItem("$path.variants[$vi]", unit.mechanic, v, chunks, fail) }
+    }
+
+    /** Checks that each citation exists and its quote appears in the chunk. */
+    fun checkRefs(path: String, refs: List<SourceRef>, chunks: Map<String, SourceChunk>, fail: (String, String) -> Unit) {
+        refs.forEach { ref ->
+            val chunk = chunks[ref.chunkId]
+            when {
+                chunk == null -> fail(path, "citation points at unknown chunk '${ref.chunkId}'")
+                ref.quote.isBlank() -> fail(path, "empty quote for chunk '${ref.chunkId}'")
+                normalise(ref.quote) !in normalise(chunk.text) -> fail(path, "quote not found in chunk '${ref.chunkId}': \"${ref.quote}\"")
+            }
+        }
     }
 
     private fun checkItem(
@@ -82,20 +96,22 @@ object PackageValidator {
                 }
                 if (item.sourceRefs.isEmpty()) fail(path, "no citation")
             }
+            is CrossExamItem -> {
+                if (item.statements.size < 3) fail("$path.statements", "needs at least 3 statements")
+                duplicates(item.statements.map { it.id }).forEach { fail("$path.statements", "duplicate statement id '$it'") }
+                val flawed = item.statements.filter { it.flawed }
+                if (flawed.size != 1) fail("$path.statements", "exactly one statement must be flawed, found ${flawed.size}")
+                flawed.filter { it.sourceRefs.isEmpty() }.forEach { fail("$path.statements", "flawed statement '${it.id}' cites no evidence") }
+                item.statements.filter { it.why.isBlank() }.forEach { fail("$path.statements", "statement '${it.id}' has no explanation") }
+                if (item.speaker.isBlank()) fail(path, "no speaker")
+            }
             is OrderItem -> {
                 if (item.steps.size < 3) fail("$path.steps", "needs at least 3 steps")
                 duplicates(item.steps.map { it.id }).forEach { fail("$path.steps", "duplicate step id '$it'") }
                 if (item.sourceRefs.isEmpty()) fail(path, "no citation")
             }
         }
-        item.allSourceRefs.forEach { ref ->
-            val chunk = chunks[ref.chunkId]
-            when {
-                chunk == null -> fail(path, "citation points at unknown chunk '${ref.chunkId}'")
-                ref.quote.isBlank() -> fail(path, "empty quote for chunk '${ref.chunkId}'")
-                normalise(ref.quote) !in normalise(chunk.text) -> fail(path, "quote not found in chunk '${ref.chunkId}': \"${ref.quote}\"")
-            }
-        }
+        checkRefs(path, item.allSourceRefs, chunks, fail)
     }
 
     /** Collapse whitespace so line breaks from PDF extraction don't break quote matching. */

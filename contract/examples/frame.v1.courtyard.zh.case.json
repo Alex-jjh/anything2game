@@ -1,0 +1,145 @@
+{
+  "schema": "a2g.frame/v1",
+  "frameId": "case",
+  "packageId": "pkg_demo_courtyard_zh",
+  "contentVersion": "1",
+  "generation": {
+    "mode": "pre-generated",
+    "model": "hand-written",
+    "promptVersion": "none",
+    "review": "human-approved"
+  },
+  "cast": [
+    {
+      "id": "mira",
+      "name": "米拉",
+      "role": "partner"
+    },
+    {
+      "id": "summary",
+      "name": "「总结」",
+      "role": "suspect"
+    }
+  ],
+  "levels": [
+    {
+      "levelId": "L1",
+      "intro": [
+        {
+          "speaker": "mira",
+          "text": "新案子：小禾的庭院观察手记。"
+        },
+        {
+          "speaker": "summary",
+          "text": "不用看了，我已经帮你总结好了：树荫下更凉。"
+        },
+        {
+          "speaker": "mira",
+          "text": "听起来很顺。我们按证据核对一下。"
+        }
+      ],
+      "boss": {
+        "unitId": "L1BOSS",
+        "knowledgeType": "claim",
+        "mechanic": "crossexam",
+        "mechanicReason": "Frame boss: spot the overclaim.",
+        "item": {
+          "type": "crossexam",
+          "speaker": "summary",
+          "prompt": "「总结」的版本里有一句说过头了——拿出能反驳它的原文。",
+          "statements": [
+            {
+              "id": "a",
+              "text": "下午三点，树荫下读到 28 ℃。",
+              "flawed": false,
+              "why": "手记原文就是这么写的。",
+              "sourceRefs": [
+                {
+                  "chunkId": "c1",
+                  "quote": "下午三点，我在树荫下读到 28 ℃"
+                }
+              ]
+            },
+            {
+              "id": "b",
+              "text": "同一时刻阳光下是 31 ℃。",
+              "flawed": false,
+              "why": "同一时刻的另一个读数。",
+              "sourceRefs": [
+                {
+                  "chunkId": "c1",
+                  "quote": "在阳光下读到 31 ℃"
+                }
+              ]
+            },
+            {
+              "id": "c",
+              "text": "所以这个庭院的树荫下全天都更凉。",
+              "flawed": true,
+              "why": "手记只在下午三点各读了一次，说不了全天。",
+              "sourceRefs": [
+                {
+                  "chunkId": "c1",
+                  "quote": "今天只在这个时刻各读了一次，其他时段没有记录。"
+                }
+              ]
+            },
+            {
+              "id": "d",
+              "text": "比较时要记清时间和地点。",
+              "flawed": false,
+              "why": "手记最后一段的提醒。",
+              "sourceRefs": [
+                {
+                  "chunkId": "c2",
+                  "quote": "比较读数时，保留观察发生的时间和地点。"
+                }
+              ]
+            }
+          ]
+        },
+        "hints": [
+          "哪一句说到了手记没有记录的时段？"
+        ],
+        "variants": []
+      },
+      "outro": [
+        {
+          "speaker": "mira",
+          "text": "结案。「总结」把一次读数说成了全天的规律。"
+        }
+      ]
+    }
+  ],
+  "board": {
+    "nodes": [
+      {
+        "id": "n1",
+        "label": "下午三点低 3 ℃",
+        "unitId": "L1U1"
+      },
+      {
+        "id": "n2",
+        "label": "记录给出 vs 需要更多",
+        "unitId": "L1U2"
+      },
+      {
+        "id": "n3",
+        "label": "结论别超出时刻",
+        "unitId": "L1U3"
+      }
+    ],
+    "edges": [
+      {
+        "from": "n1",
+        "to": "n3",
+        "label": "支持"
+      },
+      {
+        "from": "n2",
+        "to": "n3",
+        "label": "划定范围"
+      }
+    ]
+  }
+}

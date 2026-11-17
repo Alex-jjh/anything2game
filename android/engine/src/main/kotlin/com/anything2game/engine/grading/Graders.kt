@@ -1,5 +1,6 @@
 package com.anything2game.engine.grading
 
+import com.anything2game.contract.CrossExamItem
 import com.anything2game.contract.DeduceItem
 import com.anything2game.contract.Item
 import com.anything2game.contract.OrderItem
@@ -33,7 +34,7 @@ class GraderRegistry(graders: List<MechanicGrader<*, *>>) : Grading {
     }
 
     companion object {
-        fun default() = GraderRegistry(listOf(SwipeGrader, SortGrader, DeduceGrader, OrderGrader))
+        fun default() = GraderRegistry(listOf(SwipeGrader, SortGrader, DeduceGrader, OrderGrader, CrossExamGrader))
     }
 }
 
@@ -74,5 +75,24 @@ object OrderGrader : MechanicGrader<OrderItem, OrderAnswer> {
     override fun grade(item: OrderItem, answer: OrderAnswer): Grade {
         val wrong = item.steps.filterIndexed { i, s -> answer.stepIds.getOrNull(i) != s.id }.map { it.id }.toSet()
         return grade(item.steps.size, wrong)
+    }
+}
+
+/**
+ * Correct = the flawed statement AND a passage that disproves it.
+ * Right statement with the wrong passage is wrong too: the skill is backing the objection with evidence.
+ * [Grade.wrongPartIds] holds the statement id, or [WRONG_EVIDENCE] when only the passage was wrong.
+ */
+object CrossExamGrader : MechanicGrader<CrossExamItem, CrossExamAnswer> {
+    const val WRONG_EVIDENCE = "evidence"
+    override val itemType = CrossExamItem::class
+    override val answerType = CrossExamAnswer::class
+    override fun grade(item: CrossExamItem, answer: CrossExamAnswer): Grade {
+        val picked = item.statements.firstOrNull { it.id == answer.statementId }
+        return when {
+            picked == null || !picked.flawed -> Grade(false, setOf(answer.statementId), 0.0)
+            answer.chunkId !in picked.sourceRefs.map { it.chunkId } -> Grade(false, setOf(WRONG_EVIDENCE), 0.5)
+            else -> Grade(true, emptySet(), 1.0)
+        }
     }
 }

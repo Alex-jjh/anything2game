@@ -1,0 +1,109 @@
+{
+  "schema": "a2g.frame/v1",
+  "frameId": "rookie",
+  "packageId": "pkg_demo_courtyard_zh",
+  "contentVersion": "1",
+  "generation": {
+    "mode": "pre-generated",
+    "model": "hand-written",
+    "promptVersion": "none",
+    "review": "human-approved"
+  },
+  "cast": [
+    {
+      "id": "xiaoan",
+      "name": "小安",
+      "role": "rookie"
+    }
+  ],
+  "levels": [
+    {
+      "levelId": "L1",
+      "intro": [
+        {
+          "speaker": "xiaoan",
+          "text": "我刚接手这份手记，笔记有点乱，边做边帮我看看？"
+        }
+      ],
+      "leadIns": {
+        "L1U1": [
+          {
+            "speaker": "xiaoan",
+            "text": "树荫下是不是一直都更凉呀？"
+          }
+        ],
+        "L1U2": [
+          {
+            "speaker": "xiaoan",
+            "text": "这些信息哪些是手记里写了的？我分不清。"
+          }
+        ],
+        "L1U3": [
+          {
+            "speaker": "xiaoan",
+            "text": "如果要在班会上说一句话，说哪句最稳？"
+          }
+        ]
+      },
+      "boss": {
+        "unitId": "L1NOTES",
+        "knowledgeType": "claim",
+        "mechanic": "crossexam",
+        "mechanicReason": "Frame boss: spot the overclaim.",
+        "item": {
+          "type": "crossexam",
+          "speaker": "xiaoan",
+          "prompt": "小安的笔记里有一句写错了——拿原文给小安看。",
+          "statements": [
+            {
+              "id": "a",
+              "text": "树荫下 28 ℃，阳光下 31 ℃。",
+              "flawed": false,
+              "why": "和手记一致。",
+              "sourceRefs": [
+                {
+                  "chunkId": "c1",
+                  "quote": "我在树荫下读到 28 ℃，在阳光下读到 31 ℃"
+                }
+              ]
+            },
+            {
+              "id": "b",
+              "text": "只在下午三点各读了一次。",
+              "flawed": false,
+              "why": "和手记一致。",
+              "sourceRefs": [
+                {
+                  "chunkId": "c1",
+                  "quote": "今天只在这个时刻各读了一次"
+                }
+              ]
+            },
+            {
+              "id": "c",
+              "text": "明天下午也会差 3 ℃，可以提前写进报告。",
+              "flawed": true,
+              "why": "一次测量不能推断其他时段或第二天。",
+              "sourceRefs": [
+                {
+                  "chunkId": "c2",
+                  "quote": "推断其他时段还需要更多记录"
+                }
+              ]
+            }
+          ]
+        },
+        "hints": [
+          "哪一句说到了还没发生的事？"
+        ],
+        "variants": []
+      },
+      "outro": [
+        {
+          "speaker": "xiaoan",
+          "text": "谢谢！我把那句删掉了。给别人讲一遍，自己也记得更牢。"
+        }
+      ]
+    }
+  ]
+}
