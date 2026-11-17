@@ -1,0 +1,35 @@
+{
+  "format": "draft/mock-v1",
+  "packageVersion": "courtyard-v1",
+  "title": "树荫下的温度",
+  "introduction": "读一则庭院手记，分清一次观察能支持哪些结论。",
+  "reading": {
+    "id": "observation",
+    "text": "下午三点，小禾在庭院的两处各读了一次温度计。一处在树荫下，一处在阳光下。比较读数时，先记清时间和地点，再判断结论能说到哪一步。"
+  },
+  "question": {
+    "id": "compare-readings",
+    "prompt": "哪一句能由这次记录直接支持？",
+    "choices": [
+      {"id": "always", "text": "一天中，树荫下始终更凉。"},
+      {"id": "at_three", "text": "这天下午三点，树荫下的读数低了 3 ℃。"},
+      {"id": "tomorrow", "text": "明天下午，两处也会相差 3 ℃。"}
+    ],
+    "feedback": {
+      "id": "compare-feedback",
+      "correctOptionId": "at_three",
+      "explanation": "同一时刻的两个读数是 28 ℃ 和 31 ℃，相差 3 ℃。手记只记录了这一次，无法从中判断其他时段或第二天的温度。",
+      "sourceId": "courtyard-p1"
+    }
+  },
+  "source": {
+    "id": "courtyard-p1",
+    "title": "庭院观察手记",
+    "location": "第 1 段",
+    "text": "下午三点，我在树荫下读到 28 ℃，在阳光下读到 31 ℃。今天只在这个时刻各读了一次，其他时段没有记录。"
+  },
+  "review": {
+    "id": "limits-of-observation",
+    "text": "比较读数时，保留观察发生的时间和地点。一次测量可以支持当时的比较，推断其他时段还需要更多记录。"
+  }
+}
