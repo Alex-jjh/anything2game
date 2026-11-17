@@ -5,6 +5,7 @@ One kind of document lives in one place. Every document opens with a **Scope** l
 | Folder | Lens | Document | Status |
 |---|---|---|---|
 | `product/` | PM: why, for whom, against whom | [why-and-market.md](product/why-and-market.md) | draft; market facts to verify via web search |
+| `product/` | PM: why play at all, friction, 8 game concepts compared | [game-concepts.md](product/game-concepts.md) | proposal |
 | `product/` | PM + game design: what you play, how it adapts | [game-design.md](product/game-design.md) | draft |
 | `design/` | Visual / interaction: palette, type, components, screens per mechanic | (visual team creates) | empty |
 | `architecture/` | Solution architecture: components, contract, state machines, generation pipeline | [ARCHITECTURE.md](architecture/ARCHITECTURE.md) | draft |
