@@ -87,4 +87,7 @@ object ErrorCodes {
     const val GENERATION_FAILED = "GENERATION_FAILED"
     const val BAD_REQUEST = "BAD_REQUEST"
     const val UNAUTHORIZED = "UNAUTHORIZED"
+    /** The package is still compiling; retry when the job is ready. */
+    const val PACKAGE_NOT_READY = "PACKAGE_NOT_READY"
+    const val INTERNAL_ERROR = "INTERNAL_ERROR"
 }

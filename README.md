@@ -11,7 +11,7 @@ CSI301 Mobile Computing group project. Everything is due **2026-12-07** (ad + de
 | `docs/` | All documents — index in [docs/README.md](docs/README.md) | everyone | — |
 | `contract/` | **The single client↔server contract**: Kotlin DTOs, JSON examples, validators | architecture lead; changes need both sides to review | `./gradlew :contract:test` |
 | `android/` | Android app (Kotlin + Compose). `:engine` = pure-Kotlin game engine, `:app` = UI and platform features — see [android/README.md](android/README.md) | Android team | `./gradlew :android:app:assembleDebug` |
-| `server/` | Backend (Kotlin + Ktor): ingest, package compilation, live adaptation — **not started** | backend team | `./gradlew :server:run` (planned) |
+| `server/` | Backend (Kotlin + Ktor): ingest, compile pipeline, 5 frame nodes, ask — see [server/README.md](server/README.md) | backend team | `./gradlew :server:run` (loopback, fake LLM by default) |
 | `samples/` | Licensed sample materials + reviewed offline packages (demo fallback, always labelled "pre-generated") | content reviewer | — |
 | `tools/` | Scripts: batch generation evals, sample refresh | backend team | — |
 

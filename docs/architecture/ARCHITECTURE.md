@@ -256,3 +256,12 @@ interface LlmClient {
 ```
 
 Config selects an adapter + model per tier (`compile`, `flash`). The validator, not the provider, is the source of truth for output shape.
+
+## 10. Implementation status and known gaps (2026-11-17)
+
+| Area | Status |
+|---|---|
+| contract v1 + frames | done; `PACKAGE_NOT_READY`, `INTERNAL_ERROR` added; `contentVersion` stays fixed while levels are appended (ETag = version + level count) |
+| server | ingest, plan → level → validate/repair → publish, 5 frame nodes (classic = 204, no overlay), ask, file store, fake / OpenAI-compatible / Anthropic adapters — 53 offline tests |
+| not built yet | `POST /v1/variants` (flash refill); the second-pass *support* gate (§4) — everything is `auto-validated`, nothing `flagged`; app ↔ server networking |
+| known limits | the whole document goes into the plan prompt (long documents can exceed small models' context); PDF parsing is not time-bounded; dedupe is per document id, not per content hash across uploads |

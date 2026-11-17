@@ -112,10 +112,11 @@ class ServerApiTest {
             source.sources.forEach { assertTrue(all.contains(it.text.substring(0, 40))) }
             assertTrue(pkg.levels.all { l -> l.units.size >= 2 && l.units.map { it.mechanic }.toSet().size >= 2 })
             assertTrue(pkg.levels.flatMap { it.units }.all { it.hints.isNotEmpty() && it.variants.isNotEmpty() })
-            // ETag = contentVersion, conditional GET
+            // ETag = contentVersion + published level count, conditional GET
             val first = api.send(HttpMethod.Get, "/v1/packages/${pkg.packageId}", token)
             val etag = first.headers[HttpHeaders.ETag]
-            assertEquals("\"${pkg.contentVersion}\"", etag)
+            assertEquals("\"${pkg.contentVersion}-${pkg.levels.size}\"", etag)
+            assertEquals("1", pkg.contentVersion)
             val again = api.send(HttpMethod.Get, "/v1/packages/${pkg.packageId}", token) { header(HttpHeaders.IfNoneMatch, etag!!) }
             assertEquals(HttpStatusCode.NotModified, again.status)
         }

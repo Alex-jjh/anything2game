@@ -14,7 +14,8 @@ data class PublishInput(val jobId: String, val installId: String, val level: Lev
 /**
  * Adds a validated level to the stored package, so `GET /v1/packages/{id}` shows level 1 as soon as it exists.
  * Returns false (and changes nothing) when the job is already in a terminal state: a result that arrives after `cancelled`
- * is discarded here, under the same lock that `cancel` takes. `contentVersion` is the number of published levels.
+ * is discarded here, under the same lock that `cancel` takes. Publishing only APPENDS levels, so `contentVersion` stays fixed:
+ * a player half-way through level 1 keeps their saved progress when level 2 arrives.
  */
 class PublishNode(private val store: Store, private val stateLock: Mutex, private val clock: () -> Long = System::currentTimeMillis) :
     PipelineNode<PublishInput, Boolean> {
@@ -29,7 +30,7 @@ class PublishNode(private val store: Store, private val stateLock: Mutex, privat
         }
         val existing = store.getPackage(input.shell.packageId)?.pkg?.levels.orEmpty()
         val levels = (existing.filter { it.levelId != input.level.levelId } + input.level).sortedBy { levelNumber(it.levelId) }
-        val pkg = input.shell.copy(levels = levels, contentVersion = levels.size.toString())
+        val pkg = input.shell.copy(levels = levels)
         val issues = PackageValidator.validate(pkg)
         if (issues.isNotEmpty()) {
             log.warn("job {} level {} failed final validation: {}", input.jobId, input.level.levelId, issues.first())

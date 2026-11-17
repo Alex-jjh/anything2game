@@ -57,7 +57,7 @@ fun Application.module(ctx: AppContext) {
             if (e is CancellationException) throw e
             // Class name only: messages can contain request data.
             log.error("unhandled {} on {}", e.javaClass.name, call.request.local.uri.substringBefore('?'))
-            call.respond(HttpStatusCode.InternalServerError, ErrorBody(ApiError(INTERNAL_ERROR, "Something went wrong on the server.", retryable = true)))
+            call.respond(HttpStatusCode.InternalServerError, ErrorBody(ApiError(ErrorCodes.INTERNAL_ERROR, "Something went wrong on the server.", retryable = true)))
         }
         status(HttpStatusCode.NotFound) { call, _ ->
             call.respond(HttpStatusCode.NotFound, ErrorBody(ApiError(ErrorCodes.NOT_FOUND, "Not found.", false)))
@@ -82,4 +82,3 @@ fun Application.module(ctx: AppContext) {
 }
 
 /** Not in the contract's ErrorCodes (contract gap, see server/README.md). */
-const val INTERNAL_ERROR = "INTERNAL_ERROR"

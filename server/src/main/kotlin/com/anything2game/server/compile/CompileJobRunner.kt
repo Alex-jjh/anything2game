@@ -102,7 +102,7 @@ class CompileJobRunner(
             if (!transition(jobId, CompileJobState.GENERATING) { it.copy(levelsPlanned = plan.levels.size) }) return
 
             val shell = LearningPackage(
-                schema = PACKAGE_SCHEMA_V1, packageId = job.packageId, contentVersion = "0",
+                schema = PACKAGE_SCHEMA_V1, packageId = job.packageId, contentVersion = "1",
                 documentId = doc.documentId, documentVersion = doc.documentVersion, title = doc.title, language = job.options.language,
                 generation = Generation(GenerationMode.LIVE, compileModelId, "plan.v1+level.v1", ReviewStatus.AUTO_VALIDATED),
                 sources = doc.chunks, levels = emptyList(),

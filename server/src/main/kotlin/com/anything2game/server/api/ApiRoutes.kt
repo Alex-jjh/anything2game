@@ -155,9 +155,10 @@ fun Route.apiRoutes(ctx: AppContext) {
             // ---- packages and frames -----------------------------------------------------------------------------
             get("/packages/{packageId}") {
                 val stored = ownedPackage(call)
-                val etag = "\"${stored.pkg.contentVersion}\""
+                // The ETag changes when a level is published; contentVersion does not (levels are only appended).
+                val etag = "\"${stored.pkg.contentVersion}-${stored.pkg.levels.size}\""
                 call.response.header(HttpHeaders.ETag, etag)
-                if (call.request.header(HttpHeaders.IfNoneMatch)?.trim() in setOf(etag, stored.pkg.contentVersion)) {
+                if (call.request.header(HttpHeaders.IfNoneMatch)?.trim() == etag) {
                     call.respond(HttpStatusCode.NotModified)
                 } else {
                     call.respond(stored.pkg)
@@ -179,7 +180,7 @@ fun Route.apiRoutes(ctx: AppContext) {
                 val frame = parseFrame(call.parameters["frameId"])
                 if (frame == FrameId.CLASSIC) return@post call.respond(HttpStatusCode.NoContent)
                 if (!stored.complete) {
-                    throw ApiException(HttpStatusCode.Conflict, ErrorCodes.BAD_REQUEST, "The package is still being compiled. Try again when the job has finished.", retryable = true)
+                    throw ApiException(HttpStatusCode.Conflict, ErrorCodes.PACKAGE_NOT_READY, "The package is still being compiled. Try again when the job has finished.", retryable = true)
                 }
                 val overlay = ctx.frames.ensure(stored.pkg.packageId, frame) ?: return@post call.respond(HttpStatusCode.NoContent)
                 call.respond(overlay)
