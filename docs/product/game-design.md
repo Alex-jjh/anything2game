@@ -88,3 +88,67 @@ Per unit, Leitner-style box 0–3:
 | Evening / idle | WorkManager + widget | boss card on the home screen |
 
 On the emulator-less VM these are driven by a **debug context panel** (fake signals); real signals are tested on a phone.
+
+## 6. v2 — more game, still learning (proposed 2026-11-17)
+
+**Why**: the v1 baseline plays like Duolingo — clean, but a quiz with a progress bar. The closest competitor (Paper2Galgame) wins on *character and story* but the player mostly clicks through a lecture. We want both: a game with stakes and a story, where the **player** does the reasoning.
+
+### 6.1 The fantasy: you are the detective, the AI summary is the suspect
+
+- **The case file** = the material. **Your partner** (an original character, designed by our visual team) briefs you and reacts to your moves.
+- **The suspect** = *the Summary*: a smooth-talking character who "has already read it for you" and overclaims. Your job is to catch where it goes beyond the evidence.
+- This turns our product thesis into the plot: *AI summaries make you feel you understood — here you catch them out.* It also teaches the habit we want (claims need evidence) and gives the ad its story.
+
+### 6.2 Level loop (3–5 minutes)
+
+```
+Briefing (30 s)  →  Clues (3–4 mechanics)  →  Cross-examination (level boss)  →  Case closed
+partner sets the    each solved clue is         the Summary makes 4–5 claims;     board snapshot +
+question            PINNED to the board         press the overclaim WITH the      what's still shaky
+                                                 page that disproves it
+```
+
+| Element | What the player sees | Learning job |
+|---|---|---|
+| **Briefing** | 3–5 short lines from the partner, the level goal as a question | sets the goal (advance organiser), no long reading |
+| **Clues** | Swipe / Sort / Deduce / Order as now, but each solved clue flies onto the board | retrieval practice per knowledge type |
+| **Cross-examination** (new mechanic) | statements appear one by one; tap one → *Present evidence* → pick the page/passage from your case file | apply the evidence, spot over-generalisation — the hardest, most "game" moment |
+| **Credibility** (stakes) | 3 pips per level; a wrong press or a wrong verdict costs one; 0 → "the case went cold", replay with variants | errors matter, but no paywalled lives and no timer (mobile interruption) |
+| **Case closed** | the board for this level, filled in; "still shaky" clues glow | recap + honest uncertainty |
+
+### 6.3 The evidence board = a mind map you *earn*
+
+NotebookLM generates a mind map for you; we make you build it.
+- The compiler emits a small concept graph per package: one node per unit ("clue"), edges with short labels ("measured by", "contradicts", "only at"). Nodes start as silhouettes.
+- Solving a clue pins its node; finishing a level reveals its edges. Tapping a node opens its evidence and lets you replay it.
+- After the case, the board stays as **Case notes**: a 10-second review on the metro — the fragmented-time format NotebookLM gets right, but earned instead of handed over.
+
+### 6.4 Game feel
+
+- Combo: 3 first-try clues in a row → "Sharp eye" (cosmetic stamp on the board, no score inflation).
+- Motion and haptics on every verdict (swipe fling, pin snap, stamp); sound optional and off by default (people play on the metro).
+- Partner reaction lines by outcome (correct / partly / wrong / combo) live in the **skin** as localised strings, not in packages — cheap and swappable.
+- No audio narration in the MVP: the course forbids AI voice-over in the video, and reading is faster than listening for 30-second briefings.
+
+### 6.5 What we deliberately do not copy
+
+No anime-companion visual novel, no click-through dialogue as the main activity, no character gacha/customisation. The partner and the Summary are original characters; their look belongs to the visual team.
+
+### 6.6 What it changes in the system
+
+| Part | Change | Compatible with v1? |
+|---|---|---|
+| contract | `Level.briefing: [ {speaker, text} ]` (optional); `LearningPackage.board: {nodes[{id, label, unitId}], edges[{from, to, label}]}` (optional); new item `crossexam {speaker, statements[{id, text, flaw?: {chunkId, why}}]}` | yes — optional fields + new mechanic type |
+| engine | `CrossExamGrader`; `StakesPolicy` (credibility) in the session; board progress derived from results | additive |
+| app | briefing scene, cross-exam renderer, board screen, credibility pips, reaction lines in the skin | additive (new renderers + screens) |
+| server compiler | plan step also emits the board graph and 1 cross-exam per level (statements built from the level's own claims, flaws must cite a chunk) | prompt + validator rules |
+
+### 6.7 Priority inside the remaining time
+
+| P | Item | Why first |
+|---|---|---|
+| P0 | Cross-examination + credibility | the signature "this is a game" moment and the product thesis in one mechanic |
+| P0 | Evidence board (earned mind map) | progression you can see; strongest demo shot; answers "NotebookLM already does mind maps" |
+| P1 | Briefing + partner reactions | story with almost no engineering; needs the partner art |
+| P1 | Motion / haptics / combo stamp | game feel |
+| P2 | Order mechanic, daily-clue widget | nice, not decisive |

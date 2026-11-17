@@ -45,7 +45,8 @@ Generalised:
 
 | Product | What it does | Strength | Our opening |
 |---|---|---|---|
-| Google NotebookLM | Upload sources → summaries, audio overviews, quizzes/flashcards, with citations | **Strong citations**; Android app | A research notebook: reading/listening first; quizzes are plain; not built for 5-minute sessions, progression or context |
+| **Paper2Galgame** (Steam, 2026-08-09, "Very Positive", 98 reviews when checked 2026-11-17) | PDF/TXT/DOCX → 5–10 min visual novel: an anime companion explains the paper line by line, with quizzes, voice narration, a formula blackboard, character customisation (Workshop), co-op, paper discovery | **Closest competitor**; proves people want "paper → game"; strong character appeal | PC, landscape, sit-down sessions; the game is a *lecture you click through* — knowledge is narrated, quizzes are bolted on; no evidence trail. We: phone-first fragments, the *player* does the reasoning, mechanics follow knowledge type, every answer is checkable |
+| Google NotebookLM | Upload sources → summaries, audio overviews (podcast), mind maps, reports/blog-style write-ups, quizzes/flashcards, with citations | **Strong citations**; Android app; formats made for fragmented time (listen on a commute) | Formats are *consumed*, not played; the mind map is handed to you. We: you **earn** the map by solving the case |
 | Quizlet | Flashcards; AI builds study sets from notes; Match-style mini-games | Huge user base; has games | Games are a generic shell over term–definition pairs; ignore knowledge type; weak sourcing |
 | Kahoot! / Quizizz (Wayground) | AI quiz from a PDF; live classroom competition | Classroom energy, teacher ecosystem | Teacher-run sessions, not one person anytime |
 | Gizmo / Knowt / StudyFetch etc. | "Turn anything into flashcards/quizzes" + spaced repetition | Closest to our "anything" | Still cards and question banks; little use of phone context |
@@ -65,6 +66,10 @@ Generalised:
                          ▼
               Play: cards / quizzes
 ```
+
+**Two neighbours to define ourselves against** (the ad should name the difference in one line each):
+- *Paper2Galgame turns a paper into a story you watch. We turn it into a case you solve.*
+- *NotebookLM gives you a mind map. We make you build it.*
 
 **Honest line**: "AI makes a quiz from a PDF" and "answers with citations" are each not new. The new thing is the combination: **any source in × knowledge type picks the mechanic × every item traceable × tuned to the phone's context**.
 
