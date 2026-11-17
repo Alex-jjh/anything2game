@@ -91,3 +91,75 @@ What each concept teaches us even if not chosen:
 | Quick clue is a real use case | ask when they'd tap a 30 s clue | concrete moments named (queue, lift, before class) |
 
 If the test says otherwise, we change the frame — the engine, contract and mechanics stay (game-design.md §1: frame and skin are swappable layers).
+
+## 7. The concepts are templates — at the *frame* layer
+
+All eight concepts use the same content (units with knowledge type, items, citations) and the same mechanics. What differs is the **frame**: how units are ordered, what wraps them (story, map, opponent), what is at stake, and how progress is shown. So each concept is a frame template, and the architecture can treat it that way:
+
+| Layer | Who picks | Swappable? | Examples |
+|---|---|---|---|
+| Content | compiler (from the material) | per document | units, citations, board graph |
+| Mechanic | compiler, by knowledge type | closed list, extend by adding one | Swipe, Sort, Deduce, Order, Cross-exam |
+| **Frame** | **default by product; user may switch in one setting** | **yes — a `GameFrame` strategy** | Case (C), Classic path (A), Escape room (G), Rookie (H), Companion (B) |
+| Skin | visual team | yes | case-file paper, plain study, anime partner art |
+
+Why let the user switch frames but never mechanics:
+- **Autonomy** (a core motivator, §3): some students want story, some want a clean path. A one-time choice costs them nothing per session.
+- **Mechanics must follow knowledge**, or the game stops being the thinking (§2). A user-picked mechanic would let a "process" be played as true/false.
+- **Each frame is expensive** in writing, art and testing. So we *ship two* and design for more:
+  - **Case** (default, the full experience) and **Classic** (the current baseline, already built — almost free).
+  - B, G, H stay documented as future frames; D, E, F are not frames we plan (§4).
+- **It makes the study possible**: Classic vs Case on the same package is a clean comparison of *frame* with content, mechanics and time held equal (Clark et al. 2016 — compare designs, not "game vs no game"). This can be the team's 2×2 if a second factor is added (e.g. evidence button on/off).
+
+What a frame may and may not do (contract for `GameFrame`):
+
+| May | May not |
+|---|---|
+| order and group units into rooms/steps; add a boss unit (e.g. cross-exam) | change an item, its answer or its citation |
+| add narrative lines from the package (`briefing`) or the skin (reactions) | grade answers (engine graders do) |
+| define stakes (credibility pips, none) and progress visuals (board, path) | add timers that punish interruption |
+| choose which recap view to show | hide "still shaky" or claim mastery |
+
+## 8. Why would someone be convinced to try it — and to keep playing?
+
+### 8.1 First contact (acquisition)
+
+| Lever | How it convinces | Where it shows up |
+|---|---|---|
+| **The moment of need** | we appear exactly when the PDF arrives: *Share → Make it a game*. No app search, no account | share-sheet entry, first-run screen |
+| **A sharp promise against a known pain** | "Not another summary. Find out if you actually get it." — names the illusion every student has felt | ad, store text, first screen |
+| **A villain everyone recognises** | "the AI summary is confidently wrong" — curiosity + a little indignation | the Summary character, cross-exam |
+| **Proof in the first minute** | the first level ends by catching an overclaim *with the page* — the user sees value before investing | level 1 design (target: first win < 3 min) |
+| **Trust signals** | every answer has evidence; samples are labelled "pre-generated"; what is sent to AI is said up front | evidence panel, badges, consent text |
+| **Social proof / invitation** | a classmate shares a solved case on the same paper ("compile once, the class plays") | later: share a package link |
+| **Low commitment** | free, no account, 3 minutes, works offline | onboarding |
+
+### 8.2 Coming back (retention)
+
+| Loop step | Ours |
+|---|---|
+| Trigger — external | a deadline, the seminar tomorrow, a new PDF in the chat |
+| Trigger — internal | "do I really get it?" anxiety; boredom on the metro |
+| Action — as small as possible | one tap from the widget/notification into a 30-second Quick clue |
+| Reward — variable, informational | a case solved, the Summary caught, a board node revealed (not points for their own sake) |
+| Investment — it becomes *hers* | the board / case notes of every paper she has played; the history of what was shaky and is now solid |
+
+### 8.3 The pitch in one breath (for the ad)
+
+*You already have to read it. Lin used to skim and ask an AI — and still froze in the seminar. Now she shares the PDF, and on the metro she plays the case: the AI summary makes claims, she catches the ones the paper doesn't support, page in hand. By Thursday she doesn't feel ready — she knows she is.*
+
+## 9. How it affects users — intended effects, side effects, and what we do about them
+
+| Effect | Intended or risk | Mechanism | What we do / measure |
+|---|---|---|---|
+| Better retention of assigned reading | intended | retrieval practice, spaced boss review | delayed check vs reading a summary (small, descriptive) |
+| Calibrated confidence ("I know what I don't know") | intended | honest recap, "still shaky" | ask testers to predict their score, compare |
+| Habit of checking claims against sources (AI literacy) | intended | cross-exam, Show evidence | count evidence opens; interview |
+| Dead time becomes useful | intended | Quick clue, offline, resume | session count/length in the trial |
+| **Over-reliance on generated questions** — learning only what the AI chose to ask | risk | the compiler may miss what the lecturer cares about | always one tap to the source; recap says "this covered X of the paper"; report-an-item |
+| **Wrong items teach wrong facts** | risk | generation errors | validation gates, evidence on every item, flagged items excluded from demos |
+| **Rewards crowd out interest** (overjustification; Deci, Koestner & Ryan 1999) | risk | points/badges as the goal | rewards are informational or cosmetic; no leaderboards by default |
+| **Anxiety from stakes** | risk | credibility loss, failure screens | no timers, private results, a failed case is just replayed with variants |
+| **Phone use while walking** | risk | commute setting | auto-pause on walking (context policy) |
+| **Privacy of uploaded material** | risk | text sent to an AI provider | consent, OCR on device, delete-my-data, no public sharing of originals |
+| Accessibility / language | risk | small screens, non-native readers | bilingual UI and content, large targets, buttons for every gesture |

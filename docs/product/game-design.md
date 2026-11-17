@@ -6,7 +6,7 @@
 
 | Layer | Fixed or variable | Who decides | Example |
 |---|---|---|---|
-| **Frame** — the meta-game | **Fixed.** One structure for every material | product | a material = a *case file*; it has 3–6 levels; each level ends with a recap; misses come back as a *boss* review |
+| **Frame** — the meta-game | **Pluggable** (revised 11-17, see game-concepts §7): default Case, Classic shipped; user may switch | product | a material = a *case file*; it has 3–6 levels; each level ends with a recap; misses come back as a *boss* review |
 | **Mechanic** — the mini-game inside a level | **Variable, chosen by the content**, not by the user | the compiler (LLM) picks per knowledge unit, from a closed list | definition → *Sort*; process → *Order*; claim → *Swipe*; reasoning → *Deduce* |
 | **Skin** — look and feel | **Swappable** without touching content or logic | visual team | detective case file (default), or a plain "study" skin |
 

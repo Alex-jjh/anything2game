@@ -6,7 +6,7 @@
 |---|---|---|
 | 001 | Monorepo, one root Gradle build | proposed |
 | 002 | Kotlin on both client and server; shared `contract` module | proposed |
-| 003 | Game = fixed frame × content-chosen mechanic × swappable skin | proposed |
+| 003 | Game = content × content-chosen mechanic × **pluggable frame** × swappable skin (revised 11-17) | proposed |
 | 004 | Compile once (strong model) → adapt on device → flash only when stuck | proposed |
 | 005 | The device decides flow; `:engine` is pure Kotlin | proposed |
 | 006 | Text is the universal intermediate; OCR on device | proposed |
@@ -39,8 +39,9 @@
 **Why**: removes any doubt about the language rule; DTOs are shared, not re-typed; every member can read every part (all members must code).
 **Cost**: Python's LLM/PDF ecosystem is richer. PDFBox covers text + page index; we don't need more for text PDFs.
 
-### 003 Three-layer game
-**Decision**: fixed frame (case file → levels → recap → boss), mechanic chosen per knowledge unit by the compiler from a closed list (Swipe, Sort, Deduce; stretch: Order, Match), skin swappable by the visual team. Users choose only session length (and skin).
+### 003 Layered game: content × mechanic × frame × skin
+**Revision 2026-11-17**: the frame is no longer fixed. Comparing eight concepts (product/game-concepts.md) showed they all differ only at the frame layer, so the frame becomes a `GameFrame` strategy: default **Case** (detective), **Classic** path shipped as the second frame (the current baseline), others documented. The user may switch frame in one setting; mechanics stay chosen by the compiler.
+**Decision (original)**: mechanic chosen per knowledge unit by the compiler from a closed list (Swipe, Sort, Deduce; stretch: Order, Match, Cross-exam), skin swappable by the visual team. Users choose session length, frame and skin — never the mechanic.
 **Why**: one structure to learn and demo; the innovation is that rules follow knowledge type (Habgood & Ainsworth 2011), which a user-picked template would not give; visuals stay decoupled from data. Details: game-design.md §1.
 
 ### 004 Compile → adapt locally → flash
