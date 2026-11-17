@@ -1,0 +1,111 @@
+{
+  "schema": "a2g.package/v1",
+  "packageId": "pkg_demo_retrieval",
+  "contentVersion": "1",
+  "documentId": "doc_demo_retrieval",
+  "documentVersion": "sha256:demo-retrieval-notes-v1",
+  "title": "Why being tested beats re-reading",
+  "language": "en",
+  "generation": { "mode": "pre-generated", "model": "hand-written", "promptVersion": "none", "review": "human-approved" },
+  "sources": [
+    {
+      "chunkId": "c1",
+      "pageIndex": 0,
+      "pageLabel": "1",
+      "text": "In the study, students read a short passage. One group read it again; the other group wrote down everything they could remember. Five minutes later the re-reading group did slightly better. One week later the recall group remembered clearly more."
+    },
+    {
+      "chunkId": "c2",
+      "pageIndex": 0,
+      "pageLabel": "1",
+      "text": "Retrieval practice means pulling information out of memory, for example by answering a question or writing what you remember. Re-reading, highlighting and reviewing a summary put the information in front of you again without asking you to recall it."
+    },
+    {
+      "chunkId": "c3",
+      "pageIndex": 1,
+      "pageLabel": "2",
+      "text": "The benefit was measured on the same passage the students had studied. Whether it transfers to new problems was not tested in this study."
+    }
+  ],
+  "levels": [
+    {
+      "levelId": "L1",
+      "title": "Does testing yourself actually help?",
+      "goal": "Tell apart what the study showed from what it did not.",
+      "units": [
+        {
+          "unitId": "L1U1",
+          "knowledgeType": "claim",
+          "mechanic": "swipe",
+          "mechanicReason": "Single findings with a common over-generalisation; true/false fits.",
+          "item": {
+            "type": "swipe",
+            "cards": [
+              { "id": "s1", "statement": "After one week, the recall group remembered more than the re-reading group.", "supported": true,
+                "why": "The passage reports the recall group remembered clearly more one week later.", "sourceRefs": [{ "chunkId": "c1", "quote": "One week later the recall group remembered clearly more." }] },
+              { "id": "s2", "statement": "Re-reading was worse at every point in time.", "supported": false,
+                "why": "Five minutes later the re-reading group did slightly better — the advantage only appeared after a delay.", "sourceRefs": [{ "chunkId": "c1", "quote": "Five minutes later the re-reading group did slightly better." }] },
+              { "id": "s3", "statement": "The study showed recall practice helps you solve new kinds of problems.", "supported": false,
+                "why": "Transfer to new problems was not tested.", "sourceRefs": [{ "chunkId": "c3", "quote": "Whether it transfers to new problems was not tested in this study." }] }
+            ]
+          },
+          "hints": ["Look at when each group was tested.", "Two different time points are reported."],
+          "variants": []
+        },
+        {
+          "unitId": "L1U2",
+          "knowledgeType": "category",
+          "mechanic": "sort",
+          "mechanicReason": "The passage defines two categories of study activity.",
+          "item": {
+            "type": "sort",
+            "prompt": "File each activity.",
+            "bins": [
+              { "id": "retrieval", "label": "Retrieval practice" },
+              { "id": "restudy", "label": "Re-exposure" }
+            ],
+            "cards": [
+              { "id": "k1", "text": "Answering a question from memory", "binId": "retrieval" },
+              { "id": "k2", "text": "Highlighting the paper", "binId": "restudy" },
+              { "id": "k3", "text": "Writing down everything you remember", "binId": "retrieval" },
+              { "id": "k4", "text": "Reading an AI summary", "binId": "restudy" }
+            ],
+            "why": "Retrieval means pulling information out of memory; the others put it in front of you again.",
+            "sourceRefs": [{ "chunkId": "c2", "quote": "Retrieval practice means pulling information out of memory" }]
+          },
+          "hints": ["Ask: does this activity make you recall, or show you the text again?"],
+          "variants": []
+        },
+        {
+          "unitId": "L1U3",
+          "knowledgeType": "reasoning",
+          "mechanic": "deduce",
+          "mechanicReason": "Applying the finding to a new situation within its limits.",
+          "item": {
+            "type": "deduce",
+            "scenario": "Lin has 20 minutes on the metro and an exam on this passage next week.",
+            "prompt": "Based on the study, which plan is best supported?",
+            "options": [
+              { "id": "o1", "text": "Read the passage twice.", "correct": false,
+                "feedback": "Re-reading only helped at the five-minute test, not a week later." },
+              { "id": "o2", "text": "Read once, then write down everything she remembers.", "correct": true,
+                "feedback": "That matches the recall group, which remembered more after one week." },
+              { "id": "o3", "text": "Practise with new problems instead of the passage.", "correct": false,
+                "feedback": "The study only measured memory of the same passage; transfer wasn't tested." }
+            ],
+            "sourceRefs": [{ "chunkId": "c1", "quote": "One week later the recall group remembered clearly more." }]
+          },
+          "hints": ["Her exam is a week away — which group did better at one week?"],
+          "variants": []
+        }
+      ],
+      "recap": {
+        "points": [
+          "Recall beat re-reading after a week, not after five minutes.",
+          "Retrieval = pulling from memory; re-reading and summaries are re-exposure.",
+          "Transfer to new problems was not tested."
+        ]
+      }
+    }
+  ]
+}
