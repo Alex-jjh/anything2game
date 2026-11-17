@@ -17,3 +17,4 @@ rootProject.name = "anything2game"
 include(":contract")
 include(":android:engine")
 include(":android:app")
+include(":server")
