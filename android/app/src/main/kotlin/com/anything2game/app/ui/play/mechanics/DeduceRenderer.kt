@@ -37,7 +37,8 @@ object DeduceRenderer : MechanicRenderer {
     override val mechanic = Mechanic.DEDUCE
 
     @Composable
-    override fun Question(key: String, item: Item, oneHanded: Boolean, onSubmit: (Answer) -> Unit) {
+    override fun Question(key: String, item: Item, ctx: RenderContext, onSubmit: (Answer) -> Unit) {
+        val oneHanded = ctx.oneHanded
         val deduce = item as DeduceItem
         val skin = A2g.skin
         var choice by rememberSaveable(key) { mutableStateOf<String?>(null) }
@@ -68,7 +69,7 @@ object DeduceRenderer : MechanicRenderer {
     }
 
     @Composable
-    override fun Review(item: Item, answer: Answer, grade: Grade) {
+    override fun Review(item: Item, answer: Answer, grade: Grade, ctx: RenderContext) {
         val deduce = item as DeduceItem
         val chosen = (answer as DeduceAnswer).optionId
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

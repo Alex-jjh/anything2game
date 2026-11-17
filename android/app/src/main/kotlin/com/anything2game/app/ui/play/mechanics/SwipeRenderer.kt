@@ -56,7 +56,8 @@ object SwipeRenderer : MechanicRenderer {
     override val mechanic = Mechanic.SWIPE
 
     @Composable
-    override fun Question(key: String, item: Item, oneHanded: Boolean, onSubmit: (Answer) -> Unit) {
+    override fun Question(key: String, item: Item, ctx: RenderContext, onSubmit: (Answer) -> Unit) {
+        val oneHanded = ctx.oneHanded
         val swipe = item as SwipeItem
         val skin = A2g.skin
         // Saved as "cardId:true" strings so rotation and process death keep decisions.
@@ -146,7 +147,7 @@ object SwipeRenderer : MechanicRenderer {
     }
 
     @Composable
-    override fun Review(item: Item, answer: Answer, grade: Grade) {
+    override fun Review(item: Item, answer: Answer, grade: Grade, ctx: RenderContext) {
         val swipe = item as SwipeItem
         val verdicts = (answer as SwipeAnswer).verdicts
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

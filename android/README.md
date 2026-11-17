@@ -23,12 +23,27 @@ com.anything2game.app
     ├── theme/Skin.kt       colours by ROLE (evidence, correct, wrong, hint…) — swap the skin, not the screens
     ├── library/  importing/  common/
     └── play/
-        ├── PlayViewModel   load → restore → reduce → persist; no game rules
+        ├── PlayViewModel   load package + frame overlay → restore → reduce → persist; no game rules
         ├── PlayScreen      stateless; every input becomes an engine Action
-        └── mechanics/      MechanicRenderer interface + Swipe/Sort/Deduce + registry
+        ├── FrameViews      scenes (dialogue / rooms), credibility pips, evidence board, failed screen
+        └── mechanics/      MechanicRenderer + RenderContext; Swipe, Sort, Deduce, Order, Cross-exam; registry
 ```
 
 Adding a mechanic: item type in `contract`, grader in `engine/grading`, renderer in `ui/play/mechanics`, register both. Nothing else changes.
+
+## Frames (game templates)
+
+Five frames over the same content and mechanics (`docs/product/game-concepts.md` §7). The player picks one per package on the library card; the choice is saved.
+
+| Frame | Overlay content | Boss | Stakes |
+|---|---|---|---|
+| Classic | none | — | — |
+| Case | partner + the Summary, intro/outro, evidence board | cross-examine the Summary | 3 credibility |
+| Escape | narrator, rooms grouping units | final lock (order/deduce) | 3 credibility |
+| Rookie | junior's lead-in before every unit | fix the rookie's notes (cross-exam) | — |
+| Companion | partner's cited lead-in before every unit | — | — |
+
+Engine side: `engine/frames/GameFrame` (strategy) + `ScriptedFrame` (the shared intro → rooms → lead-ins → units → boss → outro script) + `Frames` registry. Overlays are separate artefacts (`frame.v1.*.json`), validated by `FrameValidator` against `FrameSpec`; a frame without an overlay falls back to Classic. A frame never changes items, answers or citations, and never grades.
 
 ## Languages
 
@@ -49,7 +64,7 @@ Needs JDK 21 and Android SDK platform 37 (`local.properties` → `sdk.dir`). Rev
 
 | Works | Not yet |
 |---|---|
-| Two bundled packages (EN, ZH), Swipe / Sort / Deduce, hints, per-option feedback, retry of missed units, evidence with highlighted quote, recap with "still shaky", progress saved after every step | Server connection: "Make a game" and Ask say so honestly |
+| Five frames (Classic, Case, Escape, Rookie, Companion) with bundled overlays for both packages; cross-exam boss, final lock, credibility, evidence board · Two bundled packages (EN, ZH), Swipe / Sort / Deduce / Order, hints, per-option feedback, retry of missed units, evidence with highlighted quote, recap with "still shaky", progress saved after every step | Server connection: "Make a game" and Ask say so honestly |
 | Share text/PDF from another app or pick a PDF → confirmation screen | Real sensors: walking/metro/offline are driven by the in-app **context simulator** |
 | Walking pause, one-hand mode, offline Ask message (via simulator) | Boss review screen, widget, camera OCR |
 

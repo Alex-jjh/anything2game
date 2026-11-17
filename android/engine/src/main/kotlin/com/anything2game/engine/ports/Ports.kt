@@ -41,3 +41,9 @@ fun interface Clock {
         val SYSTEM = Clock { System.currentTimeMillis() }
     }
 }
+
+/** Frame overlays for a package (bundled, cached or from the server). Classic needs none. */
+interface FrameRepository {
+    suspend fun available(packageId: String): List<com.anything2game.contract.FrameId>
+    suspend fun load(packageId: String, frameId: com.anything2game.contract.FrameId): com.anything2game.contract.FrameOverlay?
+}

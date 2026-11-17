@@ -18,12 +18,18 @@ import com.anything2game.app.ui.play.PlayUiState
 import com.anything2game.app.ui.theme.A2g
 import com.anything2game.app.ui.theme.A2gTheme
 import com.anything2game.contract.ContractJson
+import com.anything2game.contract.CrossExamItem
 import com.anything2game.contract.DeduceItem
+import com.anything2game.contract.FrameId
+import com.anything2game.contract.FrameOverlay
 import com.anything2game.contract.LearningPackage
 import com.anything2game.engine.context.ContextDecision
 import com.anything2game.engine.context.ContextSignals
 import com.anything2game.engine.context.DefaultContextPolicy
+import com.anything2game.engine.grading.CrossExamAnswer
 import com.anything2game.engine.grading.DeduceAnswer
+import com.anything2game.engine.grading.OrderAnswer
+import com.anything2game.engine.frames.Frames
 import com.anything2game.engine.grading.GraderRegistry
 import com.anything2game.engine.grading.SortAnswer
 import com.anything2game.engine.grading.SwipeAnswer
@@ -50,17 +56,29 @@ class ScreenshotTest {
     private val en = ContractJson.decodePackage(File(dir, "package.v1.example.json").readText())
     private val zh = ContractJson.decodePackage(File(dir, "package.v1.courtyard.zh.json").readText())
 
-    private fun engine(pkg: LearningPackage) = LevelSession(pkg, GraderRegistry.default(), LeitnerPolicy())
+    private fun overlay(pkg: LearningPackage, f: FrameId): FrameOverlay? = dir.listFiles { x -> x.name.startsWith("frame.") }!!
+        .map { ContractJson.decodeFrame(it.readText()) }.firstOrNull { it.packageId == pkg.packageId && it.frameId == f }
+
+    private fun engine(pkg: LearningPackage, f: FrameId = FrameId.CLASSIC) =
+        LevelSession(pkg, GraderRegistry.default(), LeitnerPolicy(), frame = Frames.of(f), overlay = overlay(pkg, f))
     private val still = DefaultContextPolicy.decide(ContextSignals(activity = ContextSignals.Activity.STILL))
 
     private fun ready(pkg: LearningPackage, s: SessionState, ctx: ContextDecision = still): PlayUiState.Ready {
-        val e = engine(pkg)
+        val e = engine(pkg, s.frameId)
         val slot = s.currentSlot
-        return PlayUiState.Ready(pkg, s, e.unit(s), e.item(s), if (s.isFinished) e.recap(s) else null, ctx,
-            slot != null && s.queue.drop(s.position + 1).any { it.unitId == slot.unitId && it.retry })
+        return PlayUiState.Ready(
+            pkg = pkg, frameId = s.frameId, overlay = overlay(pkg, s.frameId), session = s,
+            scene = e.sceneLines(s), room = e.room(s), solvedUnitIds = e.solvedUnitIds(s),
+            unit = e.unit(s), item = e.item(s), recap = if (s.isFinished && s.phase != com.anything2game.engine.session.Phase.Failed) e.recap(s) else null,
+            context = ctx, retryQueued = slot != null && s.queue.drop(s.position + 1).any { it.unitId == slot.unitId && it.retry },
+        )
     }
 
-    private fun SessionState.act(pkg: LearningPackage, vararg actions: Action) = actions.fold(this) { s, a -> engine(pkg).reduce(s, a).state }
+    private fun SessionState.act(pkg: LearningPackage, vararg actions: Action) = actions.fold(this) { s, a -> engine(pkg, frameId).reduce(s, a).state }
+    private val enSwipeRight = Action.Submit(SwipeAnswer(mapOf("s1" to true, "s2" to false, "s3" to false)))
+    private val enSortRight = Action.Submit(SortAnswer(mapOf("k1" to "retrieval", "k2" to "restudy", "k3" to "retrieval", "k4" to "restudy")))
+    private val zhSwipeRight = Action.Submit(SwipeAnswer(mapOf("s1" to true, "s2" to false, "s3" to false)))
+    private val zhSortRight = Action.Submit(SortAnswer(mapOf("k1" to "recorded", "k2" to "needs_more", "k3" to "recorded", "k4" to "needs_more")))
 
     private fun shot(name: String, content: @Composable () -> Unit) = captureRoboImage("build/outputs/roborazzi/$name.png") {
         A2gTheme { Box(Modifier.fillMaxSize().background(A2g.skin.paper)) { content() } }
@@ -75,19 +93,20 @@ class ScreenshotTest {
             LibraryEntry(
                 PackageSummary(p.packageId, p.title, p.language, p.levels.size, preGenerated = true),
                 p.levels.mapIndexed { i, l -> LevelEntry(l.levelId, i + 1, l.title, if (p === en) LevelStatus.InProgress(2, 3) else LevelStatus.New) },
+                frames = FrameId.entries, selectedFrame = if (p === en) FrameId.CASE else FrameId.ESCAPE,
             )
         },
     )
 
     @Test fun library_en() = shot("01_library_en") {
-        LibraryContent(library(), onOpenLevel = { _, _ -> }, onPickPdf = {}, footer = {
+        LibraryContent(library(), onOpenLevel = { _, _, _ -> }, onSelectFrame = { _, _ -> }, onPickPdf = {}, footer = {
             ContextSimulator(ContextSignals(activity = ContextSignals.Activity.STILL), {}, {})
         })
     }
 
     @Test fun library_zh() {
         RuntimeEnvironment.setQualifiers("+zh")
-        shot("01_library_zh") { LibraryContent(library(), onOpenLevel = { _, _ -> }, onPickPdf = {}) }
+        shot("01_library_zh") { LibraryContent(library(), onOpenLevel = { _, _, _ -> }, onSelectFrame = { _, _ -> }, onPickPdf = {}) }
     }
 
     @Test fun swipe_question() = play("02_swipe_question_en", en, engine(en).start("L1").act(en, Action.RevealHint))
@@ -144,5 +163,53 @@ class ScreenshotTest {
     @Test fun import_shared_text() = shot("11_import_en") {
         ImportContent(ImportRequest.SharedText("Lecture 7 — Context-aware computing", "Context-aware systems adapt their behaviour to the user's location, activity and surroundings. "
             .repeat(6)), onCancel = {})
+    }
+
+    // ---- frames ----
+    @Test fun case_intro_scene() = play("20_case_intro_en", en, engine(en, FrameId.CASE).start("L1"))
+
+    @Test fun case_crossexam_question() {
+        val s = engine(en, FrameId.CASE).start("L1")
+        val boss = s.queue.indexOfFirst { it.kind == com.anything2game.engine.session.SlotKind.BOSS }
+        play("21_case_crossexam_en", en, s.copy(position = boss))
+    }
+
+    @Test fun case_crossexam_wrong_evidence() {
+        val s0 = engine(en, FrameId.CASE).start("L1")
+        val boss = s0.queue.indexOfFirst { it.kind == com.anything2game.engine.session.SlotKind.BOSS }
+        play("22_case_crossexam_review_en", en, s0.copy(position = boss).act(en, Action.Submit(CrossExamAnswer("st3", "c1"))))
+    }
+
+    @Test fun case_recap_board_zh() {
+        RuntimeEnvironment.setQualifiers("+zh")
+        var s = engine(zh, FrameId.CASE).start("L1")
+        s = s.act(zh, Action.Next, zhSwipeRight, Action.Next, zhSortRight, Action.Next, Action.Submit(DeduceAnswer("at_three")), Action.Next,
+            Action.Submit(CrossExamAnswer("c", "c1")), Action.Next, Action.Next)
+        play("23_case_recap_board_zh", zh, s)
+    }
+
+    @Test fun case_cold() {
+        var s = engine(en, FrameId.CASE).start("L1").act(en, Action.Next)
+        s = s.act(en, Action.Submit(SwipeAnswer(emptyMap())), Action.Next, Action.Submit(SortAnswer(emptyMap())), Action.Next,
+            Action.Submit(DeduceAnswer("o1")), Action.Next)
+        play("24_case_cold_en", en, s)
+    }
+
+    @Test fun escape_room_zh() {
+        RuntimeEnvironment.setQualifiers("+zh")
+        play("25_escape_room_zh", zh, engine(zh, FrameId.ESCAPE).start("L1").act(zh, Action.Next))
+    }
+
+    @Test fun escape_lock_en() {
+        val s = engine(en, FrameId.ESCAPE).start("L1")
+        val boss = s.queue.indexOfFirst { it.kind == com.anything2game.engine.session.SlotKind.BOSS }
+        play("26_escape_lock_en", en, s.copy(position = boss))
+    }
+
+    @Test fun rookie_lead_in_en() = play("27_rookie_leadin_en", en, engine(en, FrameId.ROOKIE).start("L1").act(en, Action.Next))
+
+    @Test fun companion_lead_in_zh() {
+        RuntimeEnvironment.setQualifiers("+zh")
+        play("28_companion_leadin_zh", zh, engine(zh, FrameId.COMPANION).start("L1").act(zh, Action.Next))
     }
 }

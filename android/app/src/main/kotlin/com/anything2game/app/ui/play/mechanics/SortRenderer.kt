@@ -43,7 +43,8 @@ object SortRenderer : MechanicRenderer {
 
     @OptIn(ExperimentalLayoutApi::class)
     @Composable
-    override fun Question(key: String, item: Item, oneHanded: Boolean, onSubmit: (Answer) -> Unit) {
+    override fun Question(key: String, item: Item, ctx: RenderContext, onSubmit: (Answer) -> Unit) {
+        val oneHanded = ctx.oneHanded
         val sort = item as SortItem
         val skin = A2g.skin
         val haptic = LocalHapticFeedback.current
@@ -108,7 +109,7 @@ object SortRenderer : MechanicRenderer {
     }
 
     @Composable
-    override fun Review(item: Item, answer: Answer, grade: Grade) {
+    override fun Review(item: Item, answer: Answer, grade: Grade, ctx: RenderContext) {
         val sort = item as SortItem
         val bins = sort.bins.associate { it.id to it.label }
         val placed = (answer as SortAnswer).placements

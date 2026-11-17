@@ -3,10 +3,15 @@ package com.anything2game.app.ui.play
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.anything2game.app.AppDependencies
+import com.anything2game.contract.FrameId
+import com.anything2game.contract.FrameOverlay
 import com.anything2game.contract.Item
+import com.anything2game.contract.Line
+import com.anything2game.contract.Room
 import com.anything2game.contract.LearningPackage
 import com.anything2game.contract.LearningUnit
 import com.anything2game.engine.context.ContextDecision
+import com.anything2game.engine.frames.Frames
 import com.anything2game.engine.mastery.MasteryRecord
 import com.anything2game.engine.session.Action
 import com.anything2game.engine.session.Effect
@@ -25,7 +30,14 @@ sealed interface PlayUiState {
     data class Failed(val reason: String) : PlayUiState
     data class Ready(
         val pkg: LearningPackage,
+        val frameId: FrameId,
+        val overlay: FrameOverlay?,
         val session: SessionState,
+        /** Lines of the current scene; null when the current slot is a challenge. */
+        val scene: List<Line>?,
+        val room: Room?,
+        /** Units solved now or in earlier sessions — pins on the evidence board. */
+        val solvedUnitIds: Set<String>,
         val unit: LearningUnit?,
         val item: Item?,
         val recap: RecapSummary?,
@@ -43,6 +55,7 @@ class PlayViewModel(
     private val deps: AppDependencies,
     private val packageId: String,
     private val levelId: String,
+    private val frameId: FrameId,
 ) : ViewModel() {
     private val _state = MutableStateFlow<PlayUiState>(PlayUiState.Loading)
     val state: StateFlow<PlayUiState> = _state.asStateFlow()
@@ -50,6 +63,8 @@ class PlayViewModel(
     private val mutex = Mutex()
     private var engine: LevelSession? = null
     private val mastery = mutableMapOf<String, MasteryRecord>()
+    private var overlay: FrameOverlay? = null
+    private var activeFrame: FrameId = FrameId.CLASSIC
     private var context: ContextDecision = deps.contextPolicy.decide(deps.contextSource.signals.value)
 
     init {
@@ -68,7 +83,11 @@ class PlayViewModel(
             _state.value = PlayUiState.Failed(it.message ?: it::class.simpleName.orEmpty())
             return@withLock
         }
-        val e = LevelSession(pkg, deps.grading, deps.masteryPolicy, deps.clock).also { engine = it }
+        // A frame whose overlay is missing falls back to Classic, so the level always plays.
+        val overlay = deps.frames.load(packageId, frameId)
+        val frame = Frames.of(frameId).takeIf { it.isPlayable(overlay) } ?: Frames.CLASSIC
+        val e = LevelSession(pkg, deps.grading, deps.masteryPolicy, deps.clock, frame = frame, overlay = overlay?.takeIf { frame.id == frameId })
+            .also { engine = it; this.overlay = overlay?.takeIf { frame.id == frameId }; activeFrame = frame.id }
         mastery.clear(); mastery.putAll(deps.mastery.all(packageId))
         val saved = deps.sessions.load(packageId)?.takeIf { it.levelId == levelId && !it.isFinished && e.canResume(it) }
         var session = saved ?: e.start(levelId)
@@ -120,7 +139,12 @@ class PlayViewModel(
         val slot = s.currentSlot
         _state.value = PlayUiState.Ready(
             pkg = pkg,
+            frameId = activeFrame,
+            overlay = overlay,
             session = s,
+            scene = e.sceneLines(s),
+            room = e.room(s),
+            solvedUnitIds = e.solvedUnitIds(s) + mastery.values.filter { it.box >= 1 }.map { it.unitId },
             unit = e.unit(s),
             item = e.item(s),
             recap = if (s.isFinished) e.recap(s) else null,

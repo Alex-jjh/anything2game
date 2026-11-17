@@ -65,6 +65,15 @@ object A2g {
     val skin: Skin @Composable get() = LocalSkin.current
 }
 
+/** Each cast role keeps one colour everywhere (name tag, bubble edge, avatar). */
+fun Skin.castColor(role: com.anything2game.contract.CastRole): Color = when (role) {
+    com.anything2game.contract.CastRole.PARTNER -> action
+    com.anything2game.contract.CastRole.SUSPECT -> wrong
+    com.anything2game.contract.CastRole.ROOKIE -> hint
+    com.anything2game.contract.CastRole.COMPANION -> correct
+    com.anything2game.contract.CastRole.NARRATOR -> evidence
+}
+
 @Composable
 fun A2gTheme(skin: Skin = CaseFileSkin, content: @Composable () -> Unit) {
     val colors = lightColorScheme(

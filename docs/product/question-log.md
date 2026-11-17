@@ -21,6 +21,8 @@
 | Q15 | 11-17 | Can the concepts all be templates? | Yes, as frames over the same content and mechanics; ship Case + Classic; frames may not change items, grading or add timers | [game-concepts §7](game-concepts.md) |
 | Q16 | 11-17 | Why would people be convinced to play, and how does it affect them? | Acquisition at the moment of need, sharp promise, villain, first win < 3 min, trust signals; effects table with risks (over-reliance, wrong items, overjustification, anxiety, walking, privacy) and mitigations | [game-concepts §8–9](game-concepts.md) |
 
+| Q17 | 11-17 | So it's decoupling — and the AI must generate frame-specific content too? Build 5 frames and their backend nodes | Yes: core package compiled once; each frame's content is a separate overlay (`FrameOverlay`) produced by its own backend frame node and validated against `FrameSpec`; app ships Classic, Case, Escape, Rookie, Companion | [android/README](../../android/README.md#frames-game-templates), `contract/.../Frame.kt`, `server/` |
+
 ## Still open (owner or team decides)
 
 - Final frame choice after the 5-person preference test (game-concepts §6).

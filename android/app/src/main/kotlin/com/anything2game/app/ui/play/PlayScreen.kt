@@ -18,6 +18,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Hub
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.PanTool
 import androidx.compose.material.icons.filled.Sensors
@@ -50,11 +51,14 @@ import androidx.compose.ui.unit.dp
 import com.anything2game.app.R
 import com.anything2game.app.ui.common.Badge
 import com.anything2game.app.ui.play.mechanics.MechanicRenderers
+import com.anything2game.app.ui.play.mechanics.RenderContext
 import com.anything2game.app.ui.theme.A2g
 import com.anything2game.contract.Mechanic
 import com.anything2game.engine.session.Action
 import com.anything2game.engine.session.Overlay
 import com.anything2game.engine.session.Phase
+import com.anything2game.engine.session.SlotKind
+import com.anything2game.contract.FrameSpec
 
 /** Stateless play screen. All input becomes an engine [Action]; nothing here decides game flow. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -70,8 +74,10 @@ fun PlayContent(
     val session = state.session
     val level = state.pkg.level(session.levelId)
     var showSimulator by rememberSaveable { mutableStateOf(false) }
+    var showBoard by rememberSaveable { mutableStateOf(false) }
+    val board = state.overlay?.board
 
-    BackHandler { if (session.overlay != null) onAction(Action.CloseOverlay) else onBack() }
+    BackHandler { if (showBoard) showBoard = false else if (session.overlay != null) onAction(Action.CloseOverlay) else onBack() }
 
     Box(Modifier.fillMaxSize()) {
     Scaffold(
@@ -82,6 +88,7 @@ fun PlayContent(
                 title = { Text(level?.title.orEmpty(), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back)) } },
                 actions = {
+                    if (board != null) IconButton(onClick = { showBoard = true }) { Icon(Icons.Filled.Hub, stringResource(R.string.board_open), tint = skin.evidence) }
                     if (!session.isFinished) {
                         TextButton(onClick = { onAction(Action.OpenAsk) }) {
                             Icon(Icons.Filled.PanTool, null, Modifier.size(18.dp)); Spacer(Modifier.size(6.dp)); Text(stringResource(R.string.action_ask))
@@ -99,11 +106,21 @@ fun PlayContent(
             ) {
                 if (showSimulator) simulator?.invoke()
                 val recap = state.recap
-                if (recap != null) {
-                    RecapContent(recap, unitCount = level?.units?.size ?: 0, onReplay = onRestart, onLibrary = onBack)
-                } else {
-                    ProgressHeader(state, onAction)
-                    UnitBody(state, onAction)
+                when {
+                    session.phase == Phase.Failed -> FailedContent(state.frameId, onReplay = onRestart, onLibrary = onBack)
+                    recap != null -> {
+                        RecapContent(recap, unitCount = level?.units?.size ?: 0, title = stringResource(recapTitle(state.frameId)), onReplay = onRestart, onLibrary = onBack) {
+                            if (board != null) EvidenceBoard(board, state.solvedUnitIds)
+                        }
+                    }
+                    state.scene != null -> {
+                        ProgressHeader(state, onAction)
+                        SceneContent(state.scene, state.overlay?.cast.orEmpty(), state.room, onEvidence = { onAction(Action.OpenEvidence(it)) }, onContinue = { onAction(Action.Next) })
+                    }
+                    else -> {
+                        ProgressHeader(state, onAction)
+                        UnitBody(state, onAction)
+                    }
                 }
             }
         }
@@ -118,6 +135,10 @@ fun PlayContent(
         Overlay.Asking -> AskPanel(offline = !state.context.askAvailable, onClose = { onAction(Action.CloseOverlay) })
         null -> Unit
     }
+    if (showBoard && board != null) BottomPanel(onDismiss = { showBoard = false }) {
+        EvidenceBoard(board, state.solvedUnitIds)
+        Button(onClick = { showBoard = false }, Modifier.fillMaxWidth()) { Text(stringResource(R.string.evidence_close)) }
+    }
     if (session.isPaused) PausedOverlay(onContinue = { onAction(Action.Resume) })
     }
 }
@@ -126,25 +147,35 @@ fun PlayContent(
 private fun ProgressHeader(state: PlayUiState.Ready, onAction: (Action) -> Unit) {
     val skin = A2g.skin
     val s = state.session
+    // Progress counts challenges only; scenes don't make the bar move.
+    val answerable = s.queue.withIndex().filter { it.value.answerable }
+    val done = answerable.count { it.index < s.position || (it.index == s.position && s.phase is Phase.Feedback) }
+    val current = (answerable.indexOfFirst { it.index >= s.position } + 1).coerceAtLeast(1)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         LinearProgressIndicator(
-            progress = { (s.position + if (s.phase is Phase.Feedback) 1 else 0).toFloat() / s.queue.size.coerceAtLeast(1) },
+            progress = { done.toFloat() / answerable.size.coerceAtLeast(1) },
             modifier = Modifier.fillMaxWidth(),
             color = skin.action,
             trackColor = skin.outline,
             drawStopIndicator = {},
         )
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            state.unit?.let { Badge(stringResource(mechanicLabel(it.mechanic)), skin.action, skin.card) }
+            val boss = s.currentSlot?.kind == SlotKind.BOSS
+            val bossText = bossLabel(state.frameId)
+            when {
+                boss && bossText != null -> Badge(stringResource(bossText), skin.onAction, skin.wrong)
+                state.unit != null -> Badge(stringResource(mechanicLabel(state.unit.mechanic)), skin.action, skin.card)
+            }
             if (state.context.oneHanded) Badge(stringResource(R.string.one_handed_badge), skin.paused, skin.card)
             Spacer(Modifier.weight(1f))
-            val hintsLeft = state.session.phase == Phase.Presenting && state.session.hintsShown < (state.unit?.hints?.size ?: 0)
+            val hintsLeft = s.phase == Phase.Presenting && s.hintsShown < (state.unit?.hints?.size ?: 0)
             if (hintsLeft) {
                 TextButton(onClick = { onAction(Action.RevealHint) }, colors = ButtonDefaults.textButtonColors(contentColor = skin.hint)) {
                     Icon(Icons.Filled.Lightbulb, null, Modifier.size(18.dp)); Spacer(Modifier.size(4.dp)); Text(stringResource(R.string.action_hint))
                 }
             }
-            Text(stringResource(R.string.play_progress, s.position + 1, s.queue.size), style = MaterialTheme.typography.labelMedium, color = skin.inkMuted)
+            s.credibility?.let { CredibilityPips(it, FrameSpec.of(state.frameId).credibility ?: it) }
+            Text(stringResource(R.string.play_progress, current, answerable.size), style = MaterialTheme.typography.labelMedium, color = skin.inkMuted)
         }
     }
 }
@@ -160,6 +191,7 @@ private fun UnitBody(state: PlayUiState.Ready, onAction: (Action) -> Unit) {
         return
     }
     val s = state.session
+    val ctx = RenderContext(oneHanded = state.context.oneHanded, chunks = state.pkg.sources, cast = state.overlay?.cast.orEmpty())
     when (val phase = s.phase) {
         Phase.Presenting -> {
             unit.hints.take(s.hintsShown).forEachIndexed { i, hint ->
@@ -174,13 +206,13 @@ private fun UnitBody(state: PlayUiState.Ready, onAction: (Action) -> Unit) {
             renderer.Question(
                 key = "${s.position}:${slot?.unitId}:${slot?.variant}",
                 item = item,
-                oneHanded = state.context.oneHanded,
+                ctx = ctx,
                 onSubmit = { onAction(Action.Submit(it)) },
             )
         }
         is Phase.Feedback -> {
             ResultBanner(phase, state.retryQueued)
-            renderer.Review(item, phase.answer, phase.grade)
+            renderer.Review(item, phase.answer, phase.grade, ctx)
             val chunkIds = item.allSourceRefs.map { it.chunkId }.distinct()
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(
@@ -196,7 +228,7 @@ private fun UnitBody(state: PlayUiState.Ready, onAction: (Action) -> Unit) {
                 }
             }
         }
-        Phase.Recap -> Unit
+        Phase.Recap, Phase.Failed -> Unit
     }
 }
 
@@ -222,4 +254,5 @@ internal fun mechanicLabel(m: Mechanic) = when (m) {
     Mechanic.SORT -> R.string.mechanic_sort
     Mechanic.DEDUCE -> R.string.mechanic_deduce
     Mechanic.ORDER -> R.string.mechanic_order
+    Mechanic.CROSS_EXAM -> R.string.mechanic_crossexam
 }

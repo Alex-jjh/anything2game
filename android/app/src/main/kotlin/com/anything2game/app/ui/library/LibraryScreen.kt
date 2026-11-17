@@ -3,6 +3,8 @@ package com.anything2game.app.ui.library
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -31,12 +34,16 @@ import com.anything2game.app.R
 import com.anything2game.app.ui.common.Badge
 import com.anything2game.app.ui.common.languageName
 import com.anything2game.app.ui.theme.A2g
+import com.anything2game.app.ui.play.frameDescription
+import com.anything2game.app.ui.play.frameName
+import com.anything2game.contract.FrameId
 
 /** Stateless: everything comes in as parameters, so it can be previewed and screenshot-tested. */
 @Composable
 fun LibraryContent(
     state: LibraryUiState,
-    onOpenLevel: (packageId: String, levelId: String) -> Unit,
+    onOpenLevel: (packageId: String, levelId: String, frameId: FrameId) -> Unit,
+    onSelectFrame: (packageId: String, frameId: FrameId) -> Unit,
     onPickPdf: () -> Unit,
     footer: @Composable () -> Unit = {},
     contentPadding: PaddingValues = PaddingValues(),
@@ -58,14 +65,14 @@ fun LibraryContent(
         if (!state.loading && state.entries.isEmpty()) {
             item { Text(stringResource(R.string.empty_library), color = skin.inkMuted) }
         }
-        items(state.entries, key = { it.summary.packageId }) { entry -> PackageCard(entry, onOpenLevel) }
+        items(state.entries, key = { it.summary.packageId }) { entry -> PackageCard(entry, onOpenLevel, onSelectFrame) }
         item { ImportCard(onPickPdf) }
         item { footer() }
     }
 }
 
 @Composable
-private fun PackageCard(entry: LibraryEntry, onOpenLevel: (String, String) -> Unit) {
+private fun PackageCard(entry: LibraryEntry, onOpenLevel: (String, String, FrameId) -> Unit, onSelectFrame: (String, FrameId) -> Unit) {
     val skin = A2g.skin
     Card(colors = CardDefaults.cardColors(containerColor = skin.card), elevation = CardDefaults.cardElevation(1.dp)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -74,11 +81,26 @@ private fun PackageCard(entry: LibraryEntry, onOpenLevel: (String, String) -> Un
                 Badge(languageName(entry.summary.language), skin.action, skin.paper)
                 if (entry.summary.preGenerated) Badge(stringResource(R.string.badge_pre_generated), skin.evidence, skin.evidenceSoft)
             }
+            FramePicker(entry.frames, entry.selectedFrame) { onSelectFrame(entry.summary.packageId, it) }
             entry.levels.forEachIndexed { i, level ->
                 if (i > 0) HorizontalDivider(color = skin.outline)
-                LevelRow(level) { onOpenLevel(entry.summary.packageId, level.levelId) }
+                LevelRow(level) { onOpenLevel(entry.summary.packageId, level.levelId, entry.selectedFrame) }
             }
         }
+    }
+}
+
+/** The frame is the one game choice the player makes (docs/product/game-concepts.md §7); mechanics are never chosen. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FramePicker(frames: List<FrameId>, selected: FrameId, onSelect: (FrameId) -> Unit) {
+    val skin = A2g.skin
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(stringResource(R.string.frame_label), style = MaterialTheme.typography.labelMedium, color = skin.inkMuted)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            frames.forEach { f -> FilterChip(f == selected, { onSelect(f) }, { Text(stringResource(frameName(f))) }) }
+        }
+        Text(stringResource(frameDescription(selected)), style = MaterialTheme.typography.bodySmall, color = skin.inkMuted)
     }
 }
 

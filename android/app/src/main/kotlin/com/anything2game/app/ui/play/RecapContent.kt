@@ -21,10 +21,10 @@ import com.anything2game.engine.session.RecapSummary
 
 /** Closing the case: what you now know, and what is still shaky (never "100% = mastered"). */
 @Composable
-internal fun RecapContent(recap: RecapSummary, unitCount: Int, onReplay: () -> Unit, onLibrary: () -> Unit) {
+internal fun RecapContent(recap: RecapSummary, unitCount: Int, title: String, onReplay: () -> Unit, onLibrary: () -> Unit, extra: @Composable () -> Unit = {}) {
     val skin = A2g.skin
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text(stringResource(R.string.recap_title), style = MaterialTheme.typography.headlineSmall, color = skin.ink)
+        Text(title, style = MaterialTheme.typography.headlineSmall, color = skin.ink)
         Text(stringResource(R.string.recap_score, recap.solidUnitIds.size, unitCount), style = MaterialTheme.typography.titleMedium, color = skin.action)
         Card(colors = CardDefaults.cardColors(containerColor = skin.card)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -36,6 +36,15 @@ internal fun RecapContent(recap: RecapSummary, unitCount: Int, onReplay: () -> U
                 }
             }
         }
+        recap.bossCleared?.let { cleared ->
+            Card(colors = CardDefaults.cardColors(containerColor = if (cleared) skin.correctSoft else skin.wrongSoft)) {
+                Text(
+                    stringResource(if (cleared) R.string.boss_cleared else R.string.boss_missed),
+                    Modifier.fillMaxWidth().padding(16.dp), color = if (cleared) skin.correct else skin.wrong,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
+        }
         val shaky = recap.shakyUnitIds.size
         Card(colors = CardDefaults.cardColors(containerColor = if (shaky == 0) skin.correctSoft else skin.hintSoft)) {
             Text(
@@ -45,6 +54,7 @@ internal fun RecapContent(recap: RecapSummary, unitCount: Int, onReplay: () -> U
                 style = MaterialTheme.typography.titleMedium,
             )
         }
+        extra()
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedButton(onClick = onLibrary, Modifier.weight(1f)) { Text(stringResource(R.string.recap_library)) }
             Button(onClick = onReplay, Modifier.weight(1f)) { Text(stringResource(R.string.recap_replay)) }

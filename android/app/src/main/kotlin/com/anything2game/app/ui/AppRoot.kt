@@ -20,6 +20,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anything2game.app.AppDependencies
 import com.anything2game.app.R
+import com.anything2game.contract.FrameId
 import com.anything2game.app.importing.ImportRequest
 import com.anything2game.app.platform.SimulatedContextSource
 import com.anything2game.app.ui.common.ContextSimulator
@@ -36,7 +37,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 sealed interface Route {
     data object Library : Route
-    data class Play(val packageId: String, val levelId: String) : Route
+    data class Play(val packageId: String, val levelId: String, val frameId: FrameId) : Route
     data class Import(val request: ImportRequest) : Route
 }
 
@@ -48,22 +49,23 @@ class Navigator(private val saved: SavedStateHandle) : ViewModel() {
     private fun restore(): Route {
         val pkg = saved.get<String>(KEY_PKG)
         val level = saved.get<String>(KEY_LEVEL)
-        return if (pkg != null && level != null) Route.Play(pkg, level) else Route.Library
+        val frame = saved.get<String>(KEY_FRAME)?.let { v -> FrameId.entries.firstOrNull { it.name == v } } ?: FrameId.CLASSIC
+        return if (pkg != null && level != null) Route.Play(pkg, level, frame) else Route.Library
     }
 
-    fun openPlay(packageId: String, levelId: String) {
-        saved[KEY_PKG] = packageId; saved[KEY_LEVEL] = levelId
-        _route.value = Route.Play(packageId, levelId)
+    fun openPlay(packageId: String, levelId: String, frameId: FrameId) {
+        saved[KEY_PKG] = packageId; saved[KEY_LEVEL] = levelId; saved[KEY_FRAME] = frameId.name
+        _route.value = Route.Play(packageId, levelId, frameId)
     }
 
     fun openImport(request: ImportRequest) { _route.value = Route.Import(request) }
 
     fun toLibrary() {
-        saved.remove<String>(KEY_PKG); saved.remove<String>(KEY_LEVEL)
+        saved.remove<String>(KEY_PKG); saved.remove<String>(KEY_LEVEL); saved.remove<String>(KEY_FRAME)
         _route.value = Route.Library
     }
 
-    private companion object { const val KEY_PKG = "route.pkg"; const val KEY_LEVEL = "route.level" }
+    private companion object { const val KEY_PKG = "route.pkg"; const val KEY_LEVEL = "route.level"; const val KEY_FRAME = "route.frame" }
 }
 
 @Composable
@@ -76,11 +78,11 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator, onPickPdf: () -> Unit) 
             LaunchedEffect(Unit) { vm.refresh() }
             val state by vm.state.collectAsStateWithLifecycle()
             Scaffold(containerColor = A2g.skin.paper) { padding ->
-                LibraryContent(state, onOpenLevel = navigator::openPlay, onPickPdf = onPickPdf, footer = { simulator?.invoke() }, contentPadding = padding)
+                LibraryContent(state, onOpenLevel = navigator::openPlay, onSelectFrame = vm::selectFrame, onPickPdf = onPickPdf, footer = { simulator?.invoke() }, contentPadding = padding)
             }
         }
         is Route.Play -> {
-            val vm = viewModel(key = "play:${r.packageId}:${r.levelId}") { PlayViewModel(deps, r.packageId, r.levelId) }
+            val vm = viewModel(key = "play:${r.packageId}:${r.levelId}:${r.frameId}") { PlayViewModel(deps, r.packageId, r.levelId, r.frameId) }
             val state by vm.state.collectAsStateWithLifecycle()
             when (val s = state) {
                 PlayUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
