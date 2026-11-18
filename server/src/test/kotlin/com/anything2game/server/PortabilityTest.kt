@@ -243,14 +243,14 @@ class PortabilityTest {
         // every look at the clock costs one second, so a 2-page file blows a 1.5 s budget at the second page
         val slow = PdfTextExtractor(80, timeoutMillis = 1_500, nanoClock = { now.addAndGet(1_000_000_000L) })
         try { slow.extract(makePdf(listOf("one", "two", "three"))); fail() } catch (e: IngestException) {
-            assertEquals(ErrorCodes.UNSUPPORTED_TYPE, e.code)
+            assertEquals(ErrorCodes.PDF_TIMEOUT, e.code)
             assertTrue(e.message!!.contains("too long"))
         }
         // a normal budget is fine
         assertEquals(3, PdfTextExtractor(80, timeoutMillis = 20_000).extract(makePdf(listOf("one", "two", "three"))).size)
     }
 
-    @Test fun `the upload route answers 415 UNSUPPORTED_TYPE for a PDF that took too long`() {
+    @Test fun `the upload route answers 422 PDF_TIMEOUT for a PDF that took too long`() {
         val now = AtomicLong(0)
         TestEnv().use { env ->
             val slow = PdfTextExtractor(80, timeoutMillis = 1_500, nanoClock = { now.addAndGet(1_000_000_000L) })
@@ -260,8 +260,8 @@ class PortabilityTest {
                 val api = Api(client)
                 val (_, token) = api.install()
                 val r = api.uploadPdf(token, makePdf(listOf("a", "b", "c")))
-                assertEquals(HttpStatusCode.UnsupportedMediaType, r.status)
-                assertEquals(ErrorCodes.UNSUPPORTED_TYPE, api.error(r).code)
+                assertEquals(HttpStatusCode.UnprocessableEntity, r.status)
+                assertEquals(ErrorCodes.PDF_TIMEOUT, api.error(r).code)
             }
         }
     }

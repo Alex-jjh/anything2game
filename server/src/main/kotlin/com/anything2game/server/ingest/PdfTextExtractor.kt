@@ -19,7 +19,7 @@ class IngestException(val code: String, message: String) : RuntimeException(mess
 
 /**
  * Reads the text layer with PDFBox. Parsing is bounded in time ([timeoutMillis]): a hostile or pathological PDF is abandoned and
- * refused (`UNSUPPORTED_TYPE`, "took too long") instead of holding a thread for as long as PDFBox likes. The work runs on a small
+ * refused (`PDF_TIMEOUT`, 422) instead of holding a thread for as long as PDFBox likes. The work runs on a small
  * pool of daemon threads; on timeout the document is closed from outside, which makes PDFBox stop at its next read.
  */
 class PdfTextExtractor(
@@ -44,7 +44,7 @@ class PdfTextExtractor(
     }
 
     private fun tooSlow() = IngestException(
-        com.anything2game.contract.ErrorCodes.UNSUPPORTED_TYPE,
+        com.anything2game.contract.ErrorCodes.PDF_TIMEOUT,
         "The PDF took too long to read (more than ${timeoutMillis / 1000} s). Try a simpler file or send the text.",
     )
 

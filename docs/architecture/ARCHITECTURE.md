@@ -257,11 +257,13 @@ interface LlmClient {
 
 Config selects an adapter + model per tier (`compile`, `flash`). The validator, not the provider, is the source of truth for output shape.
 
-## 10. Implementation status and known gaps (2026-11-17)
+## 10. Implementation status and known gaps (2026-11-18)
 
 | Area | Status |
 |---|---|
-| contract v1 + frames | done; `PACKAGE_NOT_READY`, `INTERNAL_ERROR` added; `contentVersion` stays fixed while levels are appended (ETag = version + level count) |
-| server | ingest, plan → level → validate/repair → publish, 5 frame nodes (classic = 204, no overlay), ask, file store, fake / OpenAI-compatible / Anthropic adapters — 53 offline tests |
-| not built yet | `POST /v1/variants` (flash refill); the second-pass *support* gate (§4) — everything is `auto-validated`, nothing `flagged`; app ↔ server networking |
-| known limits | the whole document goes into the plan prompt (long documents can exceed small models' context); PDF parsing is not time-bounded; dedupe is per document id, not per content hash across uploads |
+| contract v1 + frames | done; error codes incl. `PACKAGE_NOT_READY`, `INTERNAL_ERROR`, `PDF_TIMEOUT`; `contentVersion` fixed while levels are appended (ETag = version + level count) |
+| server | ingest, plan → level → validate/repair → publish, 5 frame nodes, ask; repositories split (installs / documents / jobs / packages) with File and **Postgres** stores; DB job queue with leases (several instances safe); store-level counters; per-tier model endpoints; install-token + **OIDC JWT** authenticators; container image; `/v1/health` + `/v1/ready`; JSON logs — 127 tests incl. Postgres via Testcontainers |
+| infra | `infra/terraform/modules/aws-service` + `envs/demo-aws`: CloudFront + WAF → VPC origin → internal ALB → Fargate → RDS; Secrets Manager, ECR, Cognito; `validate` + Trivy clean; **not applied** |
+| app | 5 frames playable offline on bundled packages; no network client yet; build forbids direct AI access (ADR-013) |
+| not built yet | app ↔ server networking (upload, poll, download packages/frames, ask) and optional OIDC sign-in in the app; `POST /v1/variants`; the second-pass *support* gate (§4); `gcp-service` module |
+| known limits | whole document in the plan prompt (long documents vs small context windows); dedupe per document id, not per content hash across uploads; CloudFront → internal ALB is HTTP inside AWS until we own a domain |

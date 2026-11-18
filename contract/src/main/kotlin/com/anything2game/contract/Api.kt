@@ -90,4 +90,6 @@ object ErrorCodes {
     /** The package is still compiling; retry when the job is ready. */
     const val PACKAGE_NOT_READY = "PACKAGE_NOT_READY"
     const val INTERNAL_ERROR = "INTERNAL_ERROR"
+    /** Text extraction took longer than the server allows; usually a very large or unusual PDF. */
+    const val PDF_TIMEOUT = "PDF_TIMEOUT"
 }
