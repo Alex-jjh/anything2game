@@ -225,7 +225,11 @@ private suspend fun uploadPdf(call: ApplicationCall, ctx: AppContext, ownerId: S
     var bytes: ByteArray? = null
     var fileName: String? = null
     var title: String? = null
-    call.receiveMultipart(formFieldLimit = 4096).forEachPart { part ->
+    // Ktor 3 applies formFieldLimit to EVERY part, file parts included (a 4 KB limit rejected every real PDF —
+    // found by the eval harness, 2026-11-18). Ktor's limit is the whole-request cap, so our own PDF check below answers
+    // first with FILE_TOO_LARGE; if Ktor's limit still trips (e.g. a chunked body), it is mapped to the same answer.
+    try {
+    call.receiveMultipart(formFieldLimit = limits.maxRequestBytes.toLong()).forEachPart { part ->
         try {
             when (part) {
                 is PartData.FileItem -> if (bytes == null) {
@@ -240,6 +244,10 @@ private suspend fun uploadPdf(call: ApplicationCall, ctx: AppContext, ownerId: S
         } finally {
             part.dispose()
         }
+    }
+    } catch (e: java.io.IOException) {
+        if (e.message.orEmpty().contains("limit", ignoreCase = true)) throw ApiException.tooLarge("The upload is larger than ${limits.maxRequestBytes / (1024 * 1024)} MB.")
+        throw e
     }
     val data = bytes ?: throw ApiException.badRequest("Send the PDF as a multipart file part.")
     // The file name and declared content type are ignored; the magic bytes decide.

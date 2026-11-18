@@ -18,6 +18,18 @@ class IngestTest {
 
     // ---- PDF upload through the API ---------------------------------------------------------------------------
 
+    @Test fun `a real-sized PDF (well over 4 KB) uploads - regression for the multipart part limit`() = TestEnv().use { env ->
+        env.run {
+            val api = api()
+            val (_, token) = api.install()
+            val pdf = makePdf(List(40) { i -> "Page ${i + 1}: retrieval practice beats re-reading after a delay, measured one week later." })
+            assertTrue("fixture must exceed the old 4 KB part limit, was ${pdf.size}", pdf.size > 2 * 4096)
+            val r = api.uploadPdf(token, pdf)
+            assertEquals(HttpStatusCode.Created, r.status)
+            assertEquals(40, api.decode(DocumentResponse.serializer(), r).pageCount)
+        }
+    }
+
     @Test fun `a two page PDF becomes chunks with the right page index and label`() = TestEnv().use { env ->
         env.run {
             val api = api()
