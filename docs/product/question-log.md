@@ -25,6 +25,7 @@
 | Q18 | 11-18 | Google Cloud or AWS with Terraform/IaC — keep modules decoupled so multi-cloud works; CDK or TF? | Terraform/OpenTofu (CDK is AWS-only); server stays cloud-SDK-free; portable baseline = container + managed Postgres; 4 P0 fixes before any cloud deploy; demo region outside mainland, AWS/Alibaba HK preferred over GCP for campus reachability | [portability-audit](../architecture/portability-audit.md), [ADR-012](../architecture/decisions.md) |
 | Q19 | 11-18 | Never call AI APIs directly from Android — always through our server | Accepted as ADR-013 and enforced by a build check | [ADR-013](../architecture/decisions.md), `android/app/build.gradle.kts` |
 | Q20 | 11-18 | Infra on AWS (lecturer knows AWS; Cognito for auth), models swappable (Gemini etc.)? | Yes — ADR-014: AWS Terraform module (CloudFront VPC origin, internal ALB, Fargate, RDS, WAF, Cognito); per-tier model endpoints by env; Cognito used as optional standard-OIDC sign-in, anonymous play stays default | [ADR-014](../architecture/decisions.md), [infra/README](../../infra/README.md) |
+| Q21 | 11-18 | Use the credential note to test the whole harness on real papers / slides | Local loopback proxy to Bedrock, server unchanged; 5 docs: 3 harness-found bugs fixed (PDF >4 KB upload, truncated levels, default-frame race); quality 3.5–4.4 / 5 with clear weak spots (order mechanic, companion giveaways, feedback depth); level 1 takes ~110 s | [eval-2026-11-18](../testing/eval-2026-11-18.md) |
 
 ## Still open (owner or team decides)
 
