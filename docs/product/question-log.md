@@ -24,6 +24,7 @@
 | Q17 | 11-17 | So it's decoupling — and the AI must generate frame-specific content too? Build 5 frames and their backend nodes | Yes: core package compiled once; each frame's content is a separate overlay (`FrameOverlay`) produced by its own backend frame node and validated against `FrameSpec`; app ships Classic, Case, Escape, Rookie, Companion | [android/README](../../android/README.md#frames-game-templates), `contract/.../Frame.kt`, `server/` |
 | Q18 | 11-18 | Google Cloud or AWS with Terraform/IaC — keep modules decoupled so multi-cloud works; CDK or TF? | Terraform/OpenTofu (CDK is AWS-only); server stays cloud-SDK-free; portable baseline = container + managed Postgres; 4 P0 fixes before any cloud deploy; demo region outside mainland, AWS/Alibaba HK preferred over GCP for campus reachability | [portability-audit](../architecture/portability-audit.md), [ADR-012](../architecture/decisions.md) |
 | Q19 | 11-18 | Never call AI APIs directly from Android — always through our server | Accepted as ADR-013 and enforced by a build check | [ADR-013](../architecture/decisions.md), `android/app/build.gradle.kts` |
+| Q20 | 11-18 | Infra on AWS (lecturer knows AWS; Cognito for auth), models swappable (Gemini etc.)? | Yes — ADR-014: AWS Terraform module (CloudFront VPC origin, internal ALB, Fargate, RDS, WAF, Cognito); per-tier model endpoints by env; Cognito used as optional standard-OIDC sign-in, anonymous play stays default | [ADR-014](../architecture/decisions.md), [infra/README](../../infra/README.md) |
 
 ## Still open (owner or team decides)
 

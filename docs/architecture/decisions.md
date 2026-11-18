@@ -17,6 +17,7 @@
 | 011 | LLM adapters (DeepSeek/Qwen prod, Claude for dev evals); HK-region hosting | proposed |
 | 012 | Cloud-portable server + Terraform/OpenTofu, one module per cloud behind the same inputs/outputs | proposed |
 | 013 | The app never calls an AI provider; phone → our server → provider (build-enforced) | **accepted** |
+| 014 | Infrastructure on AWS (ECS Fargate, RDS, CloudFront VPC origin, Cognito); model endpoints swappable per tier | **accepted** |
 
 ---
 
@@ -99,3 +100,12 @@
 **Decision (owner, 2026-11-18)**: every AI request goes phone → our server → provider → our server → phone. The APK contains no AI SDK, no provider host and no provider key.
 **Why**: keys can't be protected in an APK; validation gates, quotas, cost control, prompt versions and provider switching all live in one place; the provider can change (DeepSeek ↔ Qwen ↔ Claude) without an app release; privacy rules (what is sent, what is logged) are enforced server-side.
 **Enforced by**: `:android:app:verifyNoDirectAiAccess` (runs before every build): fails on AI SDK dependencies (Anthropic, OpenAI, Google GenAI/Firebase AI, DashScope, LangChain4j) and on AI provider hosts in app sources. On-device ML that is not a generative-AI service (ML Kit OCR) is allowed.
+
+### 014 Infrastructure on AWS; models swappable per tier; Cognito as optional OIDC sign-in
+**Context (owner, 2026-11-18)**: the owner personally prefers Google Cloud and Gemini, but the lecturer knows AWS, and AWS can host everything; model endpoints should be freely swappable. Cognito was suggested for authentication.
+**Decision**:
+- Infrastructure on **AWS**, `infra/terraform/modules/aws-service`: CloudFront (+ WAF) → internal ALB via VPC origin → ECS Fargate (min 1 task) → RDS PostgreSQL; Secrets Manager; ECR; Cognito. Region `ap-southeast-1` by default.
+- Models are **configuration**, chosen per tier (`compile`, `frame`, `flash`) by env: Gemini via its OpenAI-compatible endpoint, DeepSeek, Qwen, Claude. Infra never changes when a model changes.
+- **Cognito, but as standard OIDC and optional**: anonymous play stays the default (removing access friction is a product principle — game-concepts §2); signed-in users get cross-device sync later. The server verifies Cognito JWTs via JWKS (no AWS SDK), so Google Identity Platform/Firebase Auth could replace Cognito by changing two env vars. The app will use plain OIDC (AppAuth + PKCE), not the Amplify SDK, so the client stays cloud-neutral.
+**Why**: the marker can follow the architecture; Alex holds the AWS SA certification; AWS regions near China are reachable from campus; the cloud choice does not leak into code (ADR-012).
+**Cost**: ≈ USD 60/month while running (infra/README.md); `running = false` between demos.

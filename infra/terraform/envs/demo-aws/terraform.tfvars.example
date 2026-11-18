@@ -1,0 +1,19 @@
+# Copy to terraform.tfvars (gitignored) and edit. Never put API keys here — they go into the secret (see infra/README.md).
+region       = "ap-southeast-1"
+image_tag    = "git-<short-sha>"
+budget_email = "you@example.com"
+
+# Example: Gemini for compile + frames, DeepSeek for the fast tier. Check each provider's current model list.
+server_env = {
+  A2G_COMPILE_PROVIDER = "openai-compatible"
+  A2G_COMPILE_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
+  A2G_COMPILE_MODEL    = "<gemini model id>"
+  A2G_FRAME_PROVIDER   = "openai-compatible"
+  A2G_FRAME_BASE_URL   = "https://generativelanguage.googleapis.com/v1beta/openai/"
+  A2G_FRAME_MODEL      = "<gemini model id>"
+  A2G_FLASH_PROVIDER   = "openai-compatible"
+  A2G_FLASH_BASE_URL   = "https://api.deepseek.com"
+  A2G_FLASH_MODEL      = "<deepseek model id>"
+  A2G_DEFAULT_FRAMES   = "case"
+}
+secret_keys = ["A2G_COMPILE_API_KEY", "A2G_FRAME_API_KEY", "A2G_FLASH_API_KEY"]
