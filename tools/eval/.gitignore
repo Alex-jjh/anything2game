@@ -1,0 +1,5 @@
+.venv/
+corpus/*
+!corpus/.gitkeep
+out/
+__pycache__/
