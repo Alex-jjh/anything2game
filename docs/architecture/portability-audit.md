@@ -73,3 +73,14 @@ The **container contract** is the whole interface between code and infrastructur
 | P2 | JSON logs, readiness probe, request ids in logs | `server/` | S |
 
 Before any `terraform apply` that creates a public endpoint: the API is a public API by design (anonymous app users), so the HTTPS front door is public; the database and bucket stay private; quotas and the install token are the abuse controls. That apply is the owner's go-ahead, after reviewing the plan output.
+
+## 6. Two meanings of "multi-cloud" (note, 2026-11-18)
+
+| | Portable multi-cloud (what we build) | Interconnected multi-cloud |
+|---|---|---|
+| Question | can the *whole* system run on cloud A **or** cloud B? | do parts on cloud A and cloud B talk **privately** at the same time? |
+| Mechanism | one container contract + one Terraform module interface per cloud (ADR-012) | private network links between VPCs, e.g. **AWS Interconnect – multicloud** (managed, dedicated-bandwidth, encrypted links from Amazon VPC / Transit Gateway / Cloud WAN to Google Cloud, Azure, OCI; open API spec at github.com/aws/Interconnect) |
+| Needed for us now? | yes — avoid lock-in, demo region choice | no — our only cross-provider traffic is public HTTPS model APIs |
+| When it would matter | — | B2B: a school keeps materials in its own Google Cloud and our AWS service must read them without the public internet; or a model served from a private endpoint in another cloud |
+
+Good report/presentation point: we chose portability (cheap, now) and know the path to interconnection (when a customer's data lives in another cloud).
