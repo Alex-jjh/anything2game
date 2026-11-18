@@ -428,7 +428,7 @@ class ServerApiTest {
             val now = System.currentTimeMillis()
             // a job that was generating when the process died, with a half-published package
             val job = com.anything2game.server.store.JobRecord(
-                "job_old", installId, doc.documentId, doc.documentVersion, CompileOptions(), "old-req", "pkg_old",
+                "job_old", com.anything2game.server.api.InstallTokenAuthenticator.ownerIdOfInstall(installId), doc.documentId, doc.documentVersion, CompileOptions(), "old-req", "pkg_old",
                 state = CompileJobState.GENERATING, levelsReady = 1, levelsPlanned = 2, createdAt = now, updatedAt = now,
             )
             env.store.saveJob(job)

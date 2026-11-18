@@ -28,12 +28,20 @@ dependencies {
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.pdfbox)
     implementation(libs.anthropic.java)
+    implementation(libs.ktor.server.call.id)
+    implementation(libs.ktor.server.call.logging)
     implementation(libs.logback)
+    implementation(libs.postgresql)
+    implementation(libs.hikari)
+    implementation(libs.flyway.core)
+    runtimeOnly(libs.flyway.postgresql)
+    implementation(libs.nimbus.jose.jwt)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.ktor.client.mock)
+    testImplementation(libs.testcontainers.postgresql)
 }
 
 tasks.test {
