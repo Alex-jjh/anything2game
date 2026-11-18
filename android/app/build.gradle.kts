@@ -54,3 +54,26 @@ tasks.withType<Test>().configureEach {
     systemProperty("contract.examples", rootProject.file("contract/examples").absolutePath)
     systemProperty("robolectric.pixelCopyRenderMode", "hardware")
 }
+
+// ADR-013: the app NEVER talks to an AI provider. Every AI call goes phone → our server → provider.
+// This check fails any build that adds an AI SDK or hard-codes an AI API host in app code.
+val verifyNoDirectAiAccess by tasks.registering {
+    group = "verification"
+    description = "Fails if the app depends on an AI SDK or references an AI provider host (ADR-013)."
+    val sources = fileTree("src/main") { include("**/*.kt", "**/*.java", "**/*.xml", "**/*.json") }
+    val runtime = configurations.named("debugRuntimeClasspath")
+    inputs.files(sources)
+    doLast {
+        val forbiddenGroups = listOf("com.anthropic", "com.openai", "com.aallam.openai", "com.google.ai.client", "com.google.genai",
+            "com.google.firebase:firebase-ai", "com.google.firebase:firebase-vertexai", "com.alibaba.dashscope", "dev.langchain4j")
+        val forbiddenHosts = listOf("api.anthropic.com", "api.openai.com", "api.deepseek.com", "dashscope", "generativelanguage.googleapis.com",
+            "aiplatform.googleapis.com", "bedrock-runtime", "openrouter.ai")
+        val deps = runtime.get().resolvedConfiguration.resolvedArtifacts.map { "${it.moduleVersion.id.group}:${it.name}" }
+        val badDeps = deps.filter { d -> forbiddenGroups.any { d == it || d.startsWith("$it:") || d.substringBefore(':') == it } }
+        val badFiles = sources.files.filter { f -> f.readText().let { t -> forbiddenHosts.any { it in t } } }
+        check(badDeps.isEmpty() && badFiles.isEmpty()) {
+            "ADR-013 violated — the app must call only our server.\n  AI SDKs: $badDeps\n  AI hosts in: ${badFiles.map { it.relativeTo(projectDir) }}"
+        }
+    }
+}
+tasks.named("preBuild") { dependsOn(verifyNoDirectAiAccess) }

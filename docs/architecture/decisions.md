@@ -15,6 +15,8 @@
 | 009 | Answers ship inside the package | proposed |
 | 010 | Portrait-first | proposed |
 | 011 | LLM adapters (DeepSeek/Qwen prod, Claude for dev evals); HK-region hosting | proposed |
+| 012 | Cloud-portable server + Terraform/OpenTofu, one module per cloud behind the same inputs/outputs | proposed |
+| 013 | The app never calls an AI provider; phone → our server → provider (build-enforced) | **accepted** |
 
 ---
 
@@ -83,3 +85,17 @@
 - Claude is a **dev/eval tool only**: run from developer machines and `tools/` evals (also as a quality reference and LLM judge). It is not called from the deployed server — Anthropic's API is not offered in mainland China or Hong Kong `[verify]`, and production should use the providers the server can reach. Use a personal API key, not a work account.
 - Hosting: prefer a **Hong Kong (or Singapore) region** for the demo server. Mainland regions need ICP filing (备案) before serving a domain over HTTP(S), which can take longer than our remaining time `[verify current timeline]`. HK needs no filing, reaches DeepSeek/Qwen, and is reachable from mainland phones. If the team already has a filed domain on a mainland account, use that instead.
 **Still open**: exact model per tier (e.g. Qwen large vs flash-tier, DeepSeek chat) — pick after running the eval in `tools/` on 3 sample PDFs: gate pass rate, latency to level 1, cost per compile.
+
+### 012 Cloud-portable server, infrastructure as Terraform/OpenTofu
+**Context**: the team may host on Google Cloud, AWS, or Alibaba/Kingsoft Cloud; the owner wants modules decoupled so the cloud can change. Audit: [portability-audit.md](portability-audit.md).
+**Decision**:
+- The server depends on **no cloud SDK**. Everything cloud-specific enters through ports already in the code (`Store`, `LlmClient`, config/env) or ports to add (`BlobStore`, `JobQueue`), each with a local implementation and one portable implementation.
+- The portable baseline is **one container + managed PostgreSQL** — available on every candidate cloud (Cloud SQL, RDS, ApsaraDB) and locally. Object storage stays optional behind `BlobStore` (S3, GCS and OSS all speak an S3-compatible API).
+- Infrastructure as **Terraform (OpenTofu-compatible HCL)**: `infra/terraform/modules/<cloud>-service` with identical variables (`image`, `env`, `secrets`, `min_instances`, `db_tier`) and outputs (`base_url`, `db_url_secret`); `infra/terraform/envs/<env>` picks one module.
+**Why not CDK**: AWS CDK synthesises CloudFormation, so it is AWS-only; a second cloud would mean a second tool. Terraform has first-class providers for AWS, Google Cloud and Alibaba Cloud and one workflow (`plan`/`apply`) for all.
+**Cost**: HCL per cloud is still written per cloud (a "multi-cloud module" is a shared interface, not shared code). Accepted: the seam is the module interface plus the container contract.
+
+### 013 The app never calls an AI provider directly
+**Decision (owner, 2026-11-18)**: every AI request goes phone → our server → provider → our server → phone. The APK contains no AI SDK, no provider host and no provider key.
+**Why**: keys can't be protected in an APK; validation gates, quotas, cost control, prompt versions and provider switching all live in one place; the provider can change (DeepSeek ↔ Qwen ↔ Claude) without an app release; privacy rules (what is sent, what is logged) are enforced server-side.
+**Enforced by**: `:android:app:verifyNoDirectAiAccess` (runs before every build): fails on AI SDK dependencies (Anthropic, OpenAI, Google GenAI/Firebase AI, DashScope, LangChain4j) and on AI provider hosts in app sources. On-device ML that is not a generative-AI service (ML Kit OCR) is allowed.

@@ -10,6 +10,7 @@ One kind of document lives in one place. Every document opens with a **Scope** l
 | `product/` | PM + game design: what you play, how it adapts | [game-design.md](product/game-design.md) | draft |
 | `design/` | Visual / interaction: palette, type, components, screens per mechanic | (visual team creates) | empty |
 | `architecture/` | Solution architecture: components, contract, state machines, generation pipeline | [ARCHITECTURE.md](architecture/ARCHITECTURE.md) | draft |
+| `architecture/` | Decoupling + multi-cloud audit, fix plan, IaC choice | [portability-audit.md](architecture/portability-audit.md) | 2026-11-18 |
 | `architecture/` | Decision log (ADRs) | [decisions.md](architecture/decisions.md) | draft |
 | `plan/` | Schedule and ownership | [roadmap.md](plan/roadmap.md) | draft |
 | `research/` | Evidence base (learning science + HCI) | still inside the v1.1 appendix in `archive/` | to migrate |
