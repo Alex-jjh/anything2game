@@ -48,7 +48,8 @@ class LevelNode(private val llm: LlmClient) : PipelineNode<LevelInput, LevelDraf
     }
 
     companion object {
-        const val MAX_TOKENS = 8000
+        // Raised from 8000 after the 2026-11-18 eval: every real level (3-4 units, variants, per-option feedback) was cut off.
+        const val MAX_TOKENS = 24000
 
         /** The plan is authoritative for ids, knowledge type and mechanic; the model supplies the content. */
         fun parse(raw: String, planned: PlannedLevel): Pair<Level?, List<String>> {

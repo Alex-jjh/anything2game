@@ -66,5 +66,5 @@ class PlanNode(private val llm: LlmClient) : PipelineNode<PlanInput, Plan> {
         return Plan(levels) to issues
     }
 
-    companion object { const val MAX_TOKENS = 4000 }
+    companion object { const val MAX_TOKENS = 8000 } // raised from 4000: long papers overflowed the plan (2026-11-18 eval)
 }

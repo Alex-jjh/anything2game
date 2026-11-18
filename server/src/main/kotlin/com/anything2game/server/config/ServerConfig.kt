@@ -76,7 +76,8 @@ data class ServerConfig(
     val anthropicApiKey: Secret? = null,
     val anthropicModel: String = "claude-sonnet-5-5",
     val defaultFrames: List<FrameId> = listOf(FrameId.CASE),
-    val llmTimeoutSeconds: Long = 120,
+    // 300 s: a full level is ~10k+ output tokens, several minutes on current models (2026-11-18 eval).
+    val llmTimeoutSeconds: Long = 300,
     val askTimeoutMillis: Long = 5_000,
     val limits: Limits = Limits(),
     /** `A2G_<COMPILE|FRAME|FLASH>_BASE_URL / _MODEL / _API_KEY`; whatever is missing falls back to the shared settings above. */

@@ -90,7 +90,7 @@ abstract class LlmFrameNode(
 
     private fun generation(promptName: String) = Generation(GenerationMode.LIVE, llm.modelId, promptName, ReviewStatus.AUTO_VALIDATED)
 
-    companion object { const val MAX_TOKENS = 8000 }
+    companion object { const val MAX_TOKENS = 16000 } // raised from 8000 (2026-11-18 eval)
 }
 
 class CaseFrameNode(llm: LlmClient) : LlmFrameNode(FrameId.CASE, "frame-case.v1", llm)
