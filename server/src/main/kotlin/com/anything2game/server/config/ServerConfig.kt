@@ -22,6 +22,9 @@ enum class Provider { FAKE, OPENAI, ANTHROPIC;
 
 enum class StoreKind { FILE, POSTGRES }
 
+/** Generation pipeline of the compile worker. [CLASSIC] = plan -> level -> validate (default); [LAYERED] = claims -> plan -> unit (experiment). */
+enum class PipelineKind { CLASSIC, LAYERED }
+
 /** PostgreSQL connection settings. The password is a [Secret] (it comes from the platform's secret store as an environment variable). */
 data class DbConfig(val url: String, val user: String, val password: Secret, val poolSize: Int = 10)
 
@@ -91,6 +94,11 @@ data class ServerConfig(
     val workerLeaseMillis: Long = 30_000,
     val workerPollMillis: Long = 1_000,
     val workerConcurrency: Int = 2,
+    /** Experiment flags (`A2G_PIPELINE`, `A2G_SUPPORT_GATE`). The defaults are today's pipeline without the gate. */
+    val pipeline: PipelineKind = PipelineKind.CLASSIC,
+    val supportGate: Boolean = false,
+    /** Layered pipeline: how many unit (and claim batch) calls run at once (`A2G_LAYERED_PARALLELISM`). */
+    val layeredParallelism: Int = 6,
 ) {
     private fun providerOf(tier: Tier) = when (tier) {
         Tier.COMPILE -> compileProvider
@@ -163,6 +171,17 @@ data class ServerConfig(
                 workerLeaseMillis = int("A2G_WORKER_LEASE_SECONDS", (d.workerLeaseMillis / 1000).toInt(), 5..3600) * 1000L,
                 workerPollMillis = int("A2G_WORKER_POLL_MS", d.workerPollMillis.toInt(), 50..60_000).toLong(),
                 workerConcurrency = int("A2G_WORKER_CONCURRENCY", d.workerConcurrency, 1..16),
+                pipeline = when (val v = get("A2G_PIPELINE")?.lowercase() ?: "classic") {
+                    "classic" -> PipelineKind.CLASSIC
+                    "layered" -> PipelineKind.LAYERED
+                    else -> throw ConfigException("A2G_PIPELINE must be classic | layered (got '$v')")
+                },
+                supportGate = when (val v = get("A2G_SUPPORT_GATE")?.lowercase() ?: "off") {
+                    "off" -> false
+                    "on" -> true
+                    else -> throw ConfigException("A2G_SUPPORT_GATE must be off | on (got '$v')")
+                },
+                layeredParallelism = int("A2G_LAYERED_PARALLELISM", d.layeredParallelism, 1..32),
                 openAiBaseUrl = (get("A2G_OPENAI_BASE_URL") ?: d.openAiBaseUrl).trimEnd('/'),
                 openAiApiKey = get("A2G_OPENAI_API_KEY")?.let(::Secret),
                 openAiModelStrong = get("A2G_OPENAI_MODEL_STRONG") ?: d.openAiModelStrong,

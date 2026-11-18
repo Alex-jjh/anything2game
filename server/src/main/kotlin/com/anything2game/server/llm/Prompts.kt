@@ -20,6 +20,9 @@ object PromptTemplates {
         "frame-case.v1", "frame-escape.v1", "frame-rookie.v1", "frame-companion.v1",
     )
 
+    /** Prompts of the layered-generation experiment and the support gate (used only behind `A2G_PIPELINE=layered` / `A2G_SUPPORT_GATE=on`). */
+    val LAYERED = listOf("claims.v1", "claim-check.v1", "plan-claims.v1", "unit.v1", "support.v1")
+
     fun raw(name: String): String = cache.getOrPut(name) {
         val stream = PromptTemplates::class.java.getResourceAsStream("/prompts/$name.md")
             ?: error("prompt template '$name' not found")
@@ -45,13 +48,13 @@ object PromptTemplates {
 
 /** The text format in which untrusted document content enters a prompt, and its inverse (used by the fake client). */
 object PromptFormat {
-    private val reserved = Regex("(?i)<(/?)(document|chunk|question|package|plan_level|original_task|previous_output|unit)\\b")
+    private val reserved = Regex("(?i)<(/?)(document|chunk|question|package|plan_level|original_task|previous_output|unit|claim_set|claims_to_check|unit_plan|unit_claims|gate_items|previous_problems)\\b")
     private val chunkRegex = Regex("<chunk id=\"([^\"]+)\" page=\"(\\d+)\" label=\"([^\"]*)\">\\n(.*?)\\n</chunk>", RegexOption.DOT_MATCHES_ALL)
 
     /** Document text cannot close or open our delimiters: tag-like sequences are defused (`<` becomes `‹`). */
     fun defuse(text: String): String = reserved.replace(text) { "‹" + it.groupValues[1] + it.groupValues[2] }
 
-    private val defused = Regex("‹(/?)(document|chunk|question|package|plan_level|original_task|previous_output|unit)\\b", RegexOption.IGNORE_CASE)
+    private val defused = Regex("‹(/?)(document|chunk|question|package|plan_level|original_task|previous_output|unit|claim_set|claims_to_check|unit_plan|unit_claims|gate_items|previous_problems)\\b", RegexOption.IGNORE_CASE)
 
     /** Inverse of [defuse], applied to model output so that quotes copied from a defused prompt match the real chunk text again. */
     fun restore(text: String): String = if ('‹' !in text) text else defused.replace(text) { "<" + it.groupValues[1] + it.groupValues[2] }

@@ -63,6 +63,11 @@ class FakeLlmClient(override val modelId: String = "fake-llm") : LlmClient {
             "level" -> levelJson(prompt)
             "frame" -> frameJson(label.substringAfter(':'), prompt)
             "ask" -> askJson(prompt)
+            "claims" -> FakeLayered.claims(prompt)
+            "claimcheck" -> FakeLayered.claimCheck(prompt)
+            "planclaims" -> FakeLayered.planClaims(prompt)
+            "unit" -> FakeLayered.unit(prompt)
+            "support" -> FakeLayered.support(prompt)
             else -> throw LlmException(LlmException.Kind.BAD_RESPONSE, "fake model: unknown step '${request.label}'")
         }
     }

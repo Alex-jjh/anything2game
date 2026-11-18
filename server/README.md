@@ -65,13 +65,81 @@ nothing is missing. A frame that is valid but not generated yet answers `404 NOT
 ### Prompts
 
 `src/main/resources/prompts/`: `plan.v1.md`, `level.v1.md`, `repair.v1.md`, `frame-case.v1.md`, `frame-escape.v1.md`,
-`frame-rookie.v1.md`, `frame-companion.v1.md`, `ask.v1.md`. Each file is the system prompt, a line `=== USER ===`, the user
+`frame-rookie.v1.md`, `frame-companion.v1.md`, `ask.v1.md`; for the experiment also `claims.v1.md`, `claim-check.v1.md`,
+`plan-claims.v1.md`, `unit.v1.md`, `support.v1.md` (`PromptTemplates.LAYERED`). Each file is the system prompt, a line `=== USER ===`, the user
 prompt, with `{{placeholders}}`. Rendering is strict (a missing or unused variable throws). Every prompt states the role, JSON-only
 output with the exact shape and an example adapted from `contract/examples`, "every quote is an exact substring of the cited
 chunk", the language rule (`en` or `zh`) and that the text between `<document>` tags is untrusted data. Document text enters
 prompts only inside `<document><chunk ...>` blocks; tag-like sequences in it are defused (`<` becomes `‹`) so it cannot close
 a block, and the model's answer is mapped back before quotes are checked. The `promptVersion` recorded in a package is
 `plan.v1+level.v1`; in a frame it is the frame's prompt file name.
+
+## Generation pipelines (experiment)
+
+Two flags let the team A/B the way units are generated on real documents. **Frame generation is identical in every arm**; only the
+unit generation (and, with the gate, a check after it) changes. Design and pre-registered decision rule:
+`docs/architecture/layered-generation.md`. With both flags unset the server runs the classic pipeline above, call for call.
+
+| Variable | Values | Meaning |
+|---|---|---|
+| `A2G_PIPELINE` | `classic` (default), `layered` | `classic` = plan -> level -> validate. `layered` = claims -> plan over claims -> one call per unit. |
+| `A2G_SUPPORT_GATE` | `off` (default), `on` | Support gate after generation, works with both pipelines (arm A+G = classic + gate). |
+| `A2G_LAYERED_PARALLELISM` | `6` (1 to 32) | How many claim-batch and unit calls run at once (layered). |
+
+The `flash` tier (`A2G_FLASH_*`) runs the claim entailment check and the gate; the `compile` tier runs everything else.
+
+```
+LAYERED  (compile/layered/)
+  ClaimNode        L1  chunks -> batches (~6 chunks / ~7000 chars, a chunk is never split), one call per batch IN PARALLEL (claims.v1)
+                       claim = claimId k1..kn (assigned by us) | chunkId | quote (verbatim) | text | type | scope | numbers | importance | relations
+  ClaimChecker     L1  1 deterministic: quote in chunk (PackageValidator.normalise) -> every number of `text` in `quote` (ASCII or
+                       full-width digits, decimals, percents; also in Chinese) -> `scope` present for number/comparison/causal
+                       2 entailment, flash tier, batches of <= 15 (claim-check.v1): only `supported` survives
+                       3 conflicts: two `number` claims whose text minus digits is near-identical (token Jaccard >= 0.6, character
+                         bigrams for Chinese) but whose numbers differ -> both excluded from questions (ids logged, never text)
+  LayeredPlanNode  L2  surviving claims only (plan-claims.v1), no document. Levels as in the classic plan, but a unit lists claimIds (1-4).
+                       Enforced in code: ids exist; logistics claims are not planned unless >= 60 % of the claims are logistics;
+                       `order` only with a `sequence` claim, otherwise the unit becomes `deduce`; 1-4 levels, 3-4 units, >= 2 mechanics
+  UnitNode         L3  ONE call per unit (unit.v1), all units of all levels in parallel (semaphore, level 1 queued first). Input = the unit's
+                       claims + their chunks' full text. Every wrong part is a declared mutation:
+                       "mutations":[{"partId","claimId","kind"}], kind = overgeneralise_scope | swap_number | reverse_cause |
+                       wrong_order | swap_entity | drop_limitation. The item is parsed into the contract DTO; `mutations` is read from the raw JSON
+  UnitChecks       L3  PackageValidator item checks; a number on the correct side (supported swipe cards, sort cards, the correct deduce option,
+                       every why/feedback, order steps) must appear in the quotes of the unit's claims; a declared mutation licenses only
+                       the numbers of its own part; every wrong part (unsupported card, wrong option) has a declared mutation; `order` needs a
+                       `sequence` claim. On failure: ONE repair call (LlmSteps.repair with the issue list), then the unit is dropped
+  publish              a level is published (PublishNode, unchanged) as soon as ITS units are done; < 2 surviving units = the level fails.
+                       The recap is the level's most important claims (no extra call). Package promptVersion = claims.v1+plan-claims.v1+unit.v1
+SUPPORT GATE  (SupportGate.kt, support.v1, flash tier, both pipelines)
+  per unit: the unit's item and variants + the full text of every chunk they cite (+ the claims in layered mode). The model answers per part
+  {"parts":[{"partId","verdict":"correct|wrong|ambiguous","reason"}]}: swipe = each card's supported flag, sort = each card's bin, deduce =
+  the correct option is right and every other wrong, order = the order. Anything but `correct` rejects the unit:
+    layered:  rerun UnitNode with the reasons (label unit:<id>:gate), re-gate once (support:<id>:regate), else drop the unit
+    classic:  ONE level repair call with the reasons as issues (label repair:level:<id>:gate); only the rejected units are replaced,
+              re-gated once, else dropped
+  promptVersion gets "+support.v1".
+```
+
+Model call labels (they are what the fake model and the logs key on): `claims:b<n>`, `claimcheck:b<n>`, `planclaims`, `unit:<unitId>`,
+`unit:<unitId>:gate`, `support:<unitId>`, `support:<unitId>:regate`, `repair:<label>`, `repair:level:<id>:gate`.
+
+**Stats line.** When the generation of a job ends (before its final state is set) ONE line is logged, `layered stats {json}` for the layered
+pipeline, `classic stats {json}` for the classic pipeline with the gate on (nothing for plain classic). Counts and ids only, no document text:
+
+```
+layered stats {"jobId":"job_...","pipeline":"layered","gate":true,
+ "claims":{"batches":1,"batchesFailed":0,"extracted":42,"droppedQuote":1,"droppedNumber":2,"droppedScope":1,"droppedEntailment":3,
+           "conflictPairs":1,"conflictClaims":2,"conflictPairIds":["k7~k19"],"kept":33},
+ "plan":{"units":9,"orderSwitched":1},
+ "units":{"generated":9,"repaired":2,"dropped":1,"kept":8},
+ "gate":{"unitsChecked":9,"partsCorrect":61,"partsWrong":2,"partsAmbiguous":1,"unitsRejected":2,"regenerations":2,"unitsDropped":1},
+ "millis":{"claims":9100,"plan":4200,"levels":{"L1":21000,"L2":33000,"L3":35500},"total":35600}}
+```
+
+`units.generated` = units that passed the checks (after at most one repair); `units.kept` = units that went into a level (after the gate);
+`units.dropped` = every unit that was not (checks, gate, model error); `millis.levels` = time from the start of the job until the level was
+published (or failed), so the first value is the time to first playable level. In the classic arm only `pipeline`, `gate`, `gate.*` and
+`millis.levels` / `millis.total` are filled.
 
 ## Configuration (environment variables only)
 
@@ -88,6 +156,7 @@ a block, and the model's answer is mapped back before quotes are checked. The `p
 | `A2G_WORKER_POLL_MS` | `1000` | How often an idle worker looks for jobs (a job created on this instance wakes it at once). |
 | `A2G_OIDC_ISSUER`, `A2G_OIDC_CLIENT_ID`, `A2G_OIDC_JWKS_URI` | unset | Optional sign-in. See [Sign-in](#sign-in-with-oidc--cognito). |
 | `A2G_PDF_TIMEOUT_SECONDS` | `20` | Time limit for reading one PDF (1 to 300). |
+| `A2G_PIPELINE`, `A2G_SUPPORT_GATE`, `A2G_LAYERED_PARALLELISM` | `classic`, `off`, `6` | Generation experiment, see [Generation pipelines (experiment)](#generation-pipelines-experiment). |
 | `A2G_LOG_FORMAT` | `text` | `text` or `json` (one JSON object per line on stdout). |
 | `A2G_<TIER>_PROVIDER` (`COMPILE`, `FRAME`, `FLASH`) | unset | Per tier: `fake`, `openai-compatible` (alias `openai`) or `anthropic`. Wins over `A2G_LLM_<TIER>`. |
 | `A2G_<TIER>_BASE_URL`, `_MODEL`, `_API_KEY` | unset | Per tier endpoint, model and key. Missing ones fall back to the shared `A2G_OPENAI_*` / `ANTHROPIC_*` values below. |

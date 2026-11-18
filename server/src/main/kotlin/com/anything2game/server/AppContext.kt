@@ -13,6 +13,10 @@ import com.anything2game.server.compile.LevelNode
 import com.anything2game.server.compile.PlanNode
 import com.anything2game.server.compile.PublishNode
 import com.anything2game.server.compile.ValidateNode
+import com.anything2game.server.compile.layered.ClassicGate
+import com.anything2game.server.compile.layered.LayeredPipeline
+import com.anything2game.server.compile.layered.SupportGate
+import com.anything2game.server.config.PipelineKind
 import com.anything2game.server.config.ServerConfig
 import com.anything2game.server.config.StoreKind
 import com.anything2game.server.ingest.PdfTextExtractor
@@ -53,12 +57,19 @@ class AppContext(
 
     init {
         val compile = router.client(Tier.COMPILE)
+        // Experiment flags (A2G_PIPELINE, A2G_SUPPORT_GATE). With both at their defaults nothing below is created and the classic pipeline runs as before.
+        val gate = if (config.supportGate) SupportGate(router.client(Tier.FLASH)) else null
+        val layered = if (config.pipeline == PipelineKind.LAYERED) {
+            LayeredPipeline(compile, router.client(Tier.FLASH), gate, config.layeredParallelism)
+        } else null
+        val classicGate = if (gate != null && layered == null) ClassicGate(compile, gate, config.layeredParallelism) else null
         runner = CompileJobRunner(
             jobs = store, documents = store, packages = store,
             planNode = PlanNode(compile), levelNode = LevelNode(compile), validateNode = ValidateNode(compile),
             publishNode = PublishNode(store, store, workerId), frames = frames, defaultFrames = config.defaultFrames,
             compileModelId = compile.modelId, scope = scope, workerId = workerId,
             leaseMillis = config.workerLeaseMillis, pollMillis = config.workerPollMillis, maxParallelJobs = config.workerConcurrency,
+            layered = layered, classicGate = classicGate, gateEnabled = gate != null,
         )
     }
 
