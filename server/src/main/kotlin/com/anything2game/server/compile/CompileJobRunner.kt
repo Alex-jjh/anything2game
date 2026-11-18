@@ -9,9 +9,13 @@ import com.anything2game.contract.GenerationMode
 import com.anything2game.contract.LearningPackage
 import com.anything2game.contract.PACKAGE_SCHEMA_V1
 import com.anything2game.contract.ReviewStatus
+import com.anything2game.server.compile.layered.ClassicGate
+import com.anything2game.server.compile.layered.GenerationStats
+import com.anything2game.server.compile.layered.LayeredPipeline
 import com.anything2game.server.store.DocumentRepository
 import com.anything2game.server.store.JobRecord
 import com.anything2game.server.store.JobRepository
+import com.anything2game.server.store.StoredDocument
 import com.anything2game.server.store.PackageRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -64,6 +68,12 @@ class CompileJobRunner(
     maxParallelLevels: Int = 3,
     private val maxAttempts: Int = 3,
     private val clock: () -> Long = System::currentTimeMillis,
+    /** Experiment (A2G_PIPELINE=layered): replaces plan/level/validate. Null = the classic pipeline, unchanged. */
+    private val layered: LayeredPipeline? = null,
+    /** Experiment (A2G_SUPPORT_GATE=on with the classic pipeline): checks the validated level's units. Null = no gate. */
+    private val classicGate: ClassicGate? = null,
+    /** Whether the support gate is on in either pipeline (recorded in the stats line and the package's `promptVersion`). */
+    private val gateEnabled: Boolean = false,
 ) {
     private val log = LoggerFactory.getLogger(CompileJobRunner::class.java)
     private val levelPermits = Semaphore(maxParallelLevels)
@@ -182,50 +192,44 @@ class CompileJobRunner(
                 if (!transition(jobId, CompileJobState.QUEUED) { it.copy(levelsReady = 0, levelsPlanned = 0) }) return false
             }
             if (!transition(jobId, CompileJobState.PLANNING) { it }) return false
+            if (layered != null) return runLayered(layered, job, doc)
             val plan = planNode.run(PlanInput(doc, job.options))
             if (!transition(jobId, CompileJobState.GENERATING) { it.copy(levelsPlanned = plan.levels.size) }) return false
 
-            val shell = LearningPackage(
-                schema = PACKAGE_SCHEMA_V1, packageId = job.packageId, contentVersion = "1",
-                documentId = doc.documentId, documentVersion = doc.documentVersion, title = doc.title, language = job.options.language,
-                generation = Generation(GenerationMode.LIVE, compileModelId, "plan.v1+level.v1", ReviewStatus.AUTO_VALIDATED),
-                sources = doc.chunks, levels = emptyList(),
-            )
+            val shell = shell(job, doc, "plan.v1+level.v1" + gateSuffix())
+            val stats = if (classicGate != null) GenerationStats(jobId, "classic", gate = true) else null
             // Level 1 is started first (UNDISPATCHED = it reaches the permit queue before level 2 exists); the rest follow in parallel.
-            val outcomes: List<LevelOutcome> = coroutineScope {
-                plan.levels.map { planned ->
-                    async(start = CoroutineStart.UNDISPATCHED) {
-                        levelPermits.withPermit {
-                            try {
-                                val draft = levelNode.run(LevelInput(planned, doc.chunks, job.options))
-                                val valid = validateNode.run(ValidateInput(draft, shell))
-                                if (valid.droppedUnits.isNotEmpty() || valid.repaired) {
-                                    log.info("job {} level {}: repaired={} droppedUnits={}", jobId, planned.levelId, valid.repaired, valid.droppedUnits.size)
+            val outcomes: List<LevelOutcome> = try {
+                coroutineScope {
+                    plan.levels.map { planned ->
+                        async(start = CoroutineStart.UNDISPATCHED) {
+                            levelPermits.withPermit {
+                                try {
+                                    val draft = levelNode.run(LevelInput(planned, doc.chunks, job.options))
+                                    var valid = validateNode.run(ValidateInput(draft, shell))
+                                    if (valid.droppedUnits.isNotEmpty() || valid.repaired) {
+                                        log.info("job {} level {}: repaired={} droppedUnits={}", jobId, planned.levelId, valid.repaired, valid.droppedUnits.size)
+                                    }
+                                    if (classicGate != null && stats != null) valid = classicGate.run(draft, valid, shell, stats)
+                                    val published = publishNode.run(PublishInput(jobId, job.ownerId, valid.level, shell))
+                                    stats?.levelDone(planned.levelId)
+                                    LevelOutcome(published, null)
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: GenerationException) {
+                                    log.warn("job {} level {} failed: {}", jobId, planned.levelId, e.code)
+                                    stats?.levelDone(planned.levelId)
+                                    LevelOutcome(false, e)
                                 }
-                                val published = publishNode.run(PublishInput(jobId, job.ownerId, valid.level, shell))
-                                LevelOutcome(published, null)
-                            } catch (e: CancellationException) {
-                                throw e
-                            } catch (e: GenerationException) {
-                                log.warn("job {} level {} failed: {}", jobId, planned.levelId, e.code)
-                                LevelOutcome(false, e)
                             }
                         }
-                    }
-                }.awaitAll()
+                    }.awaitAll()
+                }
+            } finally {
+                stats?.let { log.info(it.logLine()) }
             }
 
-            val published = outcomes.count { it.published }
-            val first = outcomes.firstNotNullOfOrNull { it.error }
-            val final = when {
-                published == plan.levels.size -> CompileJobState.READY
-                published > 0 -> CompileJobState.PARTIAL
-                else -> CompileJobState.FAILED
-            }
-            val error = if (final == CompileJobState.FAILED) {
-                ApiError(first?.code ?: ErrorCodes.GENERATION_FAILED, first?.message ?: "No level could be generated.", first?.retryable ?: true)
-            } else null
-            return finish(jobId, final, error) && final != CompileJobState.FAILED
+            return conclude(jobId, plan.levels.size, outcomes)
         } catch (e: CancellationException) {
             throw e
         } catch (e: GenerationException) {
@@ -239,6 +243,51 @@ class CompileJobRunner(
     }
 
     private data class LevelOutcome(val published: Boolean, val error: GenerationException?)
+
+    private fun gateSuffix() = if (gateEnabled) "+support.v1" else ""
+
+    private fun shell(job: JobRecord, doc: StoredDocument, promptVersion: String) = LearningPackage(
+        schema = PACKAGE_SCHEMA_V1, packageId = job.packageId, contentVersion = "1",
+        documentId = doc.documentId, documentVersion = doc.documentVersion, title = doc.title, language = job.options.language,
+        generation = Generation(GenerationMode.LIVE, compileModelId, promptVersion, ReviewStatus.AUTO_VALIDATED),
+        sources = doc.chunks, levels = emptyList(),
+    )
+
+    /** The job's final state from the level outcomes: all published = ready, some = partial, none = failed. Returns true for ready/partial. */
+    private fun conclude(jobId: String, planned: Int, outcomes: List<LevelOutcome>): Boolean {
+        val published = outcomes.count { it.published }
+        val first = outcomes.firstNotNullOfOrNull { it.error }
+        val final = when {
+            published == planned -> CompileJobState.READY
+            published > 0 -> CompileJobState.PARTIAL
+            else -> CompileJobState.FAILED
+        }
+        val error = if (final == CompileJobState.FAILED) {
+            ApiError(first?.code ?: ErrorCodes.GENERATION_FAILED, first?.message ?: "No level could be generated.", first?.retryable ?: true)
+        } else null
+        return finish(jobId, final, error) && final != CompileJobState.FAILED
+    }
+
+    /** The layered pipeline (experiment): claims + checks + plan while `planning`, then units in parallel, levels published as they finish. */
+    private suspend fun runLayered(pipeline: LayeredPipeline, job: JobRecord, doc: StoredDocument): Boolean {
+        val jobId = job.jobId
+        val stats = GenerationStats(jobId, "layered", gateEnabled)
+        val planned: Int
+        val results = try {
+            val prepared = pipeline.prepare(doc, job.options, stats)
+            planned = prepared.plan.levels.size
+            if (!transition(jobId, CompileJobState.GENERATING) { it.copy(levelsPlanned = planned) }) return false
+            val shell = shell(job, doc, "claims.v1+plan-claims.v1+unit.v1" + gateSuffix())
+            pipeline.generate(prepared, doc, job.options, shell, stats) { level ->
+                val published = publishNode.run(PublishInput(jobId, job.ownerId, level, shell))
+                if (!published) log.info("job {} level {} was not stored (job no longer running)", jobId, level.levelId)
+                published
+            }
+        } finally {
+            log.info(stats.logLine()) // before the final state is set, so a reader that sees the job finish also finds the line
+        }
+        return conclude(jobId, planned, results.map { LevelOutcome(it.published, it.error) })
+    }
 
     /**
      * Applies [change] unless the job is terminal or this worker no longer holds the lease; true if it was applied.
