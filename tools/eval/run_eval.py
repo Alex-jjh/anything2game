@@ -97,7 +97,14 @@ def run_doc(base, doc, out):
         st, pkg = http("GET", base + "/packages/" + job["packageId"], tok)
         json.dump(pkg, open(os.path.join(d, "package.json"), "w"), ensure_ascii=False, indent=2)
         rec["frames"] = {}
-        st, case = http("GET", base + f"/packages/{job['packageId']}/frames/case", tok)
+        st, case = 404, None
+        for _ in range(120):  # the default frame is generated AFTER the job reports ready (eval finding F3)
+            st, case = http("GET", base + f"/packages/{job['packageId']}/frames/case", tok)
+            if st == 200:
+                break
+            time.sleep(2)
+        if st != 200:
+            st, case = http("POST", base + f"/packages/{job['packageId']}/frames/case", tok, {})
         rec["frames"]["case"] = st
         if st == 200:
             json.dump(case, open(os.path.join(d, "frame.case.json"), "w"), ensure_ascii=False, indent=2)
@@ -120,6 +127,8 @@ def main():
     ap.add_argument("--only", default="")
     ap.add_argument("--run", default=time.strftime("%Y%m%d-%H%M%S"))
     ap.add_argument("--parallel", type=int, default=3)
+    ap.add_argument("--pipeline", default="classic", choices=["classic", "layered"])
+    ap.add_argument("--gate", default="off", choices=["off", "on"])
     a = ap.parse_args()
     out = os.path.join(HERE, "out", a.run)
     os.makedirs(out, exist_ok=True)
@@ -129,7 +138,8 @@ def main():
                               "--usage-log", os.path.join(out, "usage.jsonl")], env=env)
     senv = {k: v for k, v in env.items() if not k.startswith("AWS_")}  # the server never sees cloud credentials
     senv.update({"A2G_HOST": "127.0.0.1", "A2G_PORT": "18080", "A2G_STORE": "file", "A2G_DATA_DIR": os.path.join(out, "data"),
-                 "A2G_LLM_TIMEOUT_SECONDS": "600", "A2G_DEFAULT_FRAMES": "case", "A2G_WORKER_CONCURRENCY": "4"})
+                 "A2G_LLM_TIMEOUT_SECONDS": "600", "A2G_DEFAULT_FRAMES": "case", "A2G_WORKER_CONCURRENCY": "4",
+                 "A2G_PIPELINE": a.pipeline, "A2G_SUPPORT_GATE": a.gate})
     for t in ("COMPILE", "FRAME", "FLASH"):
         senv.update({f"A2G_{t}_PROVIDER": "openai-compatible", f"A2G_{t}_BASE_URL": "http://127.0.0.1:18765",
                      f"A2G_{t}_MODEL": a.model, f"A2G_{t}_API_KEY": "local-eval-proxy"})
@@ -138,7 +148,7 @@ def main():
         wait_up("http://127.0.0.1:18080/v1/health")
         with ThreadPoolExecutor(a.parallel) as pool:
             results = list(pool.map(lambda c: run_doc("http://127.0.0.1:18080/v1", c, out), corpus))
-        json.dump({"model": a.model, "results": results}, open(os.path.join(out, "run.json"), "w"), ensure_ascii=False, indent=2)
+        json.dump({"model": a.model, "pipeline": a.pipeline, "gate": a.gate, "results": results}, open(os.path.join(out, "run.json"), "w"), ensure_ascii=False, indent=2)
         for r in results:
             print(r["id"], r.get("result") or r["job"]["state"], r.get("seconds_to_level1"), r.get("seconds_to_done"), r.get("frames"))
         print("out:", out)

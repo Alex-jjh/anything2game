@@ -49,8 +49,9 @@ UNIT_RUBRIC = """Score this generated unit from 1 (bad) to 5 (excellent) on each
 - feedback: explanations say WHY, and address the specific misconception of wrong choices.
 - mechanic_fit: the mechanic (swipe/sort/deduce/order) suits this knowledge.
 - mobile_clarity: short, clear, readable on a phone; written in the material's language ({language}).
-Also set booleans: factual_error, answer_leaked_in_prompt, implausible_distractors.
-Return: {{"grounded":n,"unambiguous":n,"important":n,"feedback":n,"mechanic_fit":n,"mobile_clarity":n,"factual_error":b,"answer_leaked_in_prompt":b,"implausible_distractors":b,"problems":["..."]}}
+Also set booleans: factual_error, answer_leaked_in_prompt, implausible_distractors, source_conflict (the passages THEMSELVES disagree on a fact this unit uses — not the generator's fault).
+List wrong_parts: ids of cards/options/steps whose MARKED answer is wrong according to the passages (e.g. a swipe card marked supported that the passage contradicts; the deduce option marked correct when another is right; a sort card in the wrong bin; for order use "order"). Empty list if all marked answers are right.
+Return: {{"grounded":n,"unambiguous":n,"important":n,"feedback":n,"mechanic_fit":n,"mobile_clarity":n,"factual_error":b,"answer_leaked_in_prompt":b,"implausible_distractors":b,"source_conflict":b,"wrong_parts":["..."],"parts_total":n,"problems":["..."]}}
 
 LEVEL GOAL: {goal}
 UNIT (JSON): {unit}
@@ -58,7 +59,7 @@ CITED PASSAGES:
 {passages}"""
 
 FRAME_RUBRIC = {
-    "case": "Case frame: a partner briefs; 'the Summary' cross-examination boss has statements, exactly ONE overclaims beyond the evidence, and its cited passages must DISPROVE it while the other statements must be supported. Check: boss_correct (flawed one truly overclaims, cited passage shows it, others truly supported), lines_faithful (dialogue adds no facts beyond the material), no_giveaway (intro/lines don't reveal unit answers), board_sensible (node labels and edges reflect real relations).",
+    "case": "Case frame: a partner briefs; 'the Summary' is a SUSPECT character who is SUPPOSED to overclaim — its lines and its one flawed boss statement are intentional overclaims and must NOT count against lines_faithful (judge only the partner/narration lines and the non-flawed statements for faithfulness). The cross-examination boss has statements, exactly ONE overclaims beyond the evidence, and its cited passages must DISPROVE it while the other statements must be supported. Check: boss_correct (flawed one truly overclaims, cited passage shows it, others truly supported), lines_faithful (dialogue adds no facts beyond the material), no_giveaway (intro/lines don't reveal unit answers), board_sensible (node labels and edges reflect real relations).",
     "escape": "Escape frame: a narrator, rooms grouping units, a final lock (order or deduce). Check: boss_correct (the lock's correct answer matches the material and is unambiguous), lines_faithful, no_giveaway, rooms_sensible (room themes match their units).",
     "rookie": "Rookie frame: a junior asks a lead-in question before each unit; boss = the rookie's notes as cross-examination with exactly ONE wrong line, disproved by its cited passage. Check: boss_correct, lines_faithful, no_giveaway (lead-ins ask, never answer), character_consistent.",
     "companion": "Companion frame: a partner gives 1-2 cited lead-in lines before each unit; no boss. Check: lines_faithful (cited lines are supported by their passages), no_giveaway (lead-ins must not reveal the unit's answer), helpful (lead-ins orient the player), character_consistent.",
@@ -125,7 +126,7 @@ def main():
     rows = [{"kind": j[0], "doc": j[1], "id": j[2], "mechanic": j[3], "verdict": v} for j, v in res]
     # GPT on Bedrock reports most input as cacheWriteInputTokens; count total - output as input.
     usage = {"in": sum(u.get("totalTokens", 0) - u.get("outputTokens", 0) for u in USAGE), "out": sum(u.get("outputTokens", 0) for u in USAGE)}
-    json.dump({"judge": a.judge, "seconds": round(time.time() - t0), "usage": usage, "rows": rows},
+    json.dump({"judge": a.judge, "rubric": "v2", "seconds": round(time.time() - t0), "usage": usage, "rows": rows},
               open(os.path.join(out, "judge.json"), "w"), ensure_ascii=False, indent=2)
     print("judged", len(rows), "items in", round(time.time() - t0), "s; judge tokens", usage)
 

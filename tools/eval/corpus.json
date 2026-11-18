@@ -1,8 +1,58 @@
 [
-  {"id": "attention", "kind": "pdf", "file": "attention.pdf", "language": "en", "genre": "ML paper (classic)", "source": "https://arxiv.org/pdf/1706.03762v7"},
-  {"id": "mapreduce", "kind": "pdf", "file": "mapreduce.pdf", "language": "en", "genre": "systems paper (classic)", "source": "https://research.google.com/archive/mapreduce-osdi04.pdf"},
-  {"id": "resnet", "kind": "pdf", "file": "resnet.pdf", "language": "en", "genre": "ML paper (classic)", "source": "https://arxiv.org/pdf/1512.03385v1"},
-  {"id": "cs231n-l1", "kind": "pdf", "file": "cs231n-lecture.pdf", "language": "en", "genre": "lecture slides", "source": "http://cs231n.stanford.edu/slides/2017/cs231n_2017_lecture1.pdf"},
-  {"id": "cs229-notes", "kind": "pdf", "file": "cs229-notes1.pdf", "language": "en", "genre": "long lecture notes (expected: rejected by the 80-page limit)", "source": "https://cs229.stanford.edu/notes2022fall/main_notes.pdf"},
-  {"id": "zh-spaced", "kind": "text", "file": "zh-spaced-repetition.txt", "language": "zh", "genre": "encyclopedia article (Chinese, text path)", "source": "https://zh.wikipedia.org/wiki/间隔重复 (CC BY-SA)"}
+  {
+    "id": "attention",
+    "kind": "pdf",
+    "file": "attention.pdf",
+    "language": "en",
+    "genre": "ML paper (classic)",
+    "source": "https://arxiv.org/pdf/1706.03762v7"
+  },
+  {
+    "id": "mapreduce",
+    "kind": "pdf",
+    "file": "mapreduce.pdf",
+    "language": "en",
+    "genre": "systems paper (classic)",
+    "source": "https://research.google.com/archive/mapreduce-osdi04.pdf"
+  },
+  {
+    "id": "resnet",
+    "kind": "pdf",
+    "file": "resnet.pdf",
+    "language": "en",
+    "genre": "ML paper (classic)",
+    "source": "https://arxiv.org/pdf/1512.03385v1"
+  },
+  {
+    "id": "cs231n-l1",
+    "kind": "pdf",
+    "file": "cs231n-lecture.pdf",
+    "language": "en",
+    "genre": "lecture slides",
+    "source": "http://cs231n.stanford.edu/slides/2017/cs231n_2017_lecture1.pdf"
+  },
+  {
+    "id": "cs231n-l2",
+    "kind": "pdf",
+    "file": "cs231n-l2.pdf",
+    "language": "en",
+    "genre": "lecture slides",
+    "source": "http://cs231n.stanford.edu/slides/2017/cs231n_2017_lecture2.pdf"
+  },
+  {
+    "id": "cs231n-l3",
+    "kind": "pdf",
+    "file": "cs231n-l3.pdf",
+    "language": "en",
+    "genre": "lecture slides",
+    "source": "http://cs231n.stanford.edu/slides/2017/cs231n_2017_lecture3.pdf"
+  },
+  {
+    "id": "zh-spaced",
+    "kind": "text",
+    "file": "zh-spaced-repetition.txt",
+    "language": "zh",
+    "genre": "encyclopedia article (Chinese, text path)",
+    "source": "https://zh.wikipedia.org/wiki/间隔重复 (CC BY-SA)"
+  }
 ]
