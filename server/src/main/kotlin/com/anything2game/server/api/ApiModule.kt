@@ -23,11 +23,33 @@ import io.ktor.server.response.header
 import io.ktor.server.response.respond
 import io.ktor.server.routing.routing
 import kotlinx.coroutines.CancellationException
+import io.ktor.server.plugins.callid.CallId
+import io.ktor.server.plugins.callid.callIdMdc
+import io.ktor.server.plugins.calllogging.CallLogging
+import io.ktor.server.request.httpMethod
+import io.ktor.server.request.path
 import org.slf4j.LoggerFactory
+import org.slf4j.event.Level
+import java.util.UUID
 
 /** The Ktor application: JSON, error mapping, the global body-size gate and the routes. */
 fun Application.module(ctx: AppContext) {
     val log = LoggerFactory.getLogger("com.anything2game.server.api")
+    // A request id per call: taken from X-Request-Id when it is harmless (the load balancer's id), else generated; echoed in the
+    // response and put in the log context (field `mdc.requestId` in JSON logs).
+    install(CallId) {
+        retrieveFromHeader(HttpHeaders.XRequestId)
+        generate { UUID.randomUUID().toString().replace("-", "").take(20) }
+        verify { id -> id.length in 1..64 && id.all { it.isLetterOrDigit() || it == '-' || it == '_' || it == '.' } }
+        replyToHeader(HttpHeaders.XRequestId)
+    }
+    // One line per call: method, path (no query string), status. Never headers, bodies, tokens, questions or document text.
+    install(CallLogging) {
+        level = Level.INFO
+        callIdMdc("requestId")
+        filter { it.request.path() !in QUIET_PATHS }
+        format { call -> "${call.request.httpMethod.value} ${call.request.path()} -> ${call.response.status()?.value}" }
+    }
     install(ContentNegotiation) { json(ContractJson.json) }
     install(StatusPages) {
         exception<ApiException> { call, e ->
@@ -81,4 +103,4 @@ fun Application.module(ctx: AppContext) {
     monitor.subscribe(ApplicationStopped) { ctx.close() }
 }
 
-/** Not in the contract's ErrorCodes (contract gap, see server/README.md). */
+private val QUIET_PATHS = setOf("/v1/health", "/v1/ready")

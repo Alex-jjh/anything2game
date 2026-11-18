@@ -71,11 +71,13 @@ class TestEnv(
     limits: Limits = Limits(),
     val llm: LlmClient = FakeLlmClient(),
     askTimeoutMillis: Long = 5_000,
+    jwt: com.anything2game.server.api.Authenticator? = null,
+    configure: (ServerConfig) -> ServerConfig = { it },
 ) : AutoCloseable {
     val dir: File = File(System.getProperty("server.test.tmp") ?: "build/test-data").resolve("t-" + UUID.randomUUID()).also { it.mkdirs() }
-    val config = ServerConfig(dataDir = dir.toPath(), limits = limits, askTimeoutMillis = askTimeoutMillis)
+    val config = configure(ServerConfig(dataDir = dir.toPath(), limits = limits, askTimeoutMillis = askTimeoutMillis, workerPollMillis = 50))
     val store = FileStore(dir.toPath())
-    val ctx = AppContext(config, store, LlmRouter(llm, llm, llm))
+    val ctx = AppContext(config, store, LlmRouter(llm, llm, llm), jwtAuthenticator = jwt).also { it.start() }
 
     override fun close() {
         ctx.close()

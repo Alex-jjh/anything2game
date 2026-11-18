@@ -1,0 +1,11 @@
+<included>
+  <!-- One JSON object per line on stdout: level, loggerName, formattedMessage, mdc.requestId, timestamp. -->
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder class="ch.qos.logback.classic.encoder.JsonEncoder">
+      <withMessage>false</withMessage>
+      <withFormattedMessage>true</withFormattedMessage>
+      <withArguments>false</withArguments>
+      <withContext>false</withContext>
+    </encoder>
+  </appender>
+</included>

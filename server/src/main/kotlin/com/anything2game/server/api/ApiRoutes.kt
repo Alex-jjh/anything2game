@@ -1,10 +1,12 @@
 package com.anything2game.server.api
 
 import com.anything2game.contract.AskRequest
+import com.anything2game.contract.ApiError
 import com.anything2game.contract.CompileJobRequest
 import com.anything2game.contract.CompileJobState
 import com.anything2game.contract.DocumentKind
 import com.anything2game.contract.DocumentResponse
+import com.anything2game.contract.ErrorBody
 import com.anything2game.contract.ErrorCodes
 import com.anything2game.contract.FrameId
 import com.anything2game.contract.InstallResponse
@@ -15,7 +17,6 @@ import com.anything2game.server.config.ServerConfig
 import com.anything2game.server.ingest.Chunker
 import com.anything2game.server.ingest.IngestException
 import com.anything2game.server.ingest.PdfTextExtractor
-import com.anything2game.server.store.InstallRecord
 import com.anything2game.server.store.JobRecord
 import com.anything2game.server.store.StoredDocument
 import io.ktor.http.ContentDisposition
@@ -63,37 +64,50 @@ fun Route.apiRoutes(ctx: AppContext) {
     val limits = ctx.config.limits
     val store = ctx.store
 
-    // ownership: a resource of another install is indistinguishable from one that does not exist
+    // ownership: a resource of another owner is indistinguishable from one that does not exist
     fun ownedDocument(call: ApplicationCall): StoredDocument =
-        store.getDocument(call.pathId("documentId"))?.takeIf { it.installId == call.install.installId } ?: throw ApiException.notFound()
+        store.getDocument(call.pathId("documentId"))?.takeIf { it.ownerId == call.principal.ownerId } ?: throw ApiException.notFound()
     fun ownedJob(call: ApplicationCall): JobRecord =
-        store.getJob(call.pathId("jobId"))?.takeIf { it.installId == call.install.installId } ?: throw ApiException.notFound()
+        store.getJob(call.pathId("jobId"))?.takeIf { it.ownerId == call.principal.ownerId } ?: throw ApiException.notFound()
     fun ownedPackage(call: ApplicationCall) =
-        store.getPackage(call.pathId("packageId"))?.takeIf { it.installId == call.install.installId } ?: throw ApiException.notFound()
+        store.getPackage(call.pathId("packageId"))?.takeIf { it.ownerId == call.principal.ownerId } ?: throw ApiException.notFound()
 
     route("/v1") {
-        install(InstallAuthPlugin) {
-            auth = ctx.auth
-            publicRoutes = setOf("GET /v1/health", "POST /v1/installs")
+        install(AuthPlugin) {
+            authenticator = ctx.authenticator
+            publicRoutes = setOf("GET /v1/health", "GET /v1/ready", "POST /v1/installs")
         }
 
+        // Liveness: the process is up. Readiness: it can reach its store (a failing store takes the instance out of the load balancer).
         get("/health") { call.respond(HealthResponse("ok", "v1")) }
+
+        get("/ready") {
+            val ready = try {
+                withContext(Dispatchers.IO) { store.ping() }
+                true
+            } catch (e: Exception) {
+                log.warn("not ready: store check failed ({})", e.javaClass.simpleName)
+                false
+            }
+            if (ready) call.respond(HealthResponse("ready", "v1"))
+            else call.respond(HttpStatusCode.ServiceUnavailable, ErrorBody(ApiError(ErrorCodes.INTERNAL_ERROR, "The store is not reachable.", retryable = true)))
+        }
 
         post("/installs") {
             ctx.quotas.checkInstallCreation()
             call.readLimitedBody(limits.maxSmallJsonBytes) // body is ignored ({}), but still size-capped
-            val issued = ctx.auth.issue()
+            val issued = ctx.installTokens.issue()
             call.respond(HttpStatusCode.Created, InstallResponse(issued.record.installId, issued.token))
         }
 
         run {
             // ---- documents ---------------------------------------------------------------------------------------
             post("/documents") {
-                val install = call.install
+                val owner = call.principal
                 val type = call.request.contentType()
                 val response = when {
-                    type.match(ContentType.MultiPart.FormData) -> uploadPdf(call, ctx, install)
-                    type.match(ContentType.Application.Json) -> uploadText(call, ctx, install)
+                    type.match(ContentType.MultiPart.FormData) -> uploadPdf(call, ctx, owner.ownerId)
+                    type.match(ContentType.Application.Json) -> uploadText(call, ctx, owner.ownerId)
                     else -> throw ApiException(HttpStatusCode.UnsupportedMediaType, ErrorCodes.UNSUPPORTED_TYPE, "Send a multipart PDF or a JSON text document.")
                 }
                 call.respond(HttpStatusCode.Created, response)
@@ -102,7 +116,7 @@ fun Route.apiRoutes(ctx: AppContext) {
             delete("/documents/{documentId}") {
                 val doc = ownedDocument(call)
                 // stop running work first so nothing is published into a deleted document
-                store.listJobs().filter { it.documentId == doc.documentId }.forEach { ctx.runner.cancel(it.jobId) }
+                store.listJobsByDocument(doc.documentId).forEach { ctx.runner.cancel(it.jobId) }
                 store.deleteDocument(doc.documentId)
                 log.info("document {} deleted", doc.documentId)
                 call.respond(HttpStatusCode.NoContent)
@@ -110,15 +124,15 @@ fun Route.apiRoutes(ctx: AppContext) {
 
             // ---- compile jobs ------------------------------------------------------------------------------------
             post("/compile-jobs") {
-                val install = call.install
+                val owner = call.principal.ownerId
                 val req = call.receiveJson(CompileJobRequest.serializer(), limits.maxSmallJsonBytes)
                 if (req.clientRequestId.isBlank() || req.clientRequestId.length > 100) throw ApiException.badRequest("clientRequestId must be 1 to 100 characters.")
                 if (req.options.language !in setOf("en", "zh")) throw ApiException.badRequest("options.language must be 'en' or 'zh'.")
                 if (req.options.minutesPerLevel !in 1..30) throw ApiException.badRequest("options.minutesPerLevel must be 1 to 30.")
                 if (!idShape.matches(req.documentId)) throw ApiException.notFound()
-                val doc = store.getDocument(req.documentId)?.takeIf { it.installId == install.installId } ?: throw ApiException.notFound()
+                val doc = store.getDocument(req.documentId)?.takeIf { it.ownerId == owner } ?: throw ApiException.notFound()
 
-                val mine = store.listJobs().filter { it.installId == install.installId }
+                val mine = store.listJobsByOwner(owner)
                 // idempotent on clientRequestId
                 mine.firstOrNull { it.clientRequestId == req.clientRequestId }?.let { existing ->
                     if (existing.documentId != req.documentId || existing.options != req.options) {
@@ -132,16 +146,17 @@ fun Route.apiRoutes(ctx: AppContext) {
                         it.state != CompileJobState.FAILED && it.state != CompileJobState.CANCELLED
                 }?.let { return@post call.respond(HttpStatusCode.Accepted, it.toStatus()) }
 
-                ctx.quotas.consumeCompile(install)
+                ctx.quotas.consumeCompile(owner)
                 val now = System.currentTimeMillis()
                 val job = JobRecord(
-                    jobId = newId("job_"), installId = install.installId, documentId = doc.documentId, documentVersion = doc.documentVersion,
+                    jobId = newId("job_"), ownerId = owner, documentId = doc.documentId, documentVersion = doc.documentVersion,
                     options = req.options, clientRequestId = req.clientRequestId, packageId = newId("pkg_"), createdAt = now, updatedAt = now,
                 )
-                store.saveJob(job)
-                ctx.runner.submit(job.jobId)
-                log.info("job {} queued for document {}", job.jobId, doc.documentId)
-                call.respond(HttpStatusCode.Accepted, job.toStatus())
+                // a concurrent request with the same clientRequestId (maybe on another instance) wins: its job is returned
+                val stored = store.createJob(job)
+                ctx.runner.wake()
+                log.info("job {} queued for document {}", stored.jobId, doc.documentId)
+                call.respond(HttpStatusCode.Accepted, stored.toStatus())
             }
 
             get("/compile-jobs/{jobId}") { call.respond(ownedJob(call).toStatus()) }
@@ -188,14 +203,14 @@ fun Route.apiRoutes(ctx: AppContext) {
 
             // ---- ask ---------------------------------------------------------------------------------------------
             post("/ask") {
-                val install = call.install
+                val owner = call.principal.ownerId
                 val req = call.receiveJson(AskRequest.serializer(), limits.maxSmallJsonBytes)
                 if (req.question.isBlank() || req.question.length > limits.maxQuestionChars) {
                     throw ApiException.badRequest("question must be 1 to ${limits.maxQuestionChars} characters.")
                 }
                 if (!idShape.matches(req.packageId)) throw ApiException.notFound()
-                val stored = store.getPackage(req.packageId)?.takeIf { it.installId == install.installId } ?: throw ApiException.notFound()
-                ctx.quotas.consumeAsk(install)
+                val stored = store.getPackage(req.packageId)?.takeIf { it.ownerId == owner } ?: throw ApiException.notFound()
+                ctx.quotas.consumeAsk(owner)
                 call.respond(ctx.ask.ask(stored.pkg, req.unitId, req.question))
             }
         }
@@ -205,7 +220,7 @@ fun Route.apiRoutes(ctx: AppContext) {
 // ---- document upload ------------------------------------------------------------------------------------------
 
 @Suppress("DEPRECATION") // readRemaining(limit) bounds the read; part.dispose is the stable release call
-private suspend fun uploadPdf(call: ApplicationCall, ctx: AppContext, install: InstallRecord): DocumentResponse {
+private suspend fun uploadPdf(call: ApplicationCall, ctx: AppContext, ownerId: String): DocumentResponse {
     val limits = ctx.config.limits
     var bytes: ByteArray? = null
     var fileName: String? = null
@@ -233,10 +248,10 @@ private suspend fun uploadPdf(call: ApplicationCall, ctx: AppContext, install: I
     }
     val pages = withContext(Dispatchers.IO) { ctx.pdf.extract(data) }
     val displayTitle = title ?: fileName?.substringBeforeLast('.')
-    return storeDocument(ctx, install, displayTitle, DocumentKind.PDF, pages)
+    return storeDocument(ctx, ownerId, displayTitle, DocumentKind.PDF, pages)
 }
 
-private suspend fun uploadText(call: ApplicationCall, ctx: AppContext, install: InstallRecord): DocumentResponse {
+private suspend fun uploadText(call: ApplicationCall, ctx: AppContext, ownerId: String): DocumentResponse {
     val limits = ctx.config.limits
     val req = call.receiveJson(TextDocumentRequest.serializer(), limits.maxTextBodyBytes)
     if (req.kind == DocumentKind.PDF) throw ApiException.badRequest("Send PDFs as multipart; JSON documents are text or ocr.")
@@ -245,10 +260,10 @@ private suspend fun uploadText(call: ApplicationCall, ctx: AppContext, install: 
     if (req.pages.any { it.pageIndex < 0 }) throw ApiException.badRequest("pageIndex must not be negative.")
     if (req.pages.map { it.pageIndex }.toSet().size != req.pages.size) throw ApiException.badRequest("pageIndex values must be unique.")
     val pages = req.pages.map { PageText(it.pageIndex, PdfTextExtractor.cleanText(it.text), it.pageLabel?.take(20)) }
-    return storeDocument(ctx, install, req.title, req.kind, pages)
+    return storeDocument(ctx, ownerId, req.title, req.kind, pages)
 }
 
-private fun storeDocument(ctx: AppContext, install: InstallRecord, rawTitle: String?, kind: DocumentKind, pages: List<PageText>): DocumentResponse {
+private fun storeDocument(ctx: AppContext, ownerId: String, rawTitle: String?, kind: DocumentKind, pages: List<PageText>): DocumentResponse {
     val limits = ctx.config.limits
     val totalChars = pages.sumOf { it.text.length }
     if (totalChars > limits.maxTextChars) throw ApiException.tooLarge("The text has $totalChars characters; the limit is ${limits.maxTextChars}.")
@@ -258,7 +273,7 @@ private fun storeDocument(ctx: AppContext, install: InstallRecord, rawTitle: Str
     val chunks = Chunker.chunk(pages)
     val title = rawTitle?.let { PdfTextExtractor.cleanText(it).replace(Regex("\\s+"), " ") }?.take(200)?.ifBlank { null } ?: "Untitled"
     val doc = StoredDocument(
-        documentId = newId("doc_"), installId = install.installId, title = title, kind = kind,
+        documentId = newId("doc_"), ownerId = ownerId, title = title, kind = kind,
         documentVersion = Chunker.documentVersion(pages), pageCount = pages.size, createdAt = System.currentTimeMillis(), chunks = chunks,
     )
     ctx.store.saveDocument(doc)

@@ -15,13 +15,14 @@ import java.time.Duration
  * Claude through the official Java SDK. Intended for development and evaluation runs (decision 011).
  * The SDK retries 429/5xx itself. A `refusal` stop reason is surfaced as a non-retryable [LlmException].
  */
-class AnthropicLlmClient(apiKey: String, private val model: String, timeoutSeconds: Long) : LlmClient {
+class AnthropicLlmClient(apiKey: String, private val model: String, timeoutSeconds: Long, baseUrl: String? = null) : LlmClient {
     override val modelId: String get() = model
 
     private val client: AnthropicClient = AnthropicOkHttpClient.builder()
         .apiKey(apiKey)
         .timeout(Duration.ofSeconds(timeoutSeconds))
         .maxRetries(2)
+        .apply { if (baseUrl != null) baseUrl(baseUrl) }
         .build()
 
     override suspend fun completeJson(request: LlmRequest): String = withContext(Dispatchers.IO) {

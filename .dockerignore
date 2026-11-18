@@ -1,0 +1,15 @@
+# Keep the build context small and free of local state and secrets.
+**/build
+**/.gradle
+.gradle
+.git
+.idea
+**/*.iml
+android/
+docs/
+server/data
+local.properties
+.env
+**/.env
+**/*.keystore
+**/*.hprof
