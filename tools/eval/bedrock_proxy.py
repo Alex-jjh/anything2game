@@ -27,6 +27,7 @@ def client_for(model):
 
 class Handler(BaseHTTPRequestHandler):
     usage_log = None
+    capture_dir = None  # --capture DIR: save raw model answers (eval debugging only; out/ is gitignored)
 
     def log_message(self, *args):  # silence default access log (it would print paths only, but keep stdout clean)
         pass
@@ -56,6 +57,11 @@ class Handler(BaseHTTPRequestHandler):
             status = 429 if "Throttl" in type(e).__name__ else 502
             return self._send(status, {"error": {"type": type(e).__name__}})
         text = "".join(b.get("text", "") for b in r["output"]["message"]["content"])
+        if self.capture_dir:
+            import os, uuid
+            os.makedirs(self.capture_dir, exist_ok=True)
+            with open(os.path.join(self.capture_dir, f"{time.strftime('%H%M%S')}-{step[:30].replace(' ', '_')}-{uuid.uuid4().hex[:6]}.txt"), "w") as f:
+                f.write(text)
         u = r.get("usage", {})
         self._log({"model": model, "step": step, "in": u.get("inputTokens"), "out": u.get("outputTokens"),
                    "ms": int((time.time() - t0) * 1000), "stop": r.get("stopReason")})
@@ -73,6 +79,8 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=18765)
     ap.add_argument("--usage-log", required=True)
+    ap.add_argument("--capture", default=None)
     a = ap.parse_args()
     Handler.usage_log = a.usage_log
+    Handler.capture_dir = a.capture
     ThreadingHTTPServer(("127.0.0.1", a.port), Handler).serve_forever()

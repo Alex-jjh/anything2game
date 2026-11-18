@@ -114,7 +114,7 @@ class LayeredPlanNode(private val llm: LlmClient) {
     }
 
     companion object {
-        const val MAX_TOKENS = 8_000
+        const val MAX_TOKENS = 16_000 // 75+ claims overflowed 8k (2026-11-18 eval)
         const val MIN_CLAIMS = 3
         const val LOGISTICS_SHARE = 0.6
         private val allowed = setOf(Mechanic.SWIPE, Mechanic.SORT, Mechanic.DEDUCE, Mechanic.ORDER)

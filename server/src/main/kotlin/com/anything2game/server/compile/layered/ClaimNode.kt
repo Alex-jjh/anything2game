@@ -1,5 +1,7 @@
 package com.anything2game.server.compile.layered
 
+import com.anything2game.server.compile.GenerationException
+
 import com.anything2game.contract.SourceChunk
 import com.anything2game.server.compile.LlmSteps
 import com.anything2game.server.llm.LlmClient
@@ -48,7 +50,24 @@ class ClaimNode(private val llm: LlmClient, private val parallelism: Int = 6) {
         return out
     }
 
-    private suspend fun extract(batch: List<SourceChunk>, label: String, stats: GenerationStats): List<RawClaim> {
+    /**
+     * A batch whose answer fails (e.g. cut off at max tokens) is split in half and retried, so one dense batch never
+     * fails the whole job (2026-11-18 eval: 6 truncated batches failed 3 of 6 documents). A single chunk that still
+     * fails yields nothing and is counted in batchesFailed.
+     */
+    private suspend fun extract(batch: List<SourceChunk>, label: String, stats: GenerationStats): List<RawClaim> = try {
+        extractOnce(batch, label, stats)
+    } catch (e: GenerationException) {
+        if (batch.size > 1) {
+            val half = batch.size / 2
+            extract(batch.subList(0, half), "$label.a", stats) + extract(batch.subList(half, batch.size), "$label.b", stats)
+        } else {
+            stats.claimBatchesFailed.incrementAndGet()
+            emptyList()
+        }
+    }
+
+    private suspend fun extractOnce(batch: List<SourceChunk>, label: String, stats: GenerationStats): List<RawClaim> {
         val prompt = PromptTemplates.render("claims.v1", mapOf("document" to PromptFormat.documentBlock(batch)))
         val raw = LlmSteps.call(llm, prompt, MAX_TOKENS, label)
         parse(raw)?.let { return it }
@@ -74,7 +93,7 @@ class ClaimNode(private val llm: LlmClient, private val parallelism: Int = 6) {
     companion object {
         const val MAX_CHUNKS = 6
         const val MAX_CHARS = 7_000
-        const val MAX_TOKENS = 8_000
+        const val MAX_TOKENS = 12_000
 
         fun batches(chunks: List<SourceChunk>): List<List<SourceChunk>> {
             val out = mutableListOf<MutableList<SourceChunk>>()

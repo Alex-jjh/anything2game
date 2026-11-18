@@ -76,7 +76,7 @@ class UnitNode(private val llm: LlmClient) {
     }
 
     companion object {
-        const val MAX_TOKENS = 8_000
+        const val MAX_TOKENS = 12_000
 
         /** The plan is authoritative for the unit id, knowledge type and mechanic; the model supplies item, hints, variants and mutations. */
         fun parse(raw: String, planned: LayeredUnit): Pair<ParsedUnit?, List<String>> {

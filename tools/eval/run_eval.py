@@ -129,25 +129,28 @@ def main():
     ap.add_argument("--parallel", type=int, default=3)
     ap.add_argument("--pipeline", default="classic", choices=["classic", "layered"])
     ap.add_argument("--gate", default="off", choices=["off", "on"])
+    ap.add_argument("--capture", action="store_true", help="save raw model answers to out/<run>/raw (debugging)")
+    ap.add_argument("--port-base", type=int, default=18000, help="server = base+80, proxy = base+765 (lets arms run side by side)")
     a = ap.parse_args()
     out = os.path.join(HERE, "out", a.run)
     os.makedirs(out, exist_ok=True)
     corpus = [c for c in json.load(open(os.path.join(HERE, "corpus.json"))) if not a.only or c["id"] in a.only.split(",")]
     env = dict(os.environ)
     proxy = subprocess.Popen([os.path.join(HERE, ".venv/bin/python"), os.path.join(HERE, "bedrock_proxy.py"),
-                              "--usage-log", os.path.join(out, "usage.jsonl")], env=env)
+                              "--usage-log", os.path.join(out, "usage.jsonl"), "--port", str(a.port_base + 765)] + (["--capture", os.path.join(out, "raw")] if a.capture else []), env=env)
     senv = {k: v for k, v in env.items() if not k.startswith("AWS_")}  # the server never sees cloud credentials
-    senv.update({"A2G_HOST": "127.0.0.1", "A2G_PORT": "18080", "A2G_STORE": "file", "A2G_DATA_DIR": os.path.join(out, "data"),
+    senv.update({"A2G_HOST": "127.0.0.1", "A2G_PORT": str(a.port_base + 80), "A2G_STORE": "file", "A2G_DATA_DIR": os.path.join(out, "data"),
                  "A2G_LLM_TIMEOUT_SECONDS": "600", "A2G_DEFAULT_FRAMES": "case", "A2G_WORKER_CONCURRENCY": "4",
                  "A2G_PIPELINE": a.pipeline, "A2G_SUPPORT_GATE": a.gate})
     for t in ("COMPILE", "FRAME", "FLASH"):
-        senv.update({f"A2G_{t}_PROVIDER": "openai-compatible", f"A2G_{t}_BASE_URL": "http://127.0.0.1:18765",
+        senv.update({f"A2G_{t}_PROVIDER": "openai-compatible", f"A2G_{t}_BASE_URL": f"http://127.0.0.1:{a.port_base + 765}",
                      f"A2G_{t}_MODEL": a.model, f"A2G_{t}_API_KEY": "local-eval-proxy"})
     server = subprocess.Popen([SERVER_BIN], env=senv, stdout=open(os.path.join(out, "server.log"), "w"), stderr=subprocess.STDOUT)
     try:
-        wait_up("http://127.0.0.1:18080/v1/health")
+        base = f"http://127.0.0.1:{a.port_base + 80}"
+        wait_up(base + "/v1/health")
         with ThreadPoolExecutor(a.parallel) as pool:
-            results = list(pool.map(lambda c: run_doc("http://127.0.0.1:18080/v1", c, out), corpus))
+            results = list(pool.map(lambda c: run_doc(base + "/v1", c, out), corpus))
         json.dump({"model": a.model, "pipeline": a.pipeline, "gate": a.gate, "results": results}, open(os.path.join(out, "run.json"), "w"), ensure_ascii=False, indent=2)
         for r in results:
             print(r["id"], r.get("result") or r["job"]["state"], r.get("seconds_to_level1"), r.get("seconds_to_done"), r.get("frames"))
