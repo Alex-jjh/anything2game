@@ -6,6 +6,8 @@ import com.anything2game.app.data.content.ContentLibrary
 import com.anything2game.app.data.content.DirectoryPackSource
 import com.anything2game.app.data.AvatarPreferences
 import com.anything2game.app.data.SharedPrefsAvatarPreferences
+import com.anything2game.app.data.ExplainerPreferences
+import com.anything2game.app.data.SharedPrefsExplainerPreferences
 import com.anything2game.app.data.FramePreferences
 import com.anything2game.app.data.SharedPrefsFramePreferences
 import com.anything2game.app.data.FileMasteryStore
@@ -47,6 +49,7 @@ interface AppDependencies {
     val framePreferences: FramePreferences
     val homePreferences: com.anything2game.app.data.HomePreferences
     val avatarPreferences: AvatarPreferences
+    val explainerPreferences: ExplainerPreferences
     val sessions: SessionStore
     val mastery: MasteryStore
     val grading: Grading
@@ -83,6 +86,7 @@ class AndroidAppContainer(context: Context) : AppDependencies {
         val framePreferences: FramePreferences = SharedPrefsFramePreferences(app, profile.prefs("frames"))
         val homePreferences = HomePreferences(app, profile.prefs("home"))
         val avatarPreferences: AvatarPreferences = SharedPrefsAvatarPreferences(app, profile.prefs("avatar"))
+        val explainerPreferences: ExplainerPreferences = SharedPrefsExplainerPreferences(app, profile.prefs("explainer"))
         val tutors = AndroidTutorRepository(app, packages, ::installServerPackage, File(dir, "tutor-sessions"), profile.prefs("tutor_connection"))
     }
 
@@ -104,6 +108,7 @@ class AndroidAppContainer(context: Context) : AppDependencies {
     override val framePreferences: FramePreferences get() = scope.framePreferences
     override val homePreferences: HomePreferences get() = scope.homePreferences
     override val avatarPreferences: AvatarPreferences get() = scope.avatarPreferences
+    override val explainerPreferences: ExplainerPreferences get() = scope.explainerPreferences
     override val sessions: SessionStore get() = scope.sessions
     override val mastery: MasteryStore get() = scope.mastery
 

@@ -35,10 +35,12 @@ class ReadingFlowTest {
         rule.onNodeWithText("Your starting point").assertExists()
         rule.onNode(hasScrollToNodeAction()).performScrollToNode(hasTestTag("start_tutor"))
         rule.onNodeWithTag("start_tutor").performClick()
-        rule.waitUntil(10000) { rule.onAllNodesWithText("Talk through the document").fetchSemanticsNodes().isNotEmpty() }
-        rule.onNodeWithTag("tutor_list").performScrollToNode(hasTestTag("tutor_example"))
+        rule.waitUntil(10000) { rule.onAllNodesWithTag("explainer_stage").fetchSemanticsNodes().isNotEmpty() }
+        // The explanation is a scene now: page through the first message, then the choice bar offers the next step.
+        rule.waitUntil(10000) { rule.onAllNodesWithTag("dialogue_text").fetchSemanticsNodes().isNotEmpty() }
+        repeat(4) { if (rule.onAllNodesWithTag("tutor_example").fetchSemanticsNodes().isEmpty()) rule.onNodeWithTag("dialogue_box").performClick() }
         rule.onNodeWithTag("tutor_example").performClick()
-        rule.onNodeWithTag("tutor_list").performScrollToNode(hasTestTag("message_source"))
+        rule.waitUntil(10000) { rule.onAllNodesWithTag("typing_indicator").fetchSemanticsNodes().isEmpty() && rule.onAllNodesWithTag("message_source").fetchSemanticsNodes().isNotEmpty() }
         rule.onAllNodesWithTag("message_source").onFirst().assertExists()
         rule.onNodeWithText("Start practice").assertDoesNotExist()
     }

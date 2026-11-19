@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="explainer_name">阿雅</string>
+    <string name="explainer_trait">你的读书向导</string>
+    <string name="explainer_theme_paper">纸张</string>
+    <string name="explainer_theme_illustrated">插画</string>
+    <string name="explainer_diag_line">先来 %1$d 道小问题。不知道也没关系。</string>
+    <string name="explainer_assess_line">这是每个概念目前的位置。我们先从还模糊的讲起。</string>
+    <string name="explainer_stage_desc">%1$s 正在讲解这篇文档。点一下继续。</string>
+    <string name="explainer_tap_next">下一句</string>
+    <string name="explainer_log">记录</string>
+    <string name="explainer_log_title">到目前为止的对话</string>
+    <string name="explainer_ask">追问</string>
+    <string name="explainer_ask_title">问问 %1$s</string>
+    <string name="explainer_finish">回到书架</string>
+    <string name="explainer_show_source">查看原文 · 第 %1$s 页</string>
+    <string name="explainer_page_of">%1$d / %2$d</string>
+    <string name="explainer_thinking">%1$s 正在思考</string>
+    <string name="explainer_cancel">取消</string>
+    <string name="explainer_concept">概念 %1$d/%2$d</string>
+</resources>

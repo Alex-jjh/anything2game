@@ -12,6 +12,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -40,23 +41,33 @@ fun ReadingContent(deps: AppDependencies, packageId: String, onBack: () -> Unit)
     val list = rememberLazyListState()
     var input by rememberSaveable(packageId) { mutableStateOf("") }
     var sourceRefs by remember { mutableStateOf<List<SourceRef>>(emptyList()) }
+    // What the player last asked of the explainer: it decides the explainer's expression and whether the question is shown as a line.
+    var lastIntent by rememberSaveable(packageId) { mutableStateOf<TutorIntent?>(null) }
+    val context = LocalContext.current
+    val theme = remember(profileId, context) { ExplainerThemes.resolve(context, deps.explainerPreferences.get()) }
+    val turn: (TutorIntent, String) -> Unit = { intent, question -> lastIntent = intent; vm.turn(intent, question) }
     var unsupported by remember { mutableStateOf<LearningPackage?>(null) }
     LaunchedEffect(state.unsupported) {
         if (state.unsupported) unsupported = deps.packages.load(packageId).getOrNull()
     }
     val phase = when { s == null -> 0; s.assessment.isEmpty() -> 1; s.messages.isEmpty() -> 2; else -> 3 }
     LaunchedEffect(phase, c?.questionIndex) { list.scrollToItem(0) }
-    LaunchedEffect(s?.messages?.size) {
-        if (phase == 3) { input = ""; if (list.layoutInfo.totalItemsCount > 0) list.animateScrollToItem((list.layoutInfo.totalItemsCount - 1).coerceAtLeast(0)) }
-    }
     Scaffold(containerColor = skin.paper) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding().testTag("tutor_list"), state = list,
+        if (phase == 3 && s != null) ExplainerTheatre(
+            s, theme, busy = state.busy, enabled = !state.busy && state.problem == null, offline = state.offline, problem = state.problem,
+            lastIntent = lastIntent, input = input, onInput = { input = it }, onTurn = turn, onSource = { sourceRefs = it },
+            onRetry = vm::retry, onReload = vm::reload, onCancel = vm::cancelPending, onBack = { if (state.busy) vm.cancelPending(); onBack() },
+            modifier = Modifier.padding(padding).consumeWindowInsets(padding),
+        ) else LazyColumn(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding().testTag("tutor_list"), state = list,
             contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)) {
             item {
-                TextButton(onClick = { if (state.busy) vm.cancelPending(); onBack() }) { Text(stringResource(R.string.action_back)) }
-                Text(stringResource(when (phase) { 2 -> R.string.tutor_assessment_title; 3 -> R.string.tutor_chat_title; else -> R.string.tutor_diagnostic_title }), style = MaterialTheme.typography.headlineMedium, color = skin.ink)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = { if (state.busy) vm.cancelPending(); onBack() }) { Text(stringResource(R.string.action_back)) }
+                    Text(stringResource(if (phase == 2) R.string.tutor_assessment_title else R.string.tutor_diagnostic_title), style = MaterialTheme.typography.titleLarge, color = skin.ink)
+                }
             }
+            if (s != null && phase in 1..2) item { ExplainerHeader(theme, if (phase == 1) stringResource(R.string.explainer_diag_line, s.questions.size) else stringResource(R.string.explainer_assess_line), state.busy) }
             if (s != null) item {
                 Text(s.title, style = MaterialTheme.typography.titleMedium, color = skin.inkMuted)
                 Badge(stringResource(when (s.mode) { "local-mock" -> R.string.tutor_fixed_badge; "mock" -> R.string.tutor_server_mock_badge; else -> R.string.tutor_model_badge }), skin.evidence, skin.evidenceSoft)
@@ -116,34 +127,7 @@ fun ReadingContent(deps: AppDependencies, packageId: String, onBack: () -> Unit)
                             Badge(stringResource(when (evidence) { Understanding.DEMONSTRATED -> R.string.tutor_correct; Understanding.NEEDS_CLARIFICATION -> R.string.tutor_clarify; Understanding.NOT_YET_ASSESSED -> R.string.tutor_not_assessed }), skin.action, skin.evidenceSoft)
                         }
                     }
-                    item { Button(onClick = { vm.turn(TutorIntent.START) }, enabled = enabled, modifier = Modifier.fillMaxWidth().testTag("start_tutor")) { Text(stringResource(R.string.tutor_start)) } }
-                }
-                3 -> {
-                    items(s.messages, key = { it.id }) { message ->
-                        val user = message.role == "user"
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = if (user) Arrangement.End else Arrangement.Start) {
-                            Column(Modifier.widthIn(max = 520.dp).fillMaxWidth(if (user) .9f else 1f)
-                                .background(if (user) skin.evidenceSoft else skin.card, RoundedCornerShape(18.dp)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text(stringResource(if (user) R.string.tutor_you else R.string.tutor_teacher), style = MaterialTheme.typography.labelMedium, color = skin.action)
-                                Text(message.text, color = skin.ink, style = MaterialTheme.typography.bodyLarge)
-                                if (message.sourceRefs.isNotEmpty()) TextButton(onClick = { sourceRefs = message.sourceRefs }, modifier = Modifier.testTag("message_source")) { Text(stringResource(R.string.reading_source)) }
-                            }
-                        }
-                    }
-                    item {
-                        Text(stringResource(R.string.tutor_concept_count, s.conceptPosition + 1, s.questions.size), color = skin.inkMuted, style = MaterialTheme.typography.labelMedium)
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton(onClick = { vm.turn(TutorIntent.REPHRASE) }, enabled = enabled && s.messages.size < 80, modifier = Modifier.testTag("tutor_rephrase")) { Text(stringResource(R.string.tutor_rephrase)) }
-                            OutlinedButton(onClick = { vm.turn(TutorIntent.EXAMPLE) }, enabled = enabled && s.messages.size < 80, modifier = Modifier.testTag("tutor_example")) { Text(stringResource(R.string.tutor_example)) }
-                            Button(onClick = { vm.turn(TutorIntent.CONTINUE) }, enabled = enabled && s.messages.size < 80 && s.conceptPosition < s.questions.lastIndex) { Text(stringResource(R.string.tutor_continue)) }
-                        }
-                        if (s.conceptPosition == s.questions.lastIndex) Text(stringResource(R.string.tutor_all_introduced), color = skin.inkMuted)
-                        OutlinedTextField(value = input, onValueChange = { input = it.take(1000) }, modifier = Modifier.fillMaxWidth().testTag("tutor_input"),
-                            label = { Text(stringResource(R.string.tutor_input)) }, minLines = 2, maxLines = 5, enabled = enabled)
-                        Button(onClick = { vm.turn(TutorIntent.QUESTION, input) }, modifier = Modifier.fillMaxWidth(), enabled = enabled && input.isNotBlank() && s.messages.size < 80) { Text(stringResource(R.string.tutor_send)) }
-                        Text(stringResource(if (s.mode == "model") R.string.tutor_model_note else R.string.tutor_script_note), color = skin.inkMuted, style = MaterialTheme.typography.bodySmall)
-                        if (s.messages.size >= 80) Text(stringResource(R.string.tutor_limit), color = skin.hint)
-                    }
+                    item { Button(onClick = { turn(TutorIntent.START, "") }, enabled = enabled, modifier = Modifier.fillMaxWidth().testTag("start_tutor")) { Text(stringResource(R.string.tutor_start)) } }
                 }
             }
         }
