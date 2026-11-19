@@ -36,6 +36,8 @@ abstract class LlmFrameNode(
     final override val frameId: FrameId,
     private val promptName: String,
     private val llm: LlmClient,
+    /** Experiment (A2G_FRAME_INPUT=cited): send only the chunks the units cite instead of the whole document. */
+    private val citedOnly: Boolean = false,
 ) : FrameNode {
 
     final override suspend fun generate(pkg: LearningPackage): FrameOverlay {
@@ -63,9 +65,14 @@ abstract class LlmFrameNode(
             mapOf(
                 "language" to pkg.language,
                 "package" to PromptFormat.tag("package", structure),
-                "document" to PromptFormat.documentBlock(pkg.sources),
+                "document" to PromptFormat.documentBlock(if (citedOnly) citedChunks(pkg) else pkg.sources),
             ),
         )
+    }
+
+    private fun citedChunks(pkg: LearningPackage): List<com.anything2game.contract.SourceChunk> {
+        val ids = pkg.levels.flatMap { l -> l.units.flatMap { u -> (listOf(u.item) + u.variants).flatMap { it.allSourceRefs } } }.map { it.chunkId }.toSet()
+        return pkg.sources.filter { it.chunkId in ids }.ifEmpty { pkg.sources }
     }
 
     private fun parseAndValidate(raw: String, pkg: LearningPackage): Pair<FrameOverlay?, List<String>> {
@@ -93,10 +100,10 @@ abstract class LlmFrameNode(
     companion object { const val MAX_TOKENS = 16000 } // raised from 8000 (2026-11-18 eval)
 }
 
-class CaseFrameNode(llm: LlmClient) : LlmFrameNode(FrameId.CASE, "frame-case.v1", llm)
-class EscapeFrameNode(llm: LlmClient) : LlmFrameNode(FrameId.ESCAPE, "frame-escape.v1", llm)
-class RookieFrameNode(llm: LlmClient) : LlmFrameNode(FrameId.ROOKIE, "frame-rookie.v1", llm)
-class CompanionFrameNode(llm: LlmClient) : LlmFrameNode(FrameId.COMPANION, "frame-companion.v1", llm)
+class CaseFrameNode(llm: LlmClient, citedOnly: Boolean = false) : LlmFrameNode(FrameId.CASE, "frame-case.v1", llm, citedOnly)
+class EscapeFrameNode(llm: LlmClient, citedOnly: Boolean = false) : LlmFrameNode(FrameId.ESCAPE, "frame-escape.v1", llm, citedOnly)
+class RookieFrameNode(llm: LlmClient, citedOnly: Boolean = false) : LlmFrameNode(FrameId.ROOKIE, "frame-rookie.v1", llm, citedOnly)
+class CompanionFrameNode(llm: LlmClient, citedOnly: Boolean = false) : LlmFrameNode(FrameId.COMPANION, "frame-companion.v1", llm, citedOnly)
 
 /** The clean path: units in order, no story. It needs no overlay, so there is nothing to generate or store. */
 class ClassicFrameNode : FrameNode {
@@ -111,8 +118,8 @@ class FrameNodeRegistry(nodes: List<FrameNode>) {
     val ids: Set<FrameId> get() = byId.keys
 
     companion object {
-        fun default(llm: LlmClient) = FrameNodeRegistry(
-            listOf(ClassicFrameNode(), CaseFrameNode(llm), EscapeFrameNode(llm), RookieFrameNode(llm), CompanionFrameNode(llm)),
+        fun default(llm: LlmClient, citedOnly: Boolean = false) = FrameNodeRegistry(
+            listOf(ClassicFrameNode(), CaseFrameNode(llm, citedOnly), EscapeFrameNode(llm, citedOnly), RookieFrameNode(llm, citedOnly), CompanionFrameNode(llm, citedOnly)),
         )
     }
 }

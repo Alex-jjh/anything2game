@@ -96,6 +96,10 @@ data class ServerConfig(
     val workerConcurrency: Int = 2,
     /** `A2G_PIPELINE` (classic | layered, experiment) and `A2G_SUPPORT_GATE`. The gate is ON by default since the 2026-11-19 A/B (wrong answer parts 2.7 % → 0.7 %; docs/testing/eval-2026-11-19-ab.md). */
     val pipeline: PipelineKind = PipelineKind.CLASSIC,
+    /** Experiment knobs (A2G_LEVEL_PROMPT, A2G_FRAME_INPUT); defaults = shipped behaviour. */
+    val levelPrompt: String = "level.v1",
+    /** `document`: frame writers read every chunk; `cited`: only the chunks the package's units cite. */
+    val frameInput: String = "document",
     val supportGate: Boolean = true,
     /** Layered pipeline: how many unit (and claim batch) calls run at once (`A2G_LAYERED_PARALLELISM`). */
     val layeredParallelism: Int = 6,
@@ -171,6 +175,12 @@ data class ServerConfig(
                 workerLeaseMillis = int("A2G_WORKER_LEASE_SECONDS", (d.workerLeaseMillis / 1000).toInt(), 5..3600) * 1000L,
                 workerPollMillis = int("A2G_WORKER_POLL_MS", d.workerPollMillis.toInt(), 50..60_000).toLong(),
                 workerConcurrency = int("A2G_WORKER_CONCURRENCY", d.workerConcurrency, 1..16),
+                levelPrompt = (get("A2G_LEVEL_PROMPT") ?: "level.v1").also {
+                    if (it !in setOf("level.v1", "level.v2")) throw ConfigException("A2G_LEVEL_PROMPT must be level.v1 | level.v2 (got '$it')")
+                },
+                frameInput = (get("A2G_FRAME_INPUT")?.lowercase() ?: "document").also {
+                    if (it !in setOf("document", "cited")) throw ConfigException("A2G_FRAME_INPUT must be document | cited (got '$it')")
+                },
                 pipeline = when (val v = get("A2G_PIPELINE")?.lowercase() ?: "classic") {
                     "classic" -> PipelineKind.CLASSIC
                     "layered" -> PipelineKind.LAYERED

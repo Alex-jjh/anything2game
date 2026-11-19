@@ -196,7 +196,7 @@ class CompileJobRunner(
             val plan = planNode.run(PlanInput(doc, job.options))
             if (!transition(jobId, CompileJobState.GENERATING) { it.copy(levelsPlanned = plan.levels.size) }) return false
 
-            val shell = shell(job, doc, "plan.v1+level.v1" + gateSuffix())
+            val shell = shell(job, doc, "plan.v1+${levelNode.promptName}" + gateSuffix())
             val stats = if (classicGate != null) GenerationStats(jobId, "classic", gate = true) else null
             // Level 1 is started first (UNDISPATCHED = it reaches the permit queue before level 2 exists); the rest follow in parallel.
             val outcomes: List<LevelOutcome> = try {

@@ -25,14 +25,14 @@ data class LevelDraft(
 )
 
 /** One planned level in, a contract [Level] draft out (not yet validated). */
-class LevelNode(private val llm: LlmClient) : PipelineNode<LevelInput, LevelDraft> {
+class LevelNode(private val llm: LlmClient, val promptName: String = "level.v1") : PipelineNode<LevelInput, LevelDraft> {
     override val id = "level"
 
     override suspend fun run(input: LevelInput): LevelDraft {
         val wanted = input.planned.units.flatMap { it.chunkIds }.toSet()
         val chunks = input.chunks.filter { it.chunkId in wanted }.ifEmpty { input.chunks }
         val prompt = PromptTemplates.render(
-            "level.v1",
+            promptName,
             mapOf(
                 "language" to input.options.language,
                 "minutes" to input.options.minutesPerLevel.toString(),

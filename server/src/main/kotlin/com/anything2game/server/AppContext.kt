@@ -51,7 +51,7 @@ class AppContext(
     val installTokens = InstallTokenAuthenticator(store)
     val authenticator: Authenticator = CompositeAuthenticator(jwtAuthenticator, installTokens)
     val quotas = Quotas(store, config.limits)
-    val frames = FrameService(store, FrameNodeRegistry.default(router.client(Tier.FRAME)))
+    val frames = FrameService(store, FrameNodeRegistry.default(router.client(Tier.FRAME), citedOnly = config.frameInput == "cited"))
     val ask = AskService(router.client(Tier.FLASH), config.askTimeoutMillis)
     val runner: CompileJobRunner
 
@@ -65,7 +65,7 @@ class AppContext(
         val classicGate = if (gate != null && layered == null) ClassicGate(compile, gate, config.layeredParallelism) else null
         runner = CompileJobRunner(
             jobs = store, documents = store, packages = store,
-            planNode = PlanNode(compile), levelNode = LevelNode(compile), validateNode = ValidateNode(compile),
+            planNode = PlanNode(compile), levelNode = LevelNode(compile, config.levelPrompt), validateNode = ValidateNode(compile),
             publishNode = PublishNode(store, store, workerId), frames = frames, defaultFrames = config.defaultFrames,
             compileModelId = compile.modelId, scope = scope, workerId = workerId,
             leaseMillis = config.workerLeaseMillis, pollMillis = config.workerPollMillis, maxParallelJobs = config.workerConcurrency,

@@ -57,3 +57,31 @@ class ClaimCheckFailureTest {
         assertEquals(2, stats.claimsDroppedEntailment.get())
     }
 }
+
+/** Experiment knobs A2G_LEVEL_PROMPT and A2G_FRAME_INPUT (2026-11-19). */
+class ExperimentKnobsTest {
+    @Test fun `knobs default to shipped behaviour and refuse unknown values`() {
+        val d = com.anything2game.server.config.ServerConfig.fromEnv(emptyMap())
+        assertEquals("level.v1", d.levelPrompt); assertEquals("document", d.frameInput)
+        val c = com.anything2game.server.config.ServerConfig.fromEnv(mapOf("A2G_LEVEL_PROMPT" to "level.v2", "A2G_FRAME_INPUT" to "cited"))
+        assertEquals("level.v2", c.levelPrompt); assertEquals("cited", c.frameInput)
+        val bad = runCatching { com.anything2game.server.config.ServerConfig.fromEnv(mapOf("A2G_FRAME_INPUT" to "all")) }
+        assertEquals(true, bad.exceptionOrNull()?.message?.contains("A2G_FRAME_INPUT"))
+    }
+
+    @Test fun `cited frame input sends only the chunks the units cite`() = runBlocking {
+        val pkg = com.anything2game.contract.ContractJson.decodePackage(java.io.File(System.getProperty("contract.examples") ?: "contract/examples", "package.v1.example.json").readText())
+        val seen = mutableListOf<String>()
+        val spy = object : LlmClient {
+            override val modelId = "spy"
+            override suspend fun completeJson(request: LlmRequest): String { seen += request.user; throw LlmException(LlmException.Kind.BAD_RESPONSE, "stop") }
+        }
+        // add an uncited chunk; it must not reach the frame writer
+        val withExtra = pkg.copy(sources = pkg.sources + SourceChunk("c99", 3, "4", "UNCITED-MARKER text that no unit cites."))
+        runCatching { com.anything2game.server.compile.CaseFrameNode(spy, citedOnly = true).generate(withExtra) }
+        assertEquals(false, seen.first().contains("UNCITED-MARKER"))
+        seen.clear()
+        runCatching { com.anything2game.server.compile.CaseFrameNode(spy).generate(withExtra) }
+        assertEquals(true, seen.first().contains("UNCITED-MARKER"))
+    }
+}
