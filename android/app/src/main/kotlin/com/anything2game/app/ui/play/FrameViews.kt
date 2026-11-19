@@ -289,6 +289,18 @@ internal fun frameName(frameId: FrameId) = when (frameId) {
  */
 internal val framesByIntent = listOf(FrameId.CLASSIC, FrameId.CASE, FrameId.ROOKIE, FrameId.ESCAPE, FrameId.COMPANION)
 
+/**
+ * Which frames Practice offers for a course (docs/product/frames.md §4): only generated ones; Companion is folded
+ * into the Learn tab (the tutor does "first pass" better); Escape only when the reading has real process content
+ * to put in order, otherwise its rooms are Classic with walls. Open sessions in any frame still resume.
+ */
+internal fun offeredFrames(pkg: com.anything2game.contract.LearningPackage, available: Collection<FrameId>): List<FrameId> {
+    val units = pkg.levels.flatMap { it.units }
+    val process = units.count { it.knowledgeType == com.anything2game.contract.KnowledgeType.PROCESS || it.mechanic == com.anything2game.contract.Mechanic.ORDER }
+    val processHeavy = process >= 2 || (units.isNotEmpty() && process * 4 >= units.size)
+    return framesByIntent.filter { it in available && it != FrameId.COMPANION && (it != FrameId.ESCAPE || processHeavy) }
+}
+
 internal fun frameBestFor(frameId: FrameId) = when (frameId) {
     FrameId.CLASSIC -> R.string.frame_classic_best
     FrameId.CASE -> R.string.frame_case_best

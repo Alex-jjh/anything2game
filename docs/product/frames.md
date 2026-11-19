@@ -23,6 +23,33 @@ That keeps the content honest and costs nothing extra to generate. It also means
 
 So the essential difference is the **cognitive act** of the final challenge and of what comes before each clue, matched to **the reader's state**. The story only motivates that act.
 
+## 2b. Why a player would find each one fun (user view, hypotheses to test)
+
+Assigned reading is a chore with a deadline. A frame earns its place only if it turns that chore into a small want. Each "want" below is a hypothesis for the 5-person test (§6), not a fact.
+
+| Frame | The moment players remember | Why it pulls | What would kill it |
+|---|---|---|---|
+| Classic | "Done in two minutes, 3 of 4." | **Competence with no ceremony**: a clear small win in a dead moment (queue, metro) | feeling like homework when it shows up too often |
+| Case | Holding to object, then **OVERCLAIM** stamped on the AI's sentence, with the page that proves it | **A villain who is a summary**: catching a confident machine out is satisfying and feels clever. The earlier clues pay off as ammunition (Ace-Attorney-style genre payoff). The player keeps **agency**: they choose which sentence to doubt | an overclaim that is too obvious, or one that is unfair (the evidence was never collected) |
+| Rookie | "Sam got it wrong and *I* knew why." | **Being the expert** (protégé effect): explaining feels like status, not a test. It is relatedness with a character who needs you | a rookie who is patronising or whose mistakes are silly |
+| Escape | The door opening after the lock | **Progress you can see** (room by room) and a goal at the end; good for readings that are a process | rooms that are just walls between unrelated questions (hence: Escape only for process-heavy courses) |
+| Learn (tutor; replaces Companion) | "It started from what I didn't know." | **Relief**: no pressure to know it already, and it is personal, explaining only the gaps | long explanations that become a summary to re-read |
+
+What cuts across all of them:
+- **Your own character comes along.** It reacts to *your* moves (leans with the card, swells while you hold, sleeps when you walk), so the progress feels like yours.
+- **Choice is the first act.** Picking how to play (autonomy) lowers the pressure the team noticed (Q31) and makes the session feel chosen.
+- **Every verdict shows its page.** Trust makes winning feel earned rather than lucky.
+- **Coming back is a feature, not guilt.** Tomorrow's review brings back exactly what you missed, with no streak shaming.
+
+What we deliberately avoid: points for their own sake, timers, streak guilt, long dialogue, guessing games with no way to check.
+
+**How we check (5-person test, PRODUCT.md §5):**
+- Given the choice, does the player pick a non-Classic frame a second time?
+- Do they finish the level, and do they replay it?
+- Can they name the moment they liked?
+- Would they tell a classmate?
+- For Rookie: do players say the teach-back felt different from the clue before it?
+
 ## 3. Where the frames are still thin
 
 1. **The middle clues do not change.** In Case, Escape and Rookie, most of the play time is the same clue sequence. Only the beginning and the end differ.
@@ -46,4 +73,9 @@ Next steps that would make the differences go beyond the ends of a level, all ad
 
 ## 5. What is in the app now
 
-Practice shows **Play as** on every course card. It offers only the frames generated for that course, ordered by reader state: Classic → Case → Rookie → Escape → Companion. Under the chips it shows *what you do* and *when it fits*. Classic stays the default, an open session resumes in its own frame, and the choice is remembered per course and per profile.
+Practice shows **Play as** on every course card. It offers the generated frames ordered by reader state: Classic → Case → Rookie → Escape. Companion is folded into Learn. Escape appears only when a course has at least 2 process units, or process makes up at least a quarter of it (today: Attention and the zh spaced-repetition course). Under the chips it shows *what you do* and *when it fits*. Classic stays the default, an open session resumes in its own frame, and the choice is remembered per course and per profile.
+
+## 6. In progress (2026-11-20)
+
+- **Rookie teach-back** and **Escape room locks**: derived, read-only challenges built from the validated items, so each frame has its own act *during* the level, not only at the ends. Being built on branch `feat/derived-challenges`.
+- An independent test pass will play full levels in every frame once that lands.

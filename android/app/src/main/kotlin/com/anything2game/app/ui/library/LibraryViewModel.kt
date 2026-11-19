@@ -84,8 +84,7 @@ class LibraryViewModel(private val deps: AppDependencies) : ViewModel() {
             deps.packages.list().mapNotNull { summary ->
                 try {
                     val pkg = deps.packages.load(summary.packageId).getOrThrow()
-                    val available = deps.frames.available(pkg.packageId).toSet()
-                    val frames = com.anything2game.app.ui.play.framesByIntent.filter { it in available }
+                    val frames = com.anything2game.app.ui.play.offeredFrames(pkg, deps.frames.available(pkg.packageId))
                     libraryEntry(summary, pkg, deps.sessions.load(summary.packageId), deps.mastery.all(summary.packageId), deps.clock.now())
                         .copy(prepared = deps.homePreferences.isPrepared(pkg.packageId, pkg.contentVersion),
                             frames = frames, selectedFrame = deps.framePreferences.get(pkg.packageId)?.takeIf { it in frames } ?: FrameId.CLASSIC)
