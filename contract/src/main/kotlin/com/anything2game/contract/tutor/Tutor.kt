@@ -133,13 +133,13 @@ object TutorRules {
 
     /** The lead-in that opens a scripted turn, by what the reader's diagnostic answer showed. */
     fun leadIn(evidence: Understanding, zh: Boolean): String = if (zh) when (evidence) {
-        Understanding.DEMONSTRATED -> "你在这道基础题上答对了。我们简要连接到文章："
-        Understanding.NEEDS_CLARIFICATION -> "这道题提示我们先澄清一个区别："
-        Understanding.NOT_YET_ASSESSED -> "你选了不知道，我们从这个概念开始："
+        Understanding.DEMONSTRATED -> "这题你答对了，我们把它和原文连起来："
+        Understanding.NEEDS_CLARIFICATION -> "这题有个地方容易混，我们先把它分清："
+        Understanding.NOT_YET_ASSESSED -> "你选了不知道，那就从这里开始："
     } else when (evidence) {
-        Understanding.DEMONSTRATED -> "You answered this item correctly. Here is the connection to the document:"
-        Understanding.NEEDS_CLARIFICATION -> "Let us clarify this distinction first:"
-        Understanding.NOT_YET_ASSESSED -> "You chose not sure. Let us start with this concept:"
+        Understanding.DEMONSTRATED -> "You got this one right. Here is how it fits the reading:"
+        Understanding.NEEDS_CLARIFICATION -> "Your answer mixed something up, so let's clear that first:"
+        Understanding.NOT_YET_ASSESSED -> "You weren't sure, so let's start here:"
     }
 
     private val knownLeadIns: Set<String> = listOf(false, true).flatMap { zh -> Understanding.entries.map { leadIn(it, zh) } }.toSet()

@@ -46,7 +46,7 @@ class TutorApiTest {
         assertEquals(spoken.bodyAsText(), HttpStatusCode.OK, spoken.status)
         s = api.decode(TutorSession.serializer(), spoken)
         assertEquals(2, s.messages.size)
-        assertTrue(s.messages.last().text.contains("澄清"))
+        assertTrue(s.messages.last().text.contains("先把它分清"))
         assertEquals(s, api.decode(TutorSession.serializer(), api.send(HttpMethod.Post, "$tutorPath/turns", token, turn)))
         assertEquals(HttpStatusCode.BadRequest, api.send(HttpMethod.Post, "$tutorPath/turns", token, turn.replace("START", "EXAMPLE")).status)
         assertEquals(HttpStatusCode.Conflict, api.send(HttpMethod.Post, "$tutorPath/turns", token, turn.replace("turn-1", "stale")).status)

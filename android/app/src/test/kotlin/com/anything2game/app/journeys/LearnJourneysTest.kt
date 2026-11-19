@@ -141,9 +141,9 @@ class LearnJourneysTest : LearnJourneyBase() {
             // The concept name is the box's title and the lead-in a muted line under it; the first page is the real explanation.
             val first = pages.first()
             assertEquals(q.concept, textOf("dialogue_title").takeIf { has("dialogue_title") })
-            assertFalse("the first page repeats the concept name or the lead-in: $first", first.startsWith(q.concept) || first.contains("You chose") || first.contains("Let us clarify") || first.contains("You answered"))
+            assertFalse("the first page repeats the concept name or the lead-in: $first", first.startsWith(q.concept) || first.contains("You weren't sure") || first.contains("Your answer mixed") || first.contains("You got this one right"))
             assertTrue("body is the script's explanation", norm(msg.text).contains(norm(c.explanation)))
-            val prefix = when (understanding(attention, q)) { Understanding.DEMONSTRATED -> "You answered this item correctly"; Understanding.NEEDS_CLARIFICATION -> "Let us clarify"; else -> "You chose not sure" }
+            val prefix = when (understanding(attention, q)) { Understanding.DEMONSTRATED -> "You got this one right"; Understanding.NEEDS_CLARIFICATION -> "Your answer mixed something up"; else -> "You weren't sure" }
             assertTrue("prefix for ${q.id}: $prefix", msg.text.contains(prefix))
 
             // Show source -> the page of the very passage the concept rests on.
@@ -184,7 +184,7 @@ class LearnJourneysTest : LearnJourneyBase() {
         val first = conceptsInTeachingOrder(attention).first()
         assertEquals("q3", first.id)
         assertEquals(Understanding.NEEDS_CLARIFICATION, understanding(attention, first))
-        assertTrue(lastTutorMessage(attention).text.contains("Let us clarify"))
+        assertTrue(lastTutorMessage(attention).text.contains("Your answer mixed something up"))
     }
 
     @Test fun letting_the_explainer_decide_keeps_the_scripts_own_order_and_starts_with_what_is_not_known() {
