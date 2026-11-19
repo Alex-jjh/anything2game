@@ -21,7 +21,7 @@
     </plurals>
     <string name="home_start_reading">View material</string>
     <string name="home_read_first_action">Read the source</string>
-    <string name="home_classic">CLASSIC · BY DOCUMENT</string>
+    <string name="home_classic">BY DOCUMENT · CHOOSE HOW TO PLAY</string>
     <string name="home_level_solid">Consolidated</string>
     <string name="home_resume">Continue your session</string>
     <string name="home_practice_action">Start practice</string>

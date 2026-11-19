@@ -78,11 +78,11 @@
     <string name="frame_escape">Escape</string>
     <string name="frame_rookie">Rookie</string>
     <string name="frame_companion">Companion</string>
-    <string name="frame_classic_desc">A clean path through the clues.</string>
-    <string name="frame_case_desc">Catch the AI summary overclaiming — with the page.</string>
-    <string name="frame_escape_desc">Each room opens when you understand one part.</string>
-    <string name="frame_rookie_desc">A junior asks; you fix their notes.</string>
-    <string name="frame_companion_desc">A partner walks you through, line by line.</string>
+    <string name="frame_classic_desc">Answer the clues straight, no story.</string>
+    <string name="frame_case_desc">Collect evidence, then catch the AI summary overclaiming — with the page.</string>
+    <string name="frame_escape_desc">Each room is one part of the reading; the exit opens when the steps fit together.</string>
+    <string name="frame_rookie_desc">A junior asks before each clue; at the end you correct their notes.</string>
+    <string name="frame_companion_desc">A partner introduces each clue in a few cited lines.</string>
     <string name="action_continue">Continue</string>
     <string name="scene_room">Room</string>
     <string name="crossexam_instruction">Tap the statement that goes beyond the evidence.</string>
@@ -171,4 +171,11 @@
     <string name="profile_guest_action">Start as guest</string>
     <string name="profile_local_note">No account needed. Each profile keeps its own progress on this phone; switching deletes nothing.</string>
     <string name="profile_switch">Switch profile</string>
+    <!-- Frames by what you do and when they fit (docs/product/frames.md) -->
+    <string name="frame_classic_best">Best for a quick review in a two-minute gap.</string>
+    <string name="frame_case_best">Best when you have read it and want to check what you really know.</string>
+    <string name="frame_escape_best">Best for methods and processes: how the parts connect.</string>
+    <string name="frame_rookie_best">Best when you know it: explaining is the deepest test.</string>
+    <string name="frame_companion_best">Best for a first pass, before you have read it.</string>
+    <string name="practice_play_as">Play as</string>
 </resources>

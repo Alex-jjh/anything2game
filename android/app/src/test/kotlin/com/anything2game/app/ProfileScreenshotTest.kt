@@ -51,7 +51,9 @@ class ProfileScreenshotTest {
             deps.profiles.choose(LocalProfile.SAMPLE)
             LibraryUiState(loading = false, entries = deps.packages.list().map { sum ->
                 val pkg = deps.packages.load(sum.packageId).getOrThrow()
+                val frames = com.anything2game.app.ui.play.framesByIntent.filter { it in deps.frames.available(pkg.packageId) }
                 libraryEntry(sum, pkg, deps.sessions.load(sum.packageId), deps.mastery.all(sum.packageId), deps.clock.now())
+                    .copy(frames = frames, selectedFrame = com.anything2game.contract.FrameId.CASE.takeIf { it in frames } ?: frames.first())
             })
         }
         val avatarId = deps.avatarPreferences.get() ?: "mochi"

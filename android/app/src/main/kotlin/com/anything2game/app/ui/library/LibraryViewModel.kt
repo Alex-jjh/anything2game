@@ -36,7 +36,8 @@ data class LibraryEntry(
     val documentId: String = "",
     val mock: Boolean = false,
 ) {
-    fun frameFor(levelId: String): FrameId = if (levelId == resumableLevelId) resumeFrame else FrameId.CLASSIC
+    /** An open session resumes in its own frame; anything new starts in the frame the player chose (Classic by default). */
+    fun frameFor(levelId: String): FrameId = if (levelId == resumableLevelId) resumeFrame else selectedFrame
 }
 
 data class LevelEntry(val levelId: String, val number: Int, val title: String, val status: LevelStatus)
@@ -83,8 +84,11 @@ class LibraryViewModel(private val deps: AppDependencies) : ViewModel() {
             deps.packages.list().mapNotNull { summary ->
                 try {
                     val pkg = deps.packages.load(summary.packageId).getOrThrow()
+                    val available = deps.frames.available(pkg.packageId).toSet()
+                    val frames = com.anything2game.app.ui.play.framesByIntent.filter { it in available }
                     libraryEntry(summary, pkg, deps.sessions.load(summary.packageId), deps.mastery.all(summary.packageId), deps.clock.now())
-                        .copy(prepared = deps.homePreferences.isPrepared(pkg.packageId, pkg.contentVersion))
+                        .copy(prepared = deps.homePreferences.isPrepared(pkg.packageId, pkg.contentVersion),
+                            frames = frames, selectedFrame = deps.framePreferences.get(pkg.packageId)?.takeIf { it in frames } ?: FrameId.CLASSIC)
                 } catch (e: CancellationException) { throw e }
                 catch (_: Exception) { failed = true; null }
             }

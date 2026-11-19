@@ -16,6 +16,7 @@ Language: documents are in English. Some teammate design docs are in Chinese (ma
 | `product/` | Every question the owner raised → answer → where it is decided | [question-log.md](product/question-log.md) | living |
 | `product/` | PM + game design: what you play, how it adapts | [game-design.md](product/game-design.md) | draft |
 | `product/` | How a course starts: explain vs play first, game comparison, start-up pressure, reading map + focus choice | [onboarding-and-focus.md](product/onboarding-and-focus.md) | opening superseded by the tutor diagnostic; focus/facets still open |
+| `product/` | What really differs between the 5 frames (same clues; different act and reader state); recommendation | [frames.md](product/frames.md) | for team decision |
 | `design/` | Design review: principles from research, audit with real content, 3 visual directions, action list | [design-review-2026-11-19.md](design/design-review-2026-11-19.md) | for team decision |
 | `design/` | Engagement flow: the 8 beats of a Case level, why each pulls, built vs next; storyboard of the real build | [engagement-flow.md](design/engagement-flow.md) · [hero-flow.png](design/screens/hero-flow.png) | draft for team |
 | `design/` | Player characters: pick your own, procedural motion, how it reacts, how the team's art swaps in | [characters.md](design/characters.md) | draft for team |

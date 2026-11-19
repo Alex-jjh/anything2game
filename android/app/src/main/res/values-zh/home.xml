@@ -20,7 +20,7 @@
     </plurals>
     <string name="home_start_reading">查看资料</string>
     <string name="home_read_first_action">查看资料原文</string>
-    <string name="home_classic">经典巩固 · 按资料归档</string>
+    <string name="home_classic">按资料归档 · 可选玩法</string>
     <string name="home_level_solid">已巩固</string>
     <string name="home_resume">继续上次进度</string>
     <string name="home_practice_action">开始巩固</string>

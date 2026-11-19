@@ -72,7 +72,7 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator, onPickPdf: () -> Unit) 
                         onRename = { nickname = it; deps.homePreferences.nickname = it },
                         onPickPdf = onPickPdf, onRead = navigator::openRead, onPlay = navigator::openPlay,
                         onSelectTab = selectTab, onRetry = { vm.refresh() }, padding = padding, simulator = simulator, onPreparePractice = vm::preparePractice,
-                        onSwitchProfile = { navigator.toHome(); deps.profiles.leave() })
+                        onSwitchProfile = { navigator.toHome(); deps.profiles.leave() }, onSelectFrame = vm::selectFrame)
                 }
             }
         }

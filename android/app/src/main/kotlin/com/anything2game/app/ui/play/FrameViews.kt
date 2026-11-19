@@ -283,6 +283,20 @@ internal fun frameName(frameId: FrameId) = when (frameId) {
     FrameId.COMPANION -> R.string.frame_companion
 }
 
+/**
+ * Frames ordered by the reader's state, not by build order: quick review → check what you know → teach it →
+ * structure → first pass. The items are the same in every frame; what differs is what you do with them (frames.md).
+ */
+internal val framesByIntent = listOf(FrameId.CLASSIC, FrameId.CASE, FrameId.ROOKIE, FrameId.ESCAPE, FrameId.COMPANION)
+
+internal fun frameBestFor(frameId: FrameId) = when (frameId) {
+    FrameId.CLASSIC -> R.string.frame_classic_best
+    FrameId.CASE -> R.string.frame_case_best
+    FrameId.ESCAPE -> R.string.frame_escape_best
+    FrameId.ROOKIE -> R.string.frame_rookie_best
+    FrameId.COMPANION -> R.string.frame_companion_best
+}
+
 internal fun frameDescription(frameId: FrameId) = when (frameId) {
     FrameId.CLASSIC -> R.string.frame_classic_desc
     FrameId.CASE -> R.string.frame_case_desc

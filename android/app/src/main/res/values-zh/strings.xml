@@ -78,11 +78,11 @@
     <string name="frame_escape">密室</string>
     <string name="frame_rookie">教新人</string>
     <string name="frame_companion">陪伴</string>
-    <string name="frame_classic_desc">简洁地一关关做下去。</string>
-    <string name="frame_case_desc">拿着原文，拆穿说过头的 AI 总结。</string>
-    <string name="frame_escape_desc">弄懂一部分，打开一扇门。</string>
-    <string name="frame_rookie_desc">新人提问，你来改他的笔记。</string>
-    <string name="frame_companion_desc">搭档陪你一句句过。</string>
+    <string name="frame_classic_desc">直接答题，没有剧情。</string>
+    <string name="frame_case_desc">收集证据，再用原文揭穿说过头的 AI 摘要。</string>
+    <string name="frame_escape_desc">每个房间是资料的一部分，各部分衔接对了才能出门。</string>
+    <string name="frame_rookie_desc">新人每题前先问你，最后由你改他的笔记。</string>
+    <string name="frame_companion_desc">每题前同伴先用几句话带你入门，句句有出处。</string>
     <string name="action_continue">继续</string>
     <string name="scene_room">房间</string>
     <string name="crossexam_instruction">点出超出证据的那一句。</string>
@@ -171,4 +171,11 @@
     <string name="profile_guest_action">以访客开始</string>
     <string name="profile_local_note">不需要账号。每个身份的进度都单独保存在这台手机上，切换不会删除任何内容。</string>
     <string name="profile_switch">切换身份</string>
+    <!-- Frames by what you do and when they fit (docs/product/frames.md) -->
+    <string name="frame_classic_best">适合：等车两分钟的快速复习。</string>
+    <string name="frame_case_best">适合：读过了，想检验自己是不是真懂。</string>
+    <string name="frame_escape_best">适合：方法、流程类内容，理清各部分怎么衔接。</string>
+    <string name="frame_rookie_best">适合：已经会了——讲给别人听最考验理解。</string>
+    <string name="frame_companion_best">适合：还没读，第一次接触。</string>
+    <string name="practice_play_as">玩法</string>
 </resources>

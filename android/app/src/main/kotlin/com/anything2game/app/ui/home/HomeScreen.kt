@@ -70,6 +70,7 @@ fun HomeContent(
     onPlay: (String, String, FrameId) -> Unit, onSelectTab: (HomeTab) -> Unit, onRetry: () -> Unit,
     padding: PaddingValues = PaddingValues(), simulator: (@Composable () -> Unit)? = null, onPreparePractice: (String) -> Unit = {},
     onSwitchProfile: (() -> Unit)? = null,
+    onSelectFrame: (String, FrameId) -> Unit = { _, _ -> },
 ) {
     val skin = A2g.skin
     LazyColumn(
@@ -150,6 +151,7 @@ fun HomeContent(
                     PaperCard {
                         PackageHeading(entry)
                         TextButton(onClick = { onRead(entry.summary.packageId) }) { Text(stringResource(R.string.home_read_first_action)) }
+                        if (entry.frames.size > 1) PlayAs(entry.frames, entry.selectedFrame) { onSelectFrame(entry.summary.packageId, it) }
                         entry.levels.forEach { level ->
                             HorizontalDivider(color = skin.outline.copy(alpha = .4f))
                             Text(level.title, color = skin.ink, style = MaterialTheme.typography.titleMedium)
@@ -267,4 +269,21 @@ private fun ProfileIdentity(avatarId: String, nickname: String, onRename: (Strin
         confirmButton = { TextButton(onClick = { onRename(draft.trim()); editing = false }) { Text(stringResource(R.string.home_save)) } },
         dismissButton = { TextButton(onClick = { editing = false }) { Text(stringResource(R.string.import_cancel)) } },
     )
+}
+
+/** "Play as": the same clues, a different thing to do with them — and when each one fits (docs/product/frames.md). */
+@Composable
+private fun PlayAs(frames: List<FrameId>, selected: FrameId, onSelect: (FrameId) -> Unit) {
+    val skin = A2g.skin
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(stringResource(R.string.practice_play_as), style = MaterialTheme.typography.labelLarge, color = skin.inkMuted)
+        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            frames.forEach { f ->
+                androidx.compose.material3.FilterChip(f == selected, { onSelect(f) },
+                    { Text(stringResource(com.anything2game.app.ui.play.frameName(f))) }, Modifier.testTag("play_as_${f.name}"))
+            }
+        }
+        Text(stringResource(com.anything2game.app.ui.play.frameDescription(selected)), style = MaterialTheme.typography.bodyMedium, color = skin.ink)
+        Text(stringResource(com.anything2game.app.ui.play.frameBestFor(selected)), style = MaterialTheme.typography.bodySmall, color = skin.inkMuted)
+    }
 }

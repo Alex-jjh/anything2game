@@ -62,7 +62,7 @@ Welcome: who is playing?  ── Lin, the sample student (lived-in demo) | Guest
 |---|---|
 | [onboarding-and-focus](onboarding-and-focus.md): reading map, focus choice, warm-up level | The **opening** is replaced by the tutor's diagnostic, which plays the reading map's role. The **focus / facet** idea (tag units by problem / method / results, select at play time) is still open (decision D4). |
 | [home-navigation](../design/home-navigation.md): chapter self-rating + summary | superseded by the tutor (stated in the teammate's doc) |
-| [engagement-flow](../design/engagement-flow.md): Case hero flow | built, but **new practice opens Classic only**, so Case is not reachable from the home screen (decision D1) |
+| [engagement-flow](../design/engagement-flow.md): Case hero flow | built; reachable again from Practice via **Play as** ([frames](frames.md)) |
 | [characters](../design/characters.md) | built and integrated in *Me* |
 | [design-review](../design/design-review-2026-11-19.md) length budgets | not yet applied to generation; preset text is still long in places |
 
@@ -87,7 +87,7 @@ The video (≤ 15 min, faces shown, no AI voice or avatar) sells the concept on 
 
 | # | Decision | Options | Recommendation |
 |---|---|---|---|
-| D1 | Frames in *Practice* | keep Classic-only; or offer "Play as" (Case default, Classic quick) | **Offer Case again**: it is the "game" in Anything2Game and the strongest demo moment |
+| D1 | Frames in *Practice* | Classic only; or "Play as" per course | **Done as "Play as"** (Classic default; Case, Rookie, Escape, Companion when generated), described by what you do and when it fits. Still open: drop Companion into Learn, and offer Escape only for process-heavy documents ([frames](frames.md) §4) |
 | D2 | Learn tab on preset courses | only the fixed retrieval example; or give each preset pack an optional tutor script (pack entry, additive to ADR-017) | **Add tutor scripts to the 2–3 presets used in the video** (generated with the real model, reviewed by a person) |
 | D3 | Dev labels in the recorded build ("AI mock", local-server notes) | keep; or hide behind a demo flag | **Keep honest labels**, and record flows that never show mock content (fixed example, presets) |
 | D4 | Focus / facets | after the video; or now | **After the video** |
