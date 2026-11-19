@@ -49,9 +49,9 @@ UNIT_RUBRIC = """Score this generated unit from 1 (bad) to 5 (excellent) on each
 - feedback: explanations say WHY, and address the specific misconception of wrong choices.
 - mechanic_fit: the mechanic (swipe/sort/deduce/order) suits this knowledge.
 - mobile_clarity: short, clear, readable on a phone; written in the material's language ({language}).
-Also set booleans: factual_error, answer_leaked_in_prompt, implausible_distractors, source_conflict (the passages THEMSELVES disagree on a fact this unit uses — not the generator's fault).
+Also set booleans: factual_error, answer_leaked_in_prompt (the ALWAYS-VISIBLE text — prompt, scenario, card/option/step text, bin labels — gives the answer away), answer_leaked_in_hints (only the optional hints give it away; this is acceptable by design), implausible_distractors, source_conflict (the passages THEMSELVES disagree on a fact this unit uses — not the generator's fault).
 List wrong_parts: ids of cards/options/steps whose MARKED answer is wrong according to the passages (e.g. a swipe card marked supported that the passage contradicts; the deduce option marked correct when another is right; a sort card in the wrong bin; for order use "order"). Empty list if all marked answers are right.
-Return: {{"grounded":n,"unambiguous":n,"important":n,"feedback":n,"mechanic_fit":n,"mobile_clarity":n,"factual_error":b,"answer_leaked_in_prompt":b,"implausible_distractors":b,"source_conflict":b,"wrong_parts":["..."],"parts_total":n,"problems":["..."]}}
+Return: {{"grounded":n,"unambiguous":n,"important":n,"feedback":n,"mechanic_fit":n,"mobile_clarity":n,"factual_error":b,"answer_leaked_in_prompt":b,"answer_leaked_in_hints":b,"implausible_distractors":b,"source_conflict":b,"wrong_parts":["..."],"parts_total":n,"problems":["..."]}}
 
 LEVEL GOAL: {goal}
 UNIT (JSON): {unit}
