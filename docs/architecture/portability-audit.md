@@ -52,9 +52,9 @@ The **container contract** is the whole interface between code and infrastructur
 
 | Question | Consequence |
 |---|---|
-| Can phones in mainland China (campus, the marker's phone) reach it? | Google endpoints (incl. `*.run.app`, Google front ends) are generally blocked in mainland China `[verify on campus Wi-Fi]` → a Cloud Run demo may fail on the day. AWS and Alibaba Hong Kong / Singapore regions are usually reachable. |
-| Can the server reach the model? | DeepSeek / Qwen: reachable from Hong Kong/Singapore. Anthropic's API is not offered in mainland China or Hong Kong `[verify]` → Claude only from a region where it is offered, or keep Claude to dev evals (ADR-011). |
-| Mainland region? | Needs ICP filing for a domain — too slow for 2026-12-07 (ADR-011). |
+| Can phones in mainland China (campus, the marker's phone) reach it? | Google consumer services are blocked in mainland China (confirmed); whether `*.run.app` / Cloud Run is blocked is **not confirmed either way** (k3 #7) → test on campus Wi-Fi before choosing GCP. AWS and Alibaba Hong Kong / Singapore regions are usually reachable. |
+| Can the server reach the model? | DeepSeek / Qwen: reachable from Hong Kong/Singapore. Anthropic's API is **not offered in mainland China or Hong Kong (confirmed, Supported Regions Policy)** → Claude only from a region where it is offered, or keep Claude to dev evals (ADR-011). |
+| Mainland region? | Needs ICP filing for a domain: Aliyun states 1–2 + 1–2 working days of review plus 1–20 working days at the provincial authority (k3 #8) — too risky for 2026-12-07. |
 
 **Recommendation**: demo on **AWS or Alibaba Cloud, Hong Kong/Singapore region**, with DeepSeek/Qwen in production; keep a Google Cloud module as the second target to show portability. Use a personal or team account — never a work account.
 
