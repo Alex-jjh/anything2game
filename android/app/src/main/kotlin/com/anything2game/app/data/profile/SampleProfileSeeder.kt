@@ -28,6 +28,7 @@ class SampleProfileSeeder(
     private val mastery: MasteryStore,
     private val home: HomePreferences,
     private val avatar: AvatarPreferences,
+    private val framePrefs: com.anything2game.app.data.FramePreferences,
     private val clock: Clock,
 ) {
     /** One past play: which course, which frame, how long ago, which answers were wrong, and whether it was finished. */
@@ -52,6 +53,7 @@ class SampleProfileSeeder(
             val levelId = pkg.levels.first().levelId
             val played = ScriptedPlayer.play(engine, engine.start(levelId), { n, _ -> n !in play.wrong }, mastery.all(pkg.packageId), play.stopAfter)
             played.mastery.values.forEach { mastery.put(pkg.packageId, it) }
+            framePrefs.set(pkg.packageId, frame.id) // Practice shows the frame Lin actually plays this course in
             if (!played.state.isFinished) sessions.save(played.state)
         }
     }

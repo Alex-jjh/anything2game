@@ -117,7 +117,7 @@ class AndroidAppContainer(context: Context) : AppDependencies {
         override suspend fun choose(profile: LocalProfile) = chooseLock.withLock {
             val next = UserScope(profile)
             if (profile.kind == ProfileKind.SAMPLE && !registry.isSeeded(profile)) {
-                SampleProfileSeeder(packages, frames, grading, masteryPolicy, next.sessions, next.mastery, next.homePreferences, next.avatarPreferences, clock)
+                SampleProfileSeeder(packages, frames, grading, masteryPolicy, next.sessions, next.mastery, next.homePreferences, next.avatarPreferences, next.framePreferences, clock)
                     .seed(nickname = app.getString(R.string.sample_profile_name), avatarId = "pip")
                 registry.markSeeded(profile)
             }

@@ -44,6 +44,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -180,6 +182,8 @@ private fun HoldToObject(enabled: Boolean, label: String, onDone: () -> Unit) {
     Box(
         Modifier.fillMaxWidth().padding(top = 10.dp).heightIn(min = 60.dp)
             .background(if (enabled) com.anything2game.app.ui.theme.StampRed.copy(alpha = 0.12f) else skin.outline.copy(alpha = 0.15f), androidx.compose.foundation.shape.RoundedCornerShape(30.dp))
+            // TalkBack / switch access: the hold is a gesture, so offer the same objection as an accessibility click.
+            .semantics { if (enabled) onClick(label) { onDone(); true } }
             .pointerInput(enabled) {
                 if (!enabled) return@pointerInput
                 detectTapGestures(onPress = {

@@ -52,7 +52,7 @@
     <string name="recap_shaky">%1$d to revisit tomorrow</string>
     <string name="recap_all_solid">Every clue is solid.</string>
     <string name="recap_replay">Play again</string>
-    <string name="recap_library">Back to case files</string>
+    <string name="recap_library">Back home</string>
     <string name="unsupported_mechanic">This build can\'t play this kind of level yet.</string>
     <string name="mechanic_swipe">True or not?</string>
     <string name="mechanic_sort">File the cards</string>
@@ -112,11 +112,11 @@
     <string name="recap_title_rookie">Notes fixed</string>
     <string name="recap_title_companion">Chapter done</string>
     <string name="boss_cleared">Final challenge cleared</string>
-    <string name="boss_missed">Final challenge missed — it comes back tomorrow</string>
+    <string name="boss_missed">Final challenge missed — replay the level to take it on again</string>
     <string name="failed_title_case">The case went cold</string>
     <string name="failed_title_escape">Still locked in</string>
     <string name="failed_title_default">Out of tries</string>
-    <string name="failed_body">Out of credibility. Replay the level — you\'ll get different versions of the clues you missed.</string>
+    <string name="failed_body">Out of credibility. Replay the level — clues you missed come back in another form where the course has one.</string>
     <string name="mechanic_crossexam">Cross-examine</string>
     <string name="stamp_supported">SUPPORTED</string>
     <string name="stamp_not_supported">NO BASIS</string>
@@ -169,8 +169,8 @@
     <string name="profile_sample_title">Explore as a sample student</string>
     <string name="profile_sample_body">Lin has been using the app for a few days: three courses played, one clue to review today, one case left half-way.</string>
     <string name="profile_sample_action">Continue as Lin</string>
-    <string name="profile_guest_title">Continue as guest</string>
-    <string name="profile_guest_body">Start fresh with the preset courses.</string>
+    <string name="profile_guest_title">Start fresh</string>
+    <string name="profile_guest_body">Play as a guest with the preset courses.</string>
     <string name="profile_guest_action">Start as guest</string>
     <string name="profile_local_note">No account needed. Each profile keeps its own progress on this phone; switching deletes nothing.</string>
     <string name="profile_switch">Switch profile</string>
@@ -181,4 +181,5 @@
     <string name="frame_rookie_best">Best when you know it: explaining is the deepest test.</string>
     <string name="frame_companion_best">Best for a first pass, before you have read it.</string>
     <string name="practice_play_as">Play as</string>
+    <string name="level_status_cleared">Cleared · review tomorrow to make it stick</string>
 </resources>

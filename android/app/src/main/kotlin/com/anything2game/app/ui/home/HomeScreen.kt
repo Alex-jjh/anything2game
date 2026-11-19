@@ -160,6 +160,7 @@ fun HomeContent(
                                 LevelStatus.New -> stringResource(R.string.level_status_new)
                                 LevelStatus.NeedsReview -> stringResource(R.string.home_needs_review)
                                 LevelStatus.Done -> stringResource(R.string.home_level_solid)
+                                LevelStatus.Cleared -> stringResource(R.string.level_status_cleared)
                                 is LevelStatus.InProgress -> stringResource(R.string.level_status_in_progress, progress.position, progress.total)
                             }, color = skin.inkMuted, style = MaterialTheme.typography.bodySmall)
                             Button(onClick = {

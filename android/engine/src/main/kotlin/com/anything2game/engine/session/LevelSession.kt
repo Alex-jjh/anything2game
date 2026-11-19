@@ -55,14 +55,22 @@ class LevelSession(
         require(overlay == null || overlay.frameId == frame.id) { "Overlay ${overlay?.frameId} does not belong to frame ${frame.id}" }
     }
 
-    fun start(levelId: String): SessionState {
+    /**
+     * A fresh run of [levelId]. Units in [missedUnitIds] (e.g. missed in a run that went cold) are planned as their first
+     * variant when they have one, so a replay asks the same knowledge in another form instead of the item just failed.
+     */
+    fun start(levelId: String, missedUnitIds: Set<String> = emptySet()): SessionState {
         val level = requireNotNull(pkg.level(levelId)) { "Unknown level $levelId" }
+        val planned = frame.plan(level, levelOverlay(levelId)).map { slot ->
+            val unit = level.units.firstOrNull { it.unitId == slot.unitId }
+            if (slot.kind == SlotKind.UNIT && slot.variant == Slot.MAIN && slot.unitId in missedUnitIds && unit != null && unit.variants.isNotEmpty()) slot.copy(variant = 0) else slot
+        }
         return SessionState(
             packageId = pkg.packageId,
             contentVersion = pkg.contentVersion,
             levelId = levelId,
             frameId = frame.id,
-            queue = frame.plan(level, levelOverlay(levelId)),
+            queue = planned,
             credibility = if (overlay != null || !frame.spec.needsOverlay) frame.spec.credibility else null,
         )
     }

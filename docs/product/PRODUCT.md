@@ -96,6 +96,9 @@ The video (≤ 15 min, faces shown, no AI voice or avatar) sells the concept on 
 
 ## 7. Risks
 
+- **Review has no entry point of its own yet.** Misses do return in Practice: the level shows "needs practice", and a replay offers other versions of the missed clues. But Me only shows a due *count*, with no "review now" session across courses. Characters and the recap talk about tomorrow, so this is the next product gap to close.
+- **Journey tests.** `app/src/test/.../journeys/`: 31 Robolectric tests drive the real app with real taps (Lin, Case to case closed, Rookie, Escape, profiles, restart, rotation, zh). They found 8 bugs, all fixed.
+
 - **Course rules.** Design, reports and the demo must be the team's own work, and every member must code. Use AI for code only.
 - **The tutor has only run on fake models.** Its real-model quality, prompt-injection resistance and cost are unmeasured. Do not claim them in the video.
 - **No cloud deployment.** The generation segment is recorded against a local server.

@@ -136,7 +136,9 @@ class PlayViewModel(
             mutex.withLock {
                 val ready = _state.value as? PlayUiState.Ready ?: return@withLock
                 val e = engine ?: return@withLock
-                val s = e.start(levelId)
+                // Replay asks what was missed in another form where the course has one (the cold-case screen promises it).
+                val missed = ready.session.results.filter { it.slot.kind == com.anything2game.engine.session.SlotKind.UNIT && !it.grade.correct }.map { it.slot.unitId }.toSet()
+                val s = e.start(levelId, missed)
                 deps.sessions.save(s)
                 publish(ready.pkg, e, s)
             }

@@ -125,6 +125,7 @@ private fun LevelRow(level: LevelEntry, onClick: () -> Unit) {
             is LevelStatus.InProgress -> Badge(stringResource(R.string.level_status_in_progress, s.position, s.total), skin.paused, skin.paper)
             LevelStatus.NeedsReview -> Badge(stringResource(R.string.home_needs_review), skin.evidence, skin.evidenceSoft)
             LevelStatus.Done -> Badge(stringResource(R.string.level_status_done), skin.correct, skin.correctSoft)
+            LevelStatus.Cleared -> Badge(stringResource(R.string.level_status_cleared), skin.correct, skin.paper)
         }
         Spacer(Modifier.size(4.dp))
         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = skin.inkMuted)

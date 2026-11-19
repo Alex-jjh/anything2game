@@ -52,7 +52,7 @@
     <string name="recap_shaky">%1$d 条明天再复习</string>
     <string name="recap_all_solid">所有线索都掌握了。</string>
     <string name="recap_replay">再玩一次</string>
-    <string name="recap_library">返回案卷</string>
+    <string name="recap_library">返回主页</string>
     <string name="unsupported_mechanic">这个版本还不支持这种玩法。</string>
     <string name="mechanic_swipe">真还是假？</string>
     <string name="mechanic_sort">归档</string>
@@ -112,11 +112,11 @@
     <string name="recap_title_rookie">笔记改好了</string>
     <string name="recap_title_companion">本章完成</string>
     <string name="boss_cleared">最终挑战通过</string>
-    <string name="boss_missed">最终挑战没过——明天再来</string>
+    <string name="boss_missed">最终挑战没过——重玩这一关再来一次</string>
     <string name="failed_title_case">案子凉了</string>
     <string name="failed_title_escape">还被锁着</string>
     <string name="failed_title_default">机会用完了</string>
-    <string name="failed_body">信誉用完了。重玩这一关，没答对的线索会换个形式出现。</string>
+    <string name="failed_body">信誉用完了。重玩这一关，没答对的线索会尽量换个形式出现。</string>
     <string name="mechanic_crossexam">对质</string>
     <string name="stamp_supported">有据</string>
     <string name="stamp_not_supported">无据</string>
@@ -169,8 +169,8 @@
     <string name="profile_sample_title">用示例同学的身份体验</string>
     <string name="profile_sample_body">林同学已经用了几天：玩过三门课，今天有一条线索要复习，还有一个案子查到一半。</string>
     <string name="profile_sample_action">以林同学继续</string>
-    <string name="profile_guest_title">以访客身份继续</string>
-    <string name="profile_guest_body">从头开始，直接玩预设课程。</string>
+    <string name="profile_guest_title">从零开始</string>
+    <string name="profile_guest_body">以访客身份，直接玩预设课程。</string>
     <string name="profile_guest_action">以访客开始</string>
     <string name="profile_local_note">不需要账号。每个身份的进度都单独保存在这台手机上，切换不会删除任何内容。</string>
     <string name="profile_switch">切换身份</string>
@@ -181,4 +181,5 @@
     <string name="frame_rookie_best">适合：已经会了——讲给别人听最考验理解。</string>
     <string name="frame_companion_best">适合：还没读，第一次接触。</string>
     <string name="practice_play_as">玩法</string>
+    <string name="level_status_cleared">已通关 · 明天复习一次就更牢</string>
 </resources>

@@ -32,25 +32,19 @@ class PromisesJourneysTest : JourneyTest() {
         waitForText(str(R.string.boss_missed))
     }
 
-    @Ignore("BUG: the Case recap promises \"Final challenge missed - it comes back tomorrow\", but a missed boss is not graded into mastery " +
-        "(LevelSession.submit only emits MasteryChanged for SlotKind.UNIT) and no screen ever re-offers it. Repro: Guest > Practice > Play as Case > Attention level 1, " +
-        "answer every clue right, get the cross-examination wrong > recap. Nothing is scheduled for tomorrow.")
-    @Test fun a_missed_boss_really_comes_back_tomorrow() {
+    /** The recap no longer promises "tomorrow" for a missed boss; it promises a replay, and the replay does offer the boss again. */
+    @Test fun a_missed_boss_can_be_taken_on_again_by_replaying() {
         launch(); chooseGuest(); openPractice()
         playAs(attentionTitle, FrameId.CASE)
         startLevel(attentionTitle, level1)
         val level = Level("demo_attention", FrameId.CASE)
         level.play { _, item -> item !is CrossExamItem }
         waitForText(str(R.string.boss_missed))
-        val boss = level.overlay!!.level("L1")!!.boss!!.unitId
-        val record = level.mastery()[boss]
-        assertNotNull("the missed boss has no review record", record)
-        assertTrue(record!!.dueAt <= deps.clock.now() + 26 * 3_600_000L)
+        tapText(str(R.string.recap_replay))
+        waitFor("fresh run") { level.session()!!.let { it.phase == Phase.Presenting && it.results.isEmpty() } }
+        assertTrue(level.session()!!.queue.any { it.kind == SlotKind.BOSS })
     }
 
-    @Ignore("BUG: the 'case went cold' screen promises \"Replay the level - you'll get different versions of the clues you missed\", " +
-        "but LevelSession.start() plans only main items (variants are used only for in-run retries). Repro: Guest > Practice > Play as Escape > Attention level 1, " +
-        "answer wrong until 'Still locked in' > Play again: every clue is the same item as before.")
     @Test fun replay_after_a_cold_case_shows_different_versions_of_the_missed_clues() {
         launch(); chooseGuest(); openPractice()
         playAs(attentionTitle, FrameId.ESCAPE)

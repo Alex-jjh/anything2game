@@ -46,6 +46,8 @@ sealed interface LevelStatus {
     data object New : LevelStatus
     data class InProgress(val position: Int, val total: Int) : LevelStatus
     data object NeedsReview : LevelStatus
+    /** Every clue right last time, but not yet solid (that needs a later review): a win, not "needs practice". */
+    data object Cleared : LevelStatus
     data object Done : LevelStatus
 }
 
@@ -111,6 +113,7 @@ internal fun libraryEntry(
         val status = when {
             session?.levelId == level.levelId -> LevelStatus.InProgress(session.position + 1, session.queue.size)
             level.units.isNotEmpty() && level.units.all { mastery[it.unitId]?.isSolid == true } -> LevelStatus.Done
+            level.units.isNotEmpty() && level.units.all { (mastery[it.unitId]?.box ?: 0) >= 1 } -> LevelStatus.Cleared
             level.units.any { (mastery[it.unitId]?.attempts ?: 0) > 0 } -> LevelStatus.NeedsReview
             else -> LevelStatus.New
         }

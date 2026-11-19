@@ -16,6 +16,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import com.anything2game.app.AppDependencies
 import com.anything2game.app.R
 import com.anything2game.app.ui.common.Badge
@@ -28,7 +30,8 @@ import com.anything2game.contract.tutor.*
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ReadingContent(deps: AppDependencies, packageId: String, onBack: () -> Unit) {
-    val vm = viewModel(key = "tutor:${deps.profiles.active.value?.id}:$packageId") { TutorViewModel(deps.tutors, packageId) }
+    val profileId by deps.profiles.active.collectAsState()
+    val vm = viewModel(key = "tutor:${profileId?.id}:$packageId") { TutorViewModel(deps.tutors, packageId) }
     val state by vm.state.collectAsStateWithLifecycle()
     androidx.activity.compose.BackHandler { if (state.busy) vm.cancelPending(); onBack() }
     val c = state.cache
