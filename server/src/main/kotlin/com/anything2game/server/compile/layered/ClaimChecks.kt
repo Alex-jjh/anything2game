@@ -1,5 +1,7 @@
 package com.anything2game.server.compile.layered
 
+import com.anything2game.server.compile.GenerationException
+
 import com.anything2game.contract.PackageValidator
 import com.anything2game.contract.SourceChunk
 import com.anything2game.server.compile.LlmSteps
@@ -162,8 +164,17 @@ class ClaimChecker(private val flash: LlmClient, private val parallelism: Int = 
         return claims.filter { it.claimId in ok }
     }
 
+    /**
+     * One failed check call (e.g. an empty answer) must not fail the job (2026-11-18 eval: it failed a slide deck).
+     * Retry once; if it still fails, nothing in this batch counts as supported (fail-closed: those claims are dropped and counted).
+     */
+    private suspend fun supportedIds(batch: List<Claim>, label: String): Set<String> =
+        try { supportedIdsOnce(batch, label) } catch (e: GenerationException) {
+            try { supportedIdsOnce(batch, "$label.retry") } catch (e2: GenerationException) { emptySet() }
+        }
+
     /** The ids the flash model calls `supported`. Unparseable answers get one repair call, then count as nothing supported. */
-    private suspend fun supportedIds(batch: List<Claim>, label: String): Set<String> {
+    private suspend fun supportedIdsOnce(batch: List<Claim>, label: String): Set<String> {
         val payload = batch.joinToString("\n") { c ->
             buildJsonObject { put("id", c.claimId); put("text", c.text); put("scope", c.scope); put("quote", c.quote) }.toString()
         }

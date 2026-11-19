@@ -35,3 +35,25 @@ class ClaimBatchSplitTest {
         assertEquals(1, stats.claimBatchesFailed.get())
     }
 }
+
+/** Regression for the 2026-11-18 eval: one empty entailment answer used to fail the whole job. */
+class ClaimCheckFailureTest {
+    private val chunk = SourceChunk("c1", 0, "1", "Alpha is defined as beta.")
+    private fun claim(id: String) = com.anything2game.server.compile.layered.Claim(
+        claimId = id, chunkId = "c1", quote = "Alpha is defined as beta.", text = "Alpha is defined as beta.",
+        type = com.anything2game.server.compile.layered.ClaimType.DEFINITION, scope = "", numbers = emptyList(), importance = 2, relations = emptyList(),
+    )
+
+    @Test fun `a failing check batch drops its claims but does not throw`() = runBlocking {
+        var calls = 0
+        val broken = object : LlmClient {
+            override val modelId = "broken"
+            override suspend fun completeJson(request: LlmRequest): String { calls++; throw LlmException(LlmException.Kind.BAD_RESPONSE, "Empty answer.") }
+        }
+        val stats = GenerationStats("j", "layered", gate = false)
+        val checked = com.anything2game.server.compile.layered.ClaimChecker(broken).run(listOf(claim("k1"), claim("k2")), listOf(chunk), stats)
+        assertEquals(0, checked.kept.size)
+        assertEquals(2, calls) // first try + one retry
+        assertEquals(2, stats.claimsDroppedEntailment.get())
+    }
+}
