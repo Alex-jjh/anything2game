@@ -1,0 +1,74 @@
+package com.anything2game.app.data
+
+import com.anything2game.app.data.content.AssetPackSource
+import com.anything2game.app.data.content.ContentLibrary
+import com.anything2game.app.data.content.DirectoryPackSource
+import com.anything2game.contract.ContractJson
+import com.anything2game.contract.FrameId
+import com.anything2game.contract.pack.PackCodec
+import com.anything2game.contract.pack.PackOrigin
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.TemporaryFolder
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
+import java.io.ByteArrayInputStream
+import java.io.File
+
+/** Presets (APK assets) and installed packs (server / import) go through one library with one format. */
+@RunWith(RobolectricTestRunner::class)
+class ContentLibraryTest {
+    @get:Rule val tmp = TemporaryFolder()
+    private val samples = File(System.getProperty("contract.samples")!!)
+    private val assets = RuntimeEnvironment.getApplication().assets
+    private fun attention(version: String, title: String? = null) = ContractJson.decodePackage(File(samples, "package.demo.attention.json").readText())
+        .let { it.copy(contentVersion = version, title = title ?: it.title) }
+    private fun frames(version: String) = samples.listFiles { f -> f.name.startsWith("frame.demo.attention.") }!!
+        .map { ContractJson.decodeFrame(it.readText()).copy(contentVersion = version) }
+    private fun packBytes(version: String, title: String? = null) = PackCodec.toBytes(PackCodec.build(attention(version, title), frames(version), PackOrigin.SERVER))
+
+    @Test fun `presets ship as packs and load through the library`() = runBlocking {
+        val lib = ContentLibrary(listOf(AssetPackSource(assets)))
+        val ids = lib.list().map { it.packageId }
+        assertTrue("presets: $ids", ids.containsAll(listOf("demo_attention", "demo_resnet", "demo_mapreduce", "demo_cs231n_l1", "demo_zh_spaced")))
+        assertTrue(FrameId.CASE in lib.available("demo_attention"))
+        assertTrue(lib.load("demo_attention", FrameId.CASE) != null)
+        assertTrue(lib.list().all { it.preGenerated })
+    }
+
+    @Test fun `an installed newer pack replaces the preset, an older one does not`() = runBlocking {
+        val installed = DirectoryPackSource(tmp.newFolder("packs"))
+        val lib = ContentLibrary(listOf(AssetPackSource(assets), installed))
+        val presetVersion = lib.load("demo_attention").getOrThrow().contentVersion
+
+        installed.install(ByteArrayInputStream(packBytes("$presetVersion.1", "Updated from server"))).getOrThrow()
+        lib.refresh()
+        assertEquals("Updated from server", lib.load("demo_attention").getOrThrow().title)
+
+        installed.install(ByteArrayInputStream(packBytes("0", "Stale"))).getOrThrow()
+        lib.refresh()
+        assertEquals(presetVersion, lib.load("demo_attention").getOrThrow().contentVersion)
+    }
+
+    @Test fun `a broken download never replaces a good pack`() = runBlocking {
+        val dir = tmp.newFolder("packs")
+        val installed = DirectoryPackSource(dir)
+        installed.install(ByteArrayInputStream(packBytes("9", "Good"))).getOrThrow()
+        val good = packBytes("10", "Bad")
+        val truncated = good.copyOf(good.size / 2)
+        assertTrue(installed.install(ByteArrayInputStream(truncated)).isFailure)
+        val lib = ContentLibrary(listOf(installed))
+        assertEquals("Good", lib.load("demo_attention").getOrThrow().title)
+        assertEquals(listOf("demo_attention.a2gpack"), dir.list()!!.sorted())
+    }
+
+    @Test fun `versions compare by number, not by text`() {
+        assertTrue(ContentLibrary.compareVersions("1.10", "1.9") > 0)
+        assertTrue(ContentLibrary.compareVersions("2", "10") < 0)
+        assertEquals(0, ContentLibrary.compareVersions("3", "3"))
+    }
+}

@@ -1,8 +1,9 @@
 package com.anything2game.app
 
 import android.content.Context
-import com.anything2game.app.data.AssetFrameRepository
-import com.anything2game.app.data.AssetPackageRepository
+import com.anything2game.app.data.content.AssetPackSource
+import com.anything2game.app.data.content.ContentLibrary
+import com.anything2game.app.data.content.DirectoryPackSource
 import com.anything2game.app.data.AvatarPreferences
 import com.anything2game.app.data.SharedPrefsAvatarPreferences
 import com.anything2game.app.data.FramePreferences
@@ -42,8 +43,12 @@ interface AppDependencies {
 /** Composition root: the only place that picks concrete implementations. */
 class AndroidAppContainer(context: Context) : AppDependencies {
     private val app = context.applicationContext
-    override val packages: PackageRepository = AssetPackageRepository(app.assets)
-    override val frames: FrameRepository = AssetFrameRepository(app.assets, packages)
+    // One content library over every pack source: bundled presets first, then packs installed on the device
+    // (from our server or imported). Same file format everywhere; the engine sees only the two ports.
+    val installedPacks = DirectoryPackSource(File(app.filesDir, "packs"))
+    val content = ContentLibrary(listOf(AssetPackSource(app.assets), installedPacks))
+    override val packages: PackageRepository = content
+    override val frames: FrameRepository = content
     override val framePreferences: FramePreferences = SharedPrefsFramePreferences(app)
     override val avatarPreferences: AvatarPreferences = SharedPrefsAvatarPreferences(app)
     override val sessions: SessionStore = FileSessionStore(File(app.filesDir, "sessions"))

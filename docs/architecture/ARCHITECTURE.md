@@ -58,7 +58,7 @@ anything2game/
 │   ├── src/main/kotlin/…      api · ingest · compile · adapt · llm · store
 │   ├── src/main/resources/prompts/   versioned prompt templates
 │   └── src/test/kotlin/…      FakeLlmClient-driven tests
-├── samples/                   licensed materials + reviewed packages (offline demo fallback)
+├── samples/                   pre-generated demo courses as JSON → packed into assets/packs/*.a2gpack at build (ADR-017)
 └── tools/                     eval scripts (generation quality over samples)
 ```
 

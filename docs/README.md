@@ -18,6 +18,7 @@ One kind of document lives in one place. Every document opens with a **Scope** l
 | `architecture/` | Decoupling + multi-cloud audit, fix plan, IaC choice | [portability-audit.md](architecture/portability-audit.md) | 2026-11-18 |
 | `architecture/` | Layered generation (source → claims → game → frame), hallucination analysis, A/B plan | [layered-generation.md](architecture/layered-generation.md) | proposed |
 | `architecture/` | Ingest: text-first, vision only for low-text pages (slides, scans) | [multimodal-ingest.md](architecture/multimodal-ingest.md) | proposed |
+| `architecture/` | Content packs: one `.a2gpack` format for presets, server downloads and imports (ADR-017) | [content-packs.md](architecture/content-packs.md) | decided |
 | `architecture/` | Decision log (ADRs) | [decisions.md](architecture/decisions.md) | draft |
 | `plan/` | Schedule and ownership | [roadmap.md](plan/roadmap.md) | draft |
 | `research/` | Evidence base (learning science + HCI) | still inside the v1.1 appendix in `archive/` | to migrate |

@@ -21,10 +21,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    // Bundled samples ARE the contract examples: one source of truth, validated by :contract tests.
-    sourceSets.getByName("main").assets.srcDir(rootProject.file("contract/examples"))
-    // Pre-generated demo courses (validated by :contract DemoSamplesTest). Labelled "pre-generated" in the UI.
-    sourceSets.getByName("main").assets.srcDir(rootProject.file("samples/demo"))
     androidResources { generateLocaleConfig = true }
     testOptions { unitTests { isIncludeAndroidResources = true } }
 }
@@ -50,6 +46,38 @@ dependencies {
     testImplementation(libs.roborazzi.junit.rule)
     testImplementation(platform(libs.compose.bom))
     testImplementation(libs.compose.ui.test.junit4)
+}
+
+// Preset content ships as content packs (ADR-016): the same .a2gpack format the server will deliver.
+// Source of truth stays as readable JSON (contract/examples, samples/demo); PackTool validates and packs it at build time.
+val packTool: Configuration by configurations.creating { isCanBeConsumed = false; isCanBeResolved = true }
+dependencies { packTool(project(":contract")) }
+
+abstract class PackPresetsTask : DefaultTask() {
+    @get:InputFiles @get:PathSensitive(PathSensitivity.RELATIVE) abstract val inputDirs: ConfigurableFileCollection
+    @get:Classpath abstract val toolClasspath: ConfigurableFileCollection
+    @get:OutputDirectory abstract val outputDir: DirectoryProperty
+    @get:Inject abstract val exec: ExecOperations
+
+    @TaskAction fun pack() {
+        val out = outputDir.get().dir("packs").asFile
+        out.deleteRecursively()
+        exec.javaexec {
+            classpath = toolClasspath
+            mainClass.set("com.anything2game.contract.pack.PackToolKt")
+            args(listOf(out.absolutePath) + inputDirs.files.map { it.absolutePath })
+        }
+    }
+}
+
+val packPresets by tasks.registering(PackPresetsTask::class) {
+    inputDirs.from(rootProject.file("contract/examples"), rootProject.file("samples/demo"))
+    toolClasspath.from(packTool)
+    outputDir.set(layout.buildDirectory.dir("generated/presetPacks"))
+}
+
+androidComponents {
+    onVariants { variant -> variant.sources.assets?.addGeneratedSourceDirectory(packPresets, PackPresetsTask::outputDir) }
 }
 
 tasks.withType<Test>().configureEach {
