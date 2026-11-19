@@ -1,0 +1,290 @@
+{
+ "schema": "a2g.frame/v1",
+ "frameId": "case",
+ "packageId": "demo_mapreduce",
+ "contentVersion": "1",
+ "generation": {
+  "mode": "pre-generated",
+  "model": "us.anthropic.claude-sonnet-5",
+  "promptVersion": "frame-case.v1",
+  "review": "auto-validated"
+ },
+ "cast": [
+  {
+   "id": "mira",
+   "name": "Mira",
+   "role": "partner"
+  },
+  {
+   "id": "summary",
+   "name": "The Summary",
+   "role": "suspect"
+  }
+ ],
+ "levels": [
+  {
+   "levelId": "L1",
+   "intro": [
+    {
+     "speaker": "mira",
+     "text": "New case: a 2004 paper claims one simple model — Map and Reduce — can run huge jobs across thousands of machines.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "summary",
+     "text": "Two functions, one model, every job. I skimmed the abstract, that's basically the whole paper.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "mira",
+     "text": "Let's see if your 'skim' holds up once we look at what Map and Reduce actually do.",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {},
+   "rooms": [],
+   "boss": {
+    "unitId": "L1BOSS",
+    "knowledgeType": "claim",
+    "mechanic": "crossexam",
+    "mechanicReason": "Frame boss: test whether the suspect's claims about the model and examples hold up against the paper.",
+    "item": {
+     "type": "crossexam",
+     "speaker": "summary",
+     "prompt": "The Summary's version of the Map/Reduce model and its examples. One claim overgeneralizes - present the passage that disproves it.",
+     "statements": [
+      {
+       "id": "st1",
+       "text": "Map takes an input pair and produces a set of intermediate key/value pairs.",
+       "flawed": false,
+       "why": "This is exactly how the paper defines the Map function.",
+       "sourceRefs": [
+        {
+         "chunkId": "c5",
+         "quote": "Map, written by the user, takes an input pair and pro- duces a set of intermediate key/value pairs."
+        }
+       ]
+      },
+      {
+       "id": "st2",
+       "text": "Reduce receives the grouped values for a key through an iterator, which lets it handle lists too large to fit in memory.",
+       "flawed": false,
+       "why": "The paper explicitly describes the iterator and its purpose.",
+       "sourceRefs": [
+        {
+         "chunkId": "c5",
+         "quote": "The intermediate val- ues are supplied to the user’s reduce function via an iter- ator."
+        }
+       ]
+      },
+      {
+       "id": "st3",
+       "text": "In the Distributed Grep example, the reduce function just copies the matched data straight to the output.",
+       "flawed": false,
+       "why": "This is stated directly as the identity behavior of grep's reduce step.",
+       "sourceRefs": [
+        {
+         "chunkId": "c7",
+         "quote": "The reduce function is an identity function that just copies the supplied intermedi- ate data to the output."
+        }
+       ]
+      },
+      {
+       "id": "st4",
+       "text": "Since grep's reduce just copies data, every reduce function in these examples really just copies data to the output.",
+       "flawed": true,
+       "why": "This generalizes from one example (grep) to all of them, but the URL counting, link-graph, and term-vector examples all show reduce aggregating or merging values, not copying them.",
+       "sourceRefs": [
+        {
+         "chunkId": "c7",
+         "quote": "The reduce function adds together all values for the same URL and emits a 〈URL,total count〉 pair."
+        }
+       ]
+      }
+     ]
+    },
+    "hints": [
+     "Which claim takes one example's behavior and stretches it to cover every example?"
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "mira",
+     "text": "Case closed. Map and Reduce are real, but 'identity' only describes grep — the other examples merge or total up data.",
+     "sourceRefs": []
+    }
+   ]
+  },
+  {
+   "levelId": "L3",
+   "intro": [
+    {
+     "speaker": "mira",
+     "text": "Second case: the paper reports real timing numbers from grep and sort runs at Google, plus a list of production uses.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "summary",
+     "text": "Numbers, numbers. I don't need the graphs, I already know the gist.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "mira",
+     "text": "The gist is exactly where people cut corners. Let's check your timeline against the paper's.",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {},
+   "rooms": [],
+   "boss": {
+    "unitId": "L3BOSS",
+    "knowledgeType": "claim",
+    "mechanic": "crossexam",
+    "mechanicReason": "Frame boss: pressure-test the suspect's performance claims against the measured results.",
+    "item": {
+     "type": "crossexam",
+     "speaker": "summary",
+     "prompt": "The Summary's recap of the performance experiments. One claim confuses a milestone with the whole job finishing - present the passage that corrects it.",
+     "statements": [
+      {
+       "id": "st1",
+       "text": "Disabling backup tasks made the sort job take 44% longer to finish.",
+       "flawed": false,
+       "why": "The paper reports exactly this increase when backup tasks are turned off.",
+       "sourceRefs": [
+        {
+         "chunkId": "c41",
+         "quote": "The entire computation takes 1283 seconds, an increase of 44% in elapsed time."
+        }
+       ]
+      },
+      {
+       "id": "st2",
+       "text": "Google's sort run finished in less time than the best reported TeraSort benchmark result.",
+       "flawed": false,
+       "why": "891 seconds for the MapReduce sort is directly compared to the 1057-second TeraSort figure.",
+       "sourceRefs": [
+        {
+         "chunkId": "c39",
+         "quote": "This is similar to the current best reported result of 1057 seconds for the TeraSort benchmark [18]."
+        }
+       ]
+      },
+      {
+       "id": "st3",
+       "text": "When a task is lagging near the end of a job, the master schedules a backup execution rather than waiting on the slow machine.",
+       "flawed": false,
+       "why": "This is the described straggler-mitigation mechanism.",
+       "sourceRefs": [
+        {
+         "chunkId": "c24",
+         "quote": "When a MapReduce operation is close to completion, the master schedules backup executions of the remaining in-progress tasks."
+        }
+       ]
+      },
+      {
+       "id": "st4",
+       "text": "Since the grep job's transfer rate hit zero at about 80 seconds, the whole computation was done by then too.",
+       "flawed": true,
+       "why": "The rate hitting zero only marks the end of map work; the paper states the entire computation, including startup overhead, took about 150 seconds.",
+       "sourceRefs": [
+        {
+         "chunkId": "c36",
+         "quote": "The entire computation takes approximately 150 seconds from start to finish."
+        }
+       ]
+      }
+     ]
+    },
+    "hints": [
+     "Compare the moment a rate hits zero to the total time the paper reports for the whole job."
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "mira",
+     "text": "Case closed. The sort numbers and the backup-task logic check out — but 'rate hits zero' isn't the same as 'job done'.",
+     "sourceRefs": []
+    }
+   ]
+  }
+ ],
+ "board": {
+  "nodes": [
+   {
+    "id": "n1",
+    "label": "Map/Reduce function roles",
+    "unitId": "L1U1"
+   },
+   {
+    "id": "n2",
+    "label": "Example applications",
+    "unitId": "L1U2"
+   },
+   {
+    "id": "n3",
+    "label": "Job execution sequence",
+    "unitId": "L1U3"
+   },
+   {
+    "id": "n4",
+    "label": "Designing new map/reduce jobs",
+    "unitId": "L1U4"
+   },
+   {
+    "id": "n5",
+    "label": "Performance claims",
+    "unitId": "L3U1"
+   },
+   {
+    "id": "n6",
+    "label": "Google's real-world uses",
+    "unitId": "L3U2"
+   },
+   {
+    "id": "n7",
+    "label": "Straggler mitigation reasoning",
+    "unitId": "L3U3"
+   }
+  ],
+  "edges": [
+   {
+    "from": "n1",
+    "to": "n2",
+    "label": "supports"
+   },
+   {
+    "from": "n2",
+    "to": "n4",
+    "label": "supports"
+   },
+   {
+    "from": "n1",
+    "to": "n3",
+    "label": "explains"
+   },
+   {
+    "from": "n3",
+    "to": "n7",
+    "label": "leads to"
+   },
+   {
+    "from": "n7",
+    "to": "n5",
+    "label": "explains"
+   },
+   {
+    "from": "n2",
+    "to": "n6",
+    "label": "leads to"
+   },
+   {
+    "from": "n4",
+    "to": "n6",
+    "label": "supports"
+   }
+  ]
+ }
+}

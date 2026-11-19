@@ -1,0 +1,139 @@
+{
+ "schema": "a2g.frame/v1",
+ "frameId": "rookie",
+ "packageId": "demo_zh_spaced",
+ "contentVersion": "1",
+ "generation": {
+  "mode": "pre-generated",
+  "model": "us.anthropic.claude-sonnet-5",
+  "promptVersion": "frame-rookie.v1",
+  "review": "auto-validated"
+ },
+ "cast": [
+  {
+   "id": "sam",
+   "name": "小萌",
+   "role": "rookie"
+  }
+ ],
+ "levels": [
+  {
+   "levelId": "L1",
+   "intro": [
+    {
+     "speaker": "sam",
+     "text": "嗨！我刚看完这篇关于间隔重复的资料，笔记记得乱七八糟，能帮我一起核对一下吗？",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "sam",
+     "text": "感觉里面好多年份和人名，我怕自己搞混了。",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {
+    "L1U1": [
+     {
+      "speaker": "sam",
+      "text": "我猜间隔重复应该只对背外语单词有用吧？别的学习场景用不上？",
+      "sourceRefs": []
+     }
+    ],
+    "L1U2": [
+     {
+      "speaker": "sam",
+      "text": "我记得好像是先有电脑软件，然后才出现莱特纳系统的？顺序是这样吗？",
+      "sourceRefs": []
+     }
+    ],
+    "L1U3": [
+     {
+      "speaker": "sam",
+      "text": "莱特纳是不是那个最先提出间隔重复理论的人？",
+      "sourceRefs": []
+     }
+    ],
+    "L1U4": [
+     {
+      "speaker": "sam",
+      "text": "软件决定一个单词出现得多还是少，是不是随机的，还是有点看运气？",
+      "sourceRefs": []
+     }
+    ]
+   },
+   "rooms": [],
+   "boss": {
+    "unitId": "L1NOTES",
+    "knowledgeType": "claim",
+    "mechanic": "crossexam",
+    "mechanicReason": "整理本关学习内容后，用笔记交叉检验的方式找出被混淆的一条，巩固对关键事实的辨析。",
+    "item": {
+     "type": "crossexam",
+     "speaker": "sam",
+     "prompt": "这是小萌的笔记。其中一条是错的——找到能证明它错误的那段原文给小萌看。",
+     "statements": [
+      {
+       "id": "n1",
+       "text": "间隔重复尤其适合需要牢固记忆大量知识的情境，比如外语基础词汇量很大的时候。",
+       "flawed": false,
+       "why": "文章明确指出间隔重复适用于需要牢固记忆大量知识的情形，并以目标语言基础词汇量很大为例。",
+       "sourceRefs": [
+        {
+         "chunkId": "c1",
+         "quote": "间隔重复适用于诸多学习情境，特别是学习者需要牢固记忆大量知识的情形，比如外语词汇的学习"
+        }
+       ]
+      },
+      {
+       "id": "n2",
+       "text": "莱特纳系统是1973年由瑟巴斯坦·莱特纳发明的，是一种基于抽认卡的学习系统。",
+       "flawed": false,
+       "why": "文章清楚写明1973年莱特纳发明了基于抽认卡的莱特纳系统。",
+       "sourceRefs": [
+        {
+         "chunkId": "c1",
+         "quote": "1973年，瑟巴斯坦·莱特纳发明了他的“莱特纳系统”——一种基于抽认卡的全功能间隔重复学习系统"
+        }
+       ]
+      },
+      {
+       "id": "n3",
+       "text": "皮姆斯勒语言计划发明了基于抽认卡的莱特纳系统，用来教语言。",
+       "flawed": true,
+       "why": "发明莱特纳系统的是瑟巴斯坦·莱特纳本人，皮姆斯勒语言计划只是率先把间隔重复理论应用到语言学习中，并没有发明这套抽认卡系统。",
+       "sourceRefs": [
+        {
+         "chunkId": "c1",
+         "quote": "1973年，瑟巴斯坦·莱特纳发明了他的“莱特纳系统”——一种基于抽认卡的全功能间隔重复学习系统"
+        }
+       ]
+      },
+      {
+       "id": "n4",
+       "text": "软件会根据用户的辨认正确率调整词汇难度：难词更频繁出现，简单词出现频率降低。",
+       "flawed": false,
+       "why": "文章直接说明软件依据辨认正确率确定词汇难度，难词出现更频繁，简单词则更少出现。",
+       "sourceRefs": [
+        {
+         "chunkId": "c1",
+         "quote": "难以辨认的词汇经常出现，并且简单词汇出现频率较低，其词汇难度由软件根据用户的辨认正确率确定"
+        }
+       ]
+      }
+     ]
+    },
+    "hints": [
+     "留意哪一条笔记把‘发明工具的人’和‘应用理论的人’搞混了。"
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "sam",
+     "text": "谢谢你！差点就把皮姆斯勒和莱特纳的贡献搞混交上去了。",
+     "sourceRefs": []
+    }
+   ]
+  }
+ ]
+}

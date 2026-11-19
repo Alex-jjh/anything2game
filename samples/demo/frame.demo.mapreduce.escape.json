@@ -1,0 +1,210 @@
+{
+ "schema": "a2g.frame/v1",
+ "frameId": "escape",
+ "packageId": "demo_mapreduce",
+ "contentVersion": "1",
+ "generation": {
+  "mode": "pre-generated",
+  "model": "us.anthropic.claude-sonnet-5",
+  "promptVersion": "frame-escape.v1",
+  "review": "auto-validated"
+ },
+ "cast": [
+  {
+   "id": "archive",
+   "name": "The Archive",
+   "role": "narrator"
+  }
+ ],
+ "levels": [
+  {
+   "levelId": "L1",
+   "intro": [
+    {
+     "speaker": "archive",
+     "text": "You wake inside a locked data center. Four sealed rooms stand between you and the exit, each holding one piece of a single paper on distributed computation.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "archive",
+     "text": "Understand each room's piece, and its door will open.",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {},
+   "rooms": [
+    {
+     "id": "r1",
+     "title": "The Two Function Room",
+     "description": "Two consoles glow, one labeled MAP and one labeled REDUCE, each waiting for the right behaviour to be loaded into it.",
+     "unitIds": [
+      "L1U1"
+     ]
+    },
+    {
+     "id": "r2",
+     "title": "The Examples Room",
+     "description": "Four dusty case files sit on a table, each describing a different task that was once run through this system.",
+     "unitIds": [
+      "L1U2"
+     ]
+    },
+    {
+     "id": "r3",
+     "title": "The Pipeline Room",
+     "description": "A wall-sized diagram of workers, splits, and disks hangs crooked, its numbered steps scattered and waiting to be reattached.",
+     "unitIds": [
+      "L1U3"
+     ]
+    },
+    {
+     "id": "r4",
+     "title": "The Design Room",
+     "description": "A blank whiteboard and a half-finished word-count program sit under a flickering lamp, daring you to finish the design.",
+     "unitIds": [
+      "L1U4"
+     ]
+    }
+   ],
+   "boss": {
+    "unitId": "L1LOCK",
+    "knowledgeType": "reasoning",
+    "mechanic": "deduce",
+    "mechanicReason": "Frame boss: apply the Map/Reduce model to a design you haven't seen stated outright, to prove you understand the model rather than one memorized example.",
+    "item": {
+     "type": "deduce",
+     "scenario": "A teammate proposes a map/reduce design for tallying how many times each URL was requested across a huge set of web logs, fitting map (k1,v1) → list(k2,v2) and reduce (k2,list(v2)) → list(v2).",
+     "prompt": "Which design matches how URL access frequency is actually counted?",
+     "options": [
+      {
+       "id": "o1",
+       "text": "Map outputs (URL, 1) for each log entry; Reduce adds together all the values for that URL and emits a total count pair.",
+       "correct": true,
+       "feedback": "This matches the described design: map outputs 〈URL,1〉, and reduce adds the values together into a total count."
+      },
+      {
+       "id": "o2",
+       "text": "Map tallies the counts directly and emits a finished total; Reduce just copies that total through unchanged.",
+       "correct": false,
+       "feedback": "Counting is reduce's job once values are grouped by key; map should only emit the raw 〈URL,1〉 pairs, not a finished total."
+      },
+      {
+       "id": "o3",
+       "text": "Map outputs (1, URL) pairs so they can be sorted by count; Reduce groups them alphabetically by URL.",
+       "correct": false,
+       "feedback": "Swapping the key breaks the grouping: values need to be keyed by URL so reduce can merge all counts for the same URL, not sorted by the count itself."
+      }
+     ],
+     "sourceRefs": [
+      {
+       "chunkId": "c7",
+       "quote": "The map func- tion processes logs of web page requests and outputs 〈URL,1〉."
+      },
+      {
+       "chunkId": "c7",
+       "quote": "The reduce function adds together all values for the same URL and emits a 〈URL,total count〉 pair."
+      }
+     ]
+    },
+    "hints": [
+     "Ask which function should only emit raw pairs, and which one does the actual merging of values sharing a key."
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "archive",
+     "text": "The last console hums and the exit seal lifts. You didn't just recall the model — you applied it.",
+     "sourceRefs": []
+    }
+   ]
+  },
+  {
+   "levelId": "L3",
+   "intro": [
+    {
+     "speaker": "archive",
+     "text": "The lights in this wing are timed to old benchmark logs. Three rooms hold what really happened when this system was pushed to its limits.",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {},
+   "rooms": [
+    {
+     "id": "r1",
+     "title": "The Timing Room",
+     "description": "Stopwatches on the wall show conflicting numbers for the same grep and sort runs, daring you to tell true readings from false ones.",
+     "unitIds": [
+      "L3U1"
+     ]
+    },
+    {
+     "id": "r2",
+     "title": "The Usage Room",
+     "description": "A corkboard pinned with Google product names waits to be split into two piles: general techniques and web-data mining.",
+     "unitIds": [
+      "L3U2"
+     ]
+    },
+    {
+     "id": "r3",
+     "title": "The Straggler Room",
+     "description": "A single worker machine blinks red and slow on a rack of otherwise healthy ones, its fate hanging on how backup tasks actually work.",
+     "unitIds": [
+      "L3U3"
+     ]
+    }
+   ],
+   "boss": {
+    "unitId": "L3LOCK",
+    "knowledgeType": "process",
+    "mechanic": "order",
+    "mechanicReason": "Frame boss: rebuild the straggler timeline from the disabled-backup-tasks run, the exact scenario backup tasks exist to prevent.",
+    "item": {
+     "type": "order",
+     "prompt": "The exit lock wants the backup-disabled sort run's ending rebuilt in order.",
+     "steps": [
+      {
+       "id": "p1",
+       "text": "After 960 seconds, all except 5 of the reduce tasks are completed."
+      },
+      {
+       "id": "p2",
+       "text": "These last few stragglers don't finish until 300 seconds later."
+      },
+      {
+       "id": "p3",
+       "text": "The entire computation takes 1283 seconds, an increase of 44% in elapsed time."
+      }
+     ],
+     "why": "This is the exact sequence the paper reports for the sort job once backup tasks were disabled, showing why stragglers at the end cost so much time.",
+     "sourceRefs": [
+      {
+       "chunkId": "c41",
+       "quote": "After 960 seconds, all except 5 of the reduce tasks are completed."
+      },
+      {
+       "chunkId": "c41",
+       "quote": "However these last few stragglers don’t fin- ish until 300 seconds later."
+      },
+      {
+       "chunkId": "c41",
+       "quote": "The entire computation takes 1283 seconds, an increase of 44% in elapsed time."
+      }
+     ]
+    },
+    "hints": [
+     "Think about what happens between the 960-second mark and the moment the whole job is finally declared done."
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "archive",
+     "text": "The rack's red light goes dark and the final door slides open. You've seen exactly what a straggler costs — and why backups exist.",
+     "sourceRefs": []
+    }
+   ]
+  }
+ ]
+}

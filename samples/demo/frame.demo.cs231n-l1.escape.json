@@ -1,0 +1,229 @@
+{
+ "schema": "a2g.frame/v1",
+ "frameId": "escape",
+ "packageId": "demo_cs231n_l1",
+ "contentVersion": "1",
+ "generation": {
+  "mode": "pre-generated",
+  "model": "us.anthropic.claude-sonnet-5",
+  "promptVersion": "frame-escape.v1",
+  "review": "auto-validated"
+ },
+ "cast": [
+  {
+   "id": "archive",
+   "name": "The Archive",
+   "role": "narrator"
+  }
+ ],
+ "levels": [
+  {
+   "levelId": "L1",
+   "intro": [
+    {
+     "speaker": "archive",
+     "text": "The vault before you holds the history of computer vision, scattered across sealed rooms.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "archive",
+     "text": "Each room opens when you've pieced its fragment of the timeline back together.",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {},
+   "rooms": [
+    {
+     "id": "r1",
+     "title": "The Timeline Room",
+     "description": "A dusty corkboard pinned with photographs of cat brains, block shapes, and a camera lens, waiting to be strung in order.",
+     "unitIds": [
+      "L1U1"
+     ]
+    },
+    {
+     "id": "r2",
+     "title": "The Sketching Room",
+     "description": "Four easels hold sketches of a scene at increasing levels of detail, beside shelves stuffed with labeled photo bins.",
+     "unitIds": [
+      "L1U2",
+      "L1U3"
+     ]
+    },
+    {
+     "id": "r3",
+     "title": "The Claims Room",
+     "description": "A chalkboard covered in bold statements about neural networks, some underlined in red, waiting to be judged true or false.",
+     "unitIds": [
+      "L1U4"
+     ]
+    }
+   ],
+   "boss": {
+    "unitId": "L1LOCK",
+    "knowledgeType": "process",
+    "mechanic": "order",
+    "mechanicReason": "The final lock asks you to rebuild the full historical sequence spanning every room's discovery.",
+    "item": {
+     "type": "order",
+     "prompt": "The vault door wants the entire history of computer vision laid out from earliest to latest.",
+     "steps": [
+      {
+       "id": "f1",
+       "text": "Hubel & Wiesel study how simple, complex, and hypercomplex brain cells respond to light orientation and movement."
+      },
+      {
+       "id": "f2",
+       "text": "Larry Roberts builds the 'Block World' program, extracting feature points from simple shapes."
+      },
+      {
+       "id": "f3",
+       "text": "David Marr proposes stages of visual representation, from perceived intensities to a 3-D model."
+      },
+      {
+       "id": "f4",
+       "text": "Viola & Jones develop a practical face detection algorithm."
+      },
+      {
+       "id": "f5",
+       "text": "Convolutional Neural Networks become an important tool for object recognition."
+      }
+     ],
+     "why": "Each milestone carries its own year or decade, placing neuroscience research first, then early vision programs, then Marr's theory, then face detection, then the rise of CNNs.",
+     "sourceRefs": [
+      {
+       "chunkId": "c9",
+       "quote": "Hubel & Wiesel, 1959"
+      },
+      {
+       "chunkId": "c10",
+       "quote": "Larry Roberts, 1963"
+      },
+      {
+       "chunkId": "c13",
+       "quote": "Stages of Visual Representation, David Marr, 1970s"
+      },
+      {
+       "chunkId": "c17",
+       "quote": "Face Detection, Viola & Jones, 2001"
+      },
+      {
+       "chunkId": "c30",
+       "quote": "Convolutional Neural Networks (CNN) have become an important tool for object recognition"
+      }
+     ]
+    },
+    "hints": [
+     "Start with brain cells, end with the modern tool that 'was not invented overnight.'"
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "archive",
+     "text": "The vault seal breaks. You have rebuilt a century of seeing machines, piece by piece.",
+     "sourceRefs": []
+    }
+   ]
+  },
+  {
+   "levelId": "L2",
+   "intro": [
+    {
+     "speaker": "archive",
+     "text": "This wing holds the course itself, locked behind its own syllabus.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "archive",
+     "text": "Understand its shape, its grading, and its rules to find the way out.",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {},
+   "rooms": [
+    {
+     "id": "r1",
+     "title": "The Task Board Room",
+     "description": "A corkboard of labeled photographs — detection boxes, captions, action tags — sorted into two overlapping lists.",
+     "unitIds": [
+      "L2U1"
+     ]
+    },
+    {
+     "id": "r2",
+     "title": "The Scope Room",
+     "description": "A wall of banners proclaiming the course's ambitions, some overreaching, waiting to be swiped true or false.",
+     "unitIds": [
+      "L2U2"
+     ]
+    },
+    {
+     "id": "r3",
+     "title": "The Grading Room",
+     "description": "A ledger of percentages and a calendar of late days sits on a desk, demanding both memorization and careful reasoning.",
+     "unitIds": [
+      "L2U3",
+      "L2U4"
+     ]
+    }
+   ],
+   "boss": {
+    "unitId": "L2LOCK",
+    "knowledgeType": "reasoning",
+    "mechanic": "deduce",
+    "mechanicReason": "The final lock requires reasoning about how the grading components interact, not just recalling each weight alone.",
+    "item": {
+     "type": "deduce",
+     "scenario": "A student misses the midterm entirely, due to illness, but still plans to submit all problem sets and the final course project.",
+     "prompt": "Based on the grading breakdown, which statement is best supported?",
+     "options": [
+      {
+       "id": "d1",
+       "text": "If a student misses the midterm entirely, at most 85% of the final grade remains achievable.",
+       "correct": true,
+       "feedback": "Correct: the midterm is worth 15%, so losing it caps the remaining achievable grade at 85%."
+      },
+      {
+       "id": "d2",
+       "text": "A student can still earn full marks even without submitting the final course project.",
+       "correct": false,
+       "feedback": "Incorrect: the Final Course Project is worth 40% of the grade, so skipping it prevents full marks."
+      },
+      {
+       "id": "d3",
+       "text": "The midterm counts for the same weight as the three problem sets combined.",
+       "correct": false,
+       "feedback": "Incorrect: the three problem sets combined are worth 45%, while the midterm alone is only 15%."
+      }
+     ],
+     "sourceRefs": [
+      {
+       "chunkId": "c44",
+       "quote": "Midterm Exam: 15%"
+      },
+      {
+       "chunkId": "c44",
+       "quote": "Final Course Project: 40%"
+      },
+      {
+       "chunkId": "c44",
+       "quote": "3 Problem Sets: 15% x 3 = 45%"
+      }
+     ]
+    },
+    "hints": [
+     "Add up what the midterm is worth, then subtract it from 100% to see the ceiling."
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "archive",
+     "text": "The syllabus wing unlocks. You now know the course as well as its grading policy knows you.",
+     "sourceRefs": []
+    }
+   ]
+  }
+ ]
+}

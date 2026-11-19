@@ -1,0 +1,259 @@
+{
+ "schema": "a2g.frame/v1",
+ "frameId": "rookie",
+ "packageId": "demo_mapreduce",
+ "contentVersion": "1",
+ "generation": {
+  "mode": "pre-generated",
+  "model": "us.anthropic.claude-sonnet-5",
+  "promptVersion": "frame-rookie.v1",
+  "review": "auto-validated"
+ },
+ "cast": [
+  {
+   "id": "sam",
+   "name": "Sam",
+   "role": "rookie"
+  }
+ ],
+ "levels": [
+  {
+   "levelId": "L1",
+   "intro": [
+    {
+     "speaker": "sam",
+     "text": "Hi! This MapReduce paper is new territory for me and my notes from the first read are honestly a mess.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "sam",
+     "text": "Can we go unit by unit so I can check I actually understood the model?",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {
+    "L1U1": [
+     {
+      "speaker": "sam",
+      "text": "I think Map is the one that merges values together and Reduce just splits the input apart... is that backwards?",
+      "sourceRefs": []
+     }
+    ],
+    "L1U2": [
+     {
+      "speaker": "sam",
+      "text": "I assumed every example's reduce step does the same kind of work, like adding things up. Let's check that.",
+      "sourceRefs": []
+     }
+    ],
+    "L1U3": [
+     {
+      "speaker": "sam",
+      "text": "I figured the reduce workers start reading data before the map workers even finish buffering it. Is that right?",
+      "sourceRefs": []
+     }
+    ],
+    "L1U4": [
+     {
+      "speaker": "sam",
+      "text": "For word count, I was going to have Map just copy each document through, and let Reduce do all the counting. Sound okay?",
+      "sourceRefs": []
+     }
+    ]
+   },
+   "rooms": [],
+   "boss": {
+    "unitId": "L1NOTES",
+    "knowledgeType": "claim",
+    "mechanic": "crossexam",
+    "mechanicReason": "Frame boss: spot the wrong note among Sam's claims about the MapReduce model.",
+    "item": {
+     "type": "crossexam",
+     "speaker": "sam",
+     "prompt": "Sam's notes. One line is wrong - show Sam the passage that proves it.",
+     "statements": [
+      {
+       "id": "n1",
+       "text": "Map takes an input pair and produces a set of intermediate key/value pairs.",
+       "flawed": false,
+       "why": "Correct, this is exactly how the Map function is defined.",
+       "sourceRefs": [
+        {
+         "chunkId": "c5",
+         "quote": "Map, written by the user, takes an input pair and pro- duces a set of intermediate key/value pairs."
+        }
+       ]
+      },
+      {
+       "id": "n2",
+       "text": "In the word-count example, the reduce function sums all the counts emitted for a particular word.",
+       "flawed": false,
+       "why": "Correct, this is stated directly in the word-count walkthrough.",
+       "sourceRefs": [
+        {
+         "chunkId": "c6",
+         "quote": "The reduce function sums together all counts emitted for a particular word."
+        }
+       ]
+      },
+      {
+       "id": "n3",
+       "text": "In Distributed Grep, the reduce step adds together all the matching lines, the same way the URL-counting example totals things up.",
+       "flawed": true,
+       "why": "Grep's reduce step is actually an identity function that just copies matching lines through; it doesn't aggregate or total anything like the URL-counting example does.",
+       "sourceRefs": [
+        {
+         "chunkId": "c7",
+         "quote": "The reduce function is an identity function that just copies the supplied intermedi- ate data to the output."
+        }
+       ]
+      },
+      {
+       "id": "n4",
+       "text": "The master only assigns map or reduce tasks to workers after the input has already been split into pieces.",
+       "flawed": false,
+       "why": "Correct, splitting the input and starting up the program copies happens first, then the master assigns tasks to idle workers.",
+       "sourceRefs": [
+        {
+         "chunkId": "c13",
+         "quote": "The master picks idle workers and assigns each one a map task or a reduce task."
+        }
+       ]
+      }
+     ]
+    },
+    "hints": [
+     "One note mixes up the identity-style reduce from one example with the aggregating reduce from another."
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "sam",
+     "text": "Oh wow, I really had grep's reduce step confused with the aggregating ones. Thanks for catching that!",
+     "sourceRefs": []
+    }
+   ]
+  },
+  {
+   "levelId": "L3",
+   "intro": [
+    {
+     "speaker": "sam",
+     "text": "Back again! I read the performance section and the real-world uses, but my notes from that part are shakier than ever.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "sam",
+     "text": "Can we check them together before I trust any of these numbers?",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {
+    "L3U1": [
+     {
+      "speaker": "sam",
+      "text": "I noted that once the transfer rate for the grep job hit zero, the whole job was basically done. That tracks, right?",
+      "sourceRefs": []
+     }
+    ],
+    "L3U2": [
+     {
+      "speaker": "sam",
+      "text": "I lumped machine learning in with the web/query-mining uses like Zeitgeist. Was that the right bucket?",
+      "sourceRefs": []
+     }
+    ],
+    "L3U3": [
+     {
+      "speaker": "sam",
+      "text": "If one worker's disk is failing near the end of a sort job, I figured the whole thing just has to wait for it to finish. Right?",
+      "sourceRefs": []
+     }
+    ]
+   },
+   "rooms": [],
+   "boss": {
+    "unitId": "L3NOTES",
+    "knowledgeType": "claim",
+    "mechanic": "crossexam",
+    "mechanicReason": "Frame boss: spot the wrong note among Sam's claims about performance and real-world use.",
+    "item": {
+     "type": "crossexam",
+     "speaker": "sam",
+     "prompt": "Sam's notes. One line is wrong - show Sam the passage that proves it.",
+     "statements": [
+      {
+       "id": "n1",
+       "text": "Google's sort run, including startup overhead, finished in 891 seconds, beating the best reported TeraSort benchmark of 1057 seconds.",
+       "flawed": false,
+       "why": "Correct, the paper reports the sort run at 891 seconds compared against the 1057-second TeraSort result.",
+       "sourceRefs": [
+        {
+         "chunkId": "c39",
+         "quote": "Including startup overhead, the entire computation takes 891 seconds."
+        }
+       ]
+      },
+      {
+       "id": "n2",
+       "text": "The grep-like computation was essentially finished once its transfer rate hit zero around 80 seconds in.",
+       "flawed": true,
+       "why": "The rate hitting zero only marks the end of map work; the entire computation, including startup overhead, actually takes about 150 seconds.",
+       "sourceRefs": [
+        {
+         "chunkId": "c36",
+         "quote": "The entire computation takes approximately 150 seconds from start to finish."
+        }
+       ]
+      },
+      {
+       "id": "n3",
+       "text": "When a job is close to completion, the master schedules backup executions of the remaining in-progress tasks to deal with stragglers.",
+       "flawed": false,
+       "why": "Correct, this is exactly the backup-task mechanism described for handling stragglers.",
+       "sourceRefs": [
+        {
+         "chunkId": "c24",
+         "quote": "the master schedules backup executions of the remaining in-progress tasks."
+        }
+       ]
+      },
+      {
+       "id": "n4",
+       "text": "Large-scale machine learning problems and large-scale graph computations are general computing techniques, separate from web/query mining uses like Zeitgeist reports.",
+       "flawed": false,
+       "why": "Correct, these are listed as distinct domains among Google's uses of MapReduce.",
+       "sourceRefs": [
+        {
+         "chunkId": "c42",
+         "quote": "large-scale machine learning problems,"
+        },
+        {
+         "chunkId": "c42",
+         "quote": "large-scale graph computations."
+        }
+       ]
+      }
+     ]
+    },
+    "hints": [
+     "One note treats a milestone during the grep job as if it were the end of the whole computation."
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "sam",
+     "text": "Good thing we checked - I was about to swear the grep job ended at 80 seconds, not 150!",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "sam",
+     "text": "Thanks for walking through all of this with me.",
+     "sourceRefs": []
+    }
+   ]
+  }
+ ]
+}

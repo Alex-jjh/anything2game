@@ -1,0 +1,161 @@
+{
+ "schema": "a2g.frame/v1",
+ "frameId": "case",
+ "packageId": "demo_zh_spaced",
+ "contentVersion": "1",
+ "generation": {
+  "mode": "pre-generated",
+  "model": "us.anthropic.claude-sonnet-5",
+  "promptVersion": "frame-case.v1",
+  "review": "auto-validated"
+ },
+ "cast": [
+  {
+   "id": "mira",
+   "name": "米拉",
+   "role": "partner"
+  },
+  {
+   "id": "summary",
+   "name": "摘要君",
+   "role": "suspect"
+  }
+ ],
+ "levels": [
+  {
+   "levelId": "L1",
+   "intro": [
+    {
+     "speaker": "mira",
+     "text": "新案子来了：'间隔重复'这个学习方法，到底能用在哪些地方、是怎么一步步发展起来的。",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "summary",
+     "text": "还用读原文？我早就总结好了——隔一段时间复习一下嘛，谁都懂，用不用都一样。",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "mira",
+     "text": "可细节里往往藏着破案的关键，我们得逐条核对它的说法。",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {},
+   "rooms": [],
+   "boss": {
+    "unitId": "L1BOSS",
+    "knowledgeType": "claim",
+    "mechanic": "crossexam",
+    "mechanicReason": "本关的核心是审讯环节：找出摘要君哪句话超出了原文证据的范围。",
+    "item": {
+     "type": "crossexam",
+     "speaker": "summary",
+     "prompt": "摘要君对'间隔重复'的陈述。其中一条说法超出了原文证据，请拿出能揭穿它的原文证据。",
+     "statements": [
+      {
+       "id": "st1",
+       "text": "间隔重复是利用心理学间隔效应，通过逐步增加复习间隔来提升学习效率的技巧。",
+       "flawed": false,
+       "why": "这是原文对间隔重复的基本定义。",
+       "sourceRefs": [
+        {
+         "chunkId": "c1",
+         "quote": "间隔重复（英语：Spaced repetition）是一种利用心理学间隔效应，通过不断复习所学内容并逐步增加两次复习间的时间间隔来提升效率的学习技巧。"
+        }
+       ]
+      },
+      {
+       "id": "st2",
+       "text": "瑟巴斯坦·莱特纳于1973年发明了基于抽认卡的'莱特纳系统'。",
+       "flawed": false,
+       "why": "原文明确记载了莱特纳发明系统的年份和内容。",
+       "sourceRefs": [
+        {
+         "chunkId": "c1",
+         "quote": "1973年，瑟巴斯坦·莱特纳发明了他的“莱特纳系统”——一种基于抽认卡的全功能间隔重复学习系统。"
+        }
+       ]
+      },
+      {
+       "id": "st3",
+       "text": "间隔重复软件会根据用户的辨认正确率调整词汇出现频率，难词出现更频繁。",
+       "flawed": false,
+       "why": "原文说明了软件调整复习频率的具体机制。",
+       "sourceRefs": [
+        {
+         "chunkId": "c1",
+         "quote": "难以辨认的词汇经常出现，并且简单词汇出现频率较低，其词汇难度由软件根据用户的辨认正确率确定。"
+        }
+       ]
+      },
+      {
+       "id": "st4",
+       "text": "既然间隔重复理论已被证实有效，它就适用于任何学习任务，与知识量大小无关。",
+       "flawed": true,
+       "why": "原文强调间隔重复特别适合需要牢固记忆大量知识的情形，并以外语词汇量大的情况为例，并没有说它对知识量无关的'任何任务'都同样适用。",
+       "sourceRefs": [
+        {
+         "chunkId": "c1",
+         "quote": "间隔重复适用于诸多学习情境，特别是学习者需要牢固记忆大量知识的情形，比如外语词汇的学习"
+        }
+       ]
+      }
+     ]
+    },
+    "hints": [
+     "想一想原文有没有说间隔重复适用于'任何'学习任务，还是只强调了特定情境。"
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "mira",
+     "text": "案子结了。间隔重复确实对记忆大量知识有效，但摘要君把'适合大量知识记忆'偷换成了'适用一切任务'，这就是破绽所在。",
+     "sourceRefs": []
+    }
+   ]
+  }
+ ],
+ "board": {
+  "nodes": [
+   {
+    "id": "n1",
+    "label": "适用场景与心理学原理",
+    "unitId": "L1U1"
+   },
+   {
+    "id": "n2",
+    "label": "发展历程时间线",
+    "unitId": "L1U2"
+   },
+   {
+    "id": "n3",
+    "label": "学者与系统贡献归类",
+    "unitId": "L1U3"
+   },
+   {
+    "id": "n4",
+    "label": "软件调整复习频率机制",
+    "unitId": "L1U4"
+   }
+  ],
+  "edges": [
+   {
+    "from": "n2",
+    "to": "n3",
+    "label": "leads to"
+   },
+   {
+    "from": "n3",
+    "to": "n1",
+    "label": "supports"
+   },
+   {
+    "from": "n1",
+    "to": "n4",
+    "label": "explains"
+   }
+  ]
+ }
+}

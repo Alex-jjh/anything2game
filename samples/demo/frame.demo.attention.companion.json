@@ -1,0 +1,225 @@
+{
+ "schema": "a2g.frame/v1",
+ "frameId": "companion",
+ "packageId": "demo_attention",
+ "contentVersion": "1",
+ "generation": {
+  "mode": "pre-generated",
+  "model": "us.anthropic.claude-sonnet-5",
+  "promptVersion": "frame-companion.v1",
+  "review": "auto-validated"
+ },
+ "cast": [
+  {
+   "id": "aya",
+   "name": "Aya",
+   "role": "companion"
+  }
+ ],
+ "levels": [
+  {
+   "levelId": "L1",
+   "intro": [
+    {
+     "speaker": "aya",
+     "text": "This is the Transformer paper's opening pitch - attention instead of recurrence. We'll check what it really claims and how the stack is built.",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {
+    "L1U1": [
+     {
+      "speaker": "aya",
+      "text": "The abstract makes some bold claims. Let's see which ones hold up exactly as written.",
+      "sourceRefs": [
+       {
+        "chunkId": "c1",
+        "quote": "dispensing with recurrence and convolutions entirely"
+       }
+      ]
+     }
+    ],
+    "L1U2": [
+     {
+      "speaker": "aya",
+      "text": "Now the build order: encoder layers, then a shared normalization trick, then what the decoder adds on top.",
+      "sourceRefs": [
+       {
+        "chunkId": "c8",
+        "quote": "The encoder is composed of a stack of N = 6 identical layers."
+       }
+      ]
+     }
+    ],
+    "L1U3": [
+     {
+      "speaker": "aya",
+      "text": "Here's the complexity table. Sort each layer type by how many sequential steps it needs as sentences get longer.",
+      "sourceRefs": [
+       {
+        "chunkId": "c16",
+        "quote": "Recurrent O(n · d2) O(n) O(n)"
+       }
+      ]
+     }
+    ],
+    "L1U4": [
+     {
+      "speaker": "aya",
+      "text": "Now apply it: given a scenario about sequence length versus model dimension, which layer type wins on speed?",
+      "sourceRefs": [
+       {
+        "chunkId": "c19",
+        "quote": "self-attention layers are faster than recurrent layers when the sequence"
+       }
+      ]
+     }
+    ]
+   },
+   "rooms": [],
+   "outro": [
+    {
+     "speaker": "aya",
+     "text": "So: attention replaces recurrence, the stack has a clear residual-and-mask pattern, and self-attention wins on speed when sequences are shorter than the model's dimension.",
+     "sourceRefs": []
+    }
+   ]
+  },
+  {
+   "levelId": "L2",
+   "intro": [
+    {
+     "speaker": "aya",
+     "text": "Now the attention mechanism itself - what query, key and value actually do, and the exact math behind it.",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {
+    "L2U1": [
+     {
+      "speaker": "aya",
+      "text": "Three roles to sort: one asks, one answers, one carries the content forward.",
+      "sourceRefs": [
+       {
+        "chunkId": "c10",
+        "quote": "the weight assigned to each value is computed by a compatibility function of the query with the corresponding key."
+       }
+      ]
+     }
+    ],
+    "L2U2": [
+     {
+      "speaker": "aya",
+      "text": "Four steps turn Q, K and V into an output. Put the dot product, the scaling and the softmax in the right order.",
+      "sourceRefs": [
+       {
+        "chunkId": "c10",
+        "quote": "We compute the dot products of the query with all keys"
+       }
+      ]
+     }
+    ],
+    "L2U3": [
+     {
+      "speaker": "aya",
+      "text": "Multi-head attention shows up in three spots in the model - sort each scenario by where its queries, keys and values come from.",
+      "sourceRefs": [
+       {
+        "chunkId": "c14",
+        "quote": "Each position in the encoder can attend to all positions in the previous layer of the encoder."
+       }
+      ]
+     }
+    ],
+    "L2U4": [
+     {
+      "speaker": "aya",
+      "text": "Dot-product versus additive attention - the paper compares their speed and their accuracy depending on dk.",
+      "sourceRefs": [
+       {
+        "chunkId": "c11",
+        "quote": "While for small values of dk the two mechanisms perform similarly, additive attention outperforms dot product attention without scaling for larger values of dk"
+       }
+      ]
+     }
+    ]
+   },
+   "rooms": [],
+   "outro": [
+    {
+     "speaker": "aya",
+     "text": "Query, key, value; dot product, scale, softmax, sum; and three distinct places attention gets used - that's the whole mechanism.",
+     "sourceRefs": []
+    }
+   ]
+  },
+  {
+   "levelId": "L3",
+   "intro": [
+    {
+     "speaker": "aya",
+     "text": "Last stop: the actual results, what the ablations show, and whether the Transformer's tricks transfer to a brand-new task.",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {
+    "L3U1": [
+     {
+      "speaker": "aya",
+      "text": "There are specific BLEU numbers and cost claims here - let's see which configuration each one really belongs to.",
+      "sourceRefs": [
+       {
+        "chunkId": "c24",
+        "quote": "establishing a new state-of-the-art BLEU score of 28.4"
+       }
+      ]
+     }
+    ],
+    "L3U2": [
+     {
+      "speaker": "aya",
+      "text": "Heads, key size, model size, dropout, positional embeddings - sort each tweak by whether it helped, hurt, or changed basically nothing.",
+      "sourceRefs": [
+       {
+        "chunkId": "c27",
+        "quote": "quality also drops off with too many heads"
+       }
+      ]
+     }
+    ],
+    "L3U3": [
+     {
+      "speaker": "aya",
+      "text": "Translation is one thing - but does this architecture generalize to constituency parsing, a very different task?",
+      "sourceRefs": [
+       {
+        "chunkId": "c29",
+        "quote": "despite the lack of task-specific tuning our model performs sur- prisingly well"
+       }
+      ]
+     }
+    ],
+    "L3U4": [
+     {
+      "speaker": "aya",
+      "text": "Last claim: the paper suggests attention might be more interpretable. Notice how carefully it hedges that.",
+      "sourceRefs": [
+       {
+        "chunkId": "c21",
+        "quote": "As side benefit, self-attention could yield more interpretable models."
+       }
+      ]
+     }
+    ]
+   },
+   "rooms": [],
+   "outro": [
+    {
+     "speaker": "aya",
+     "text": "New state-of-the-art scores, a few hyperparameters that matter more than others, surprising success on parsing, and a cautious hint about interpretability - that's the paper's results in full.",
+     "sourceRefs": []
+    }
+   ]
+  }
+ ]
+}

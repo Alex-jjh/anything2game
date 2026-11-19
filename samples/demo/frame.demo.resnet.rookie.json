@@ -1,0 +1,262 @@
+{
+ "schema": "a2g.frame/v1",
+ "frameId": "rookie",
+ "packageId": "demo_resnet",
+ "contentVersion": "1",
+ "generation": {
+  "mode": "pre-generated",
+  "model": "us.anthropic.claude-sonnet-5",
+  "promptVersion": "frame-rookie.v1",
+  "review": "auto-validated"
+ },
+ "cast": [
+  {
+   "id": "sam",
+   "name": "Sam",
+   "role": "rookie"
+  }
+ ],
+ "levels": [
+  {
+   "levelId": "L1",
+   "intro": [
+    {
+     "speaker": "sam",
+     "text": "Hi! I'm new to this ResNet paper and my notes from the first read are honestly a mess.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "sam",
+     "text": "Can we go through the sections together so I don't walk away with the wrong idea?",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {
+    "L1U1": [
+     {
+      "speaker": "sam",
+      "text": "I just assumed stacking more layers always trains better — more layers, more power, right? Let's check that.",
+      "sourceRefs": []
+     }
+    ],
+    "L1U2": [
+     {
+      "speaker": "sam",
+      "text": "I wrote down that deeper plain nets train worse because of overfitting or vanishing gradients, maybe both. Is that even right?",
+      "sourceRefs": []
+     }
+    ],
+    "L1U3": [
+     {
+      "speaker": "sam",
+      "text": "I keep mixing up 'residual function,' 'identity mapping,' and 'shortcut connection' — they all sound like the same thing to me.",
+      "sourceRefs": []
+     }
+    ],
+    "L1U4": [
+     {
+      "speaker": "sam",
+      "text": "If the best mapping is basically just the identity, what would the solver even do with F(x)? I guessed it has to learn something complicated.",
+      "sourceRefs": []
+     }
+    ]
+   },
+   "rooms": [],
+   "boss": {
+    "unitId": "L1NOTES",
+    "knowledgeType": "claim",
+    "mechanic": "crossexam",
+    "mechanicReason": "Frame boss: spot the wrong note by matching it against the passage that disproves it.",
+    "item": {
+     "type": "crossexam",
+     "speaker": "sam",
+     "prompt": "Sam's notes. One line is wrong - show Sam the passage that proves it.",
+     "statements": [
+      {
+       "id": "n1",
+       "text": "The residual function F(x) is defined as H(x) minus x, the mapping the stacked layers are explicitly made to fit.",
+       "flawed": false,
+       "why": "Correct — this is exactly the reformulation the paper introduces.",
+       "sourceRefs": [
+        {
+         "chunkId": "c5",
+         "quote": "The orig- inal mapping is recast intoF(x)+x."
+        }
+       ]
+      },
+      {
+       "id": "n2",
+       "text": "The 56-layer plain network trains worse than the 20-layer one because it overfits the training data.",
+       "flawed": true,
+       "why": "The paper explicitly rules out overfitting as the cause of this degradation — Sam mixed up 'higher training error' with overfitting.",
+       "sourceRefs": [
+        {
+         "chunkId": "c4",
+         "quote": "such degradation is not caused by overfitting"
+        }
+       ]
+      },
+      {
+       "id": "n3",
+       "text": "Shortcut connections here simply perform identity mapping, and their output is added to the output of the stacked layers.",
+       "flawed": false,
+       "why": "Correct — this is how shortcut connections are defined in the paper.",
+       "sourceRefs": [
+        {
+         "chunkId": "c6",
+         "quote": "In our case, the shortcut connections simply perform identity mapping, and their outputs are added to the outputs of the stacked layers (Fig. 2)."
+        }
+       ]
+      },
+      {
+       "id": "n4",
+       "text": "If identity mappings are optimal, solvers may just drive the weights of the nonlinear layers toward zero.",
+       "flawed": false,
+       "why": "Correct — this is the paper's reasoning about the residual reformulation.",
+       "sourceRefs": [
+        {
+         "chunkId": "c11",
+         "quote": "the solvers may simply drive the weights of the multiple nonlinear lay- ers toward zero to approach identity mappings."
+        }
+       ]
+      }
+     ]
+    },
+    "hints": [
+     "One note blames the degradation problem on the wrong cause — check what the paper explicitly rules out."
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "sam",
+     "text": "Oh wow, I had the overfitting thing totally backwards. Glad we caught that before I told anyone else!",
+     "sourceRefs": []
+    }
+   ]
+  },
+  {
+   "levelId": "L2",
+   "intro": [
+    {
+     "speaker": "sam",
+     "text": "Round two! I took more notes on the deeper ResNets and the detection results, but I'm not confident in them.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "sam",
+     "text": "Mind double-checking with me before I trust any of this?",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {
+    "L2U1": [
+     {
+      "speaker": "sam",
+      "text": "There are three shortcut options, A, B, C — I think I remember which one never uses extra parameters, but I'm shaky on the other two.",
+      "sourceRefs": []
+     }
+    ],
+    "L2U2": [
+     {
+      "speaker": "sam",
+      "text": "For the bottleneck block, I assumed the 3x3 convolution comes first since it's the 'main' layer. Is that the right order?",
+      "sourceRefs": []
+     }
+    ],
+    "L2U3": [
+     {
+      "speaker": "sam",
+      "text": "So the 1202-layer network is way deeper than the 110-layer one — it must test better too, right?",
+      "sourceRefs": []
+     }
+    ],
+    "L2U4": [
+     {
+      "speaker": "sam",
+      "text": "Swapping VGG-16 for ResNet-101 in detection bumped up mAP a lot — I guessed they also changed the detection pipeline to make that happen.",
+      "sourceRefs": []
+     }
+    ]
+   },
+   "rooms": [],
+   "boss": {
+    "unitId": "L2NOTES",
+    "knowledgeType": "claim",
+    "mechanic": "crossexam",
+    "mechanicReason": "Frame boss: spot the wrong note by matching it against the passage that disproves it.",
+    "item": {
+     "type": "crossexam",
+     "speaker": "sam",
+     "prompt": "Sam's notes. One line is wrong - show Sam the passage that proves it.",
+     "statements": [
+      {
+       "id": "n1",
+       "text": "Option A pads with zeros for increasing dimensions and adds no extra parameters at all.",
+       "flawed": false,
+       "why": "Correct — this is exactly how option A is defined.",
+       "sourceRefs": [
+        {
+         "chunkId": "c26",
+         "quote": "zero-padding shortcuts are used for increasing dimensions, and all shortcuts are parameter- free"
+        }
+       ]
+      },
+      {
+       "id": "n2",
+       "text": "The bottleneck block runs 3x3, then 1x1, then 1x1, with the first 1x1 layer restoring the dimensions.",
+       "flawed": true,
+       "why": "Sam has the order backwards: it's 1x1 (reduce) then 3x3 (bottleneck) then 1x1 (restore), not 3x3 first.",
+       "sourceRefs": [
+        {
+         "chunkId": "c27",
+         "quote": "The three layers are 1×1, 3×3, and 1×1 convolutions"
+        }
+       ]
+      },
+      {
+       "id": "n3",
+       "text": "The 1202-layer network trained to very low training error with no optimization difficulty, but still tested worse than the 110-layer network.",
+       "flawed": false,
+       "why": "Correct — the paper reports both the near-perfect training and the worse test result, attributing it to overfitting.",
+       "sourceRefs": [
+        {
+         "chunkId": "c37",
+         "quote": "The testing result of this 1202-layer network is worse than that of our 110-layer network"
+        }
+       ]
+      },
+      {
+       "id": "n4",
+       "text": "The detection implementation was kept the same for VGG-16 and ResNet-101, so the mAP gain comes from the better network, not a pipeline change.",
+       "flawed": false,
+       "why": "Correct — the paper states the detection implementation was identical for both models.",
+       "sourceRefs": [
+        {
+         "chunkId": "c38",
+         "quote": "The detection implementation (see appendix) of using both models is the same, so the gains can only be attributed to better networks."
+        }
+       ]
+      }
+     ]
+    },
+    "hints": [
+     "One note gets the bottleneck block's layer order backwards — check which convolution shrinks and which restores dimensions."
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "sam",
+     "text": "I really had the bottleneck block backwards — thanks for catching that before I drew it wrong on the whiteboard!",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "sam",
+     "text": "This makes way more sense now. Thanks for going through it with me.",
+     "sourceRefs": []
+    }
+   ]
+  }
+ ]
+}

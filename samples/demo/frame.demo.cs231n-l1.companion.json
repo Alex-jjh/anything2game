@@ -1,0 +1,162 @@
+{
+ "schema": "a2g.frame/v1",
+ "frameId": "companion",
+ "packageId": "demo_cs231n_l1",
+ "contentVersion": "1",
+ "generation": {
+  "mode": "pre-generated",
+  "model": "us.anthropic.claude-sonnet-5",
+  "promptVersion": "frame-companion.v1",
+  "review": "auto-validated"
+ },
+ "cast": [
+  {
+   "id": "aya",
+   "name": "Aya",
+   "role": "companion"
+  }
+ ],
+ "levels": [
+  {
+   "levelId": "L1",
+   "intro": [
+    {
+     "speaker": "aya",
+     "text": "Let's walk through how computer vision grew up - from brain cells to block worlds to deep nets.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "aya",
+     "text": "Four stops: history's order, Marr's stages, ImageNet's categories, and what CNNs really are.",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {
+    "L1U1": [
+     {
+      "speaker": "aya",
+      "text": "Three big moments, three different decades. Can you line them up in time?",
+      "sourceRefs": [
+       {
+        "chunkId": "c9",
+        "quote": "Hubel & Wiesel, 1959"
+       }
+      ]
+     }
+    ],
+    "L1U2": [
+     {
+      "speaker": "aya",
+      "text": "Marr imagined vision as a ladder of sketches, from raw light to full 3-D shape.",
+      "sourceRefs": [
+       {
+        "chunkId": "c13",
+        "quote": "Stages of Visual Representation, David Marr, 1970s"
+       }
+      ]
+     }
+    ],
+    "L1U3": [
+     {
+      "speaker": "aya",
+      "text": "ImageNet sorted millions of pictures into neat families - can you find where each word belongs?",
+      "sourceRefs": [
+       {
+        "chunkId": "c22",
+        "quote": "22K categories and 14M images"
+       }
+      ]
+     }
+    ],
+    "L1U4": [
+     {
+      "speaker": "aya",
+      "text": "CNNs are famous now, but were they really an overnight idea?",
+      "sourceRefs": [
+       {
+        "chunkId": "c32",
+        "quote": "were not invented overnight"
+       }
+      ]
+     }
+    ]
+   },
+   "rooms": [],
+   "outro": [
+    {
+     "speaker": "aya",
+     "text": "From cat brains to face detectors to CNNs - vision's history is longer than it looks, and none of it happened overnight.",
+     "sourceRefs": []
+    }
+   ]
+  },
+  {
+   "levelId": "L2",
+   "intro": [
+    {
+     "speaker": "aya",
+     "text": "Now let's size up the course itself - what it covers, how it's graded, and the fine print on late days.",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {
+    "L2U1": [
+     {
+      "speaker": "aya",
+      "text": "Some tasks get named right away, others show up a bit later on the list - can you tell which is which?",
+      "sourceRefs": [
+       {
+        "chunkId": "c28",
+        "quote": "object detection, image captioning"
+       }
+      ]
+     }
+    ],
+    "L2U2": [
+     {
+      "speaker": "aya",
+      "text": "The course zooms in on one big problem, but the bigger dream is much wider than that.",
+      "sourceRefs": [
+       {
+        "chunkId": "c34",
+        "quote": "goes far beyond object recognition"
+       }
+      ]
+     }
+    ],
+    "L2U3": [
+     {
+      "speaker": "aya",
+      "text": "Three grading pieces, three different weights - match them up.",
+      "sourceRefs": [
+       {
+        "chunkId": "c44",
+        "quote": "Midterm Exam: 15%"
+       }
+      ]
+     }
+    ],
+    "L2U4": [
+     {
+      "speaker": "aya",
+      "text": "Here's a tricky case with late days - think about what the policy does and doesn't cover.",
+      "sourceRefs": [
+       {
+        "chunkId": "c44",
+        "quote": "Does not apply to Final Course Project"
+       }
+      ]
+     }
+    ]
+   },
+   "rooms": [],
+   "outro": [
+    {
+     "speaker": "aya",
+     "text": "Image classification is the course's anchor, but the grading and late rules are just as important to get right.",
+     "sourceRefs": []
+    }
+   ]
+  }
+ ]
+}

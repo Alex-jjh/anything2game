@@ -1,0 +1,300 @@
+{
+ "schema": "a2g.frame/v1",
+ "frameId": "case",
+ "packageId": "demo_resnet",
+ "contentVersion": "1",
+ "generation": {
+  "mode": "pre-generated",
+  "model": "us.anthropic.claude-sonnet-5",
+  "promptVersion": "frame-case.v1",
+  "review": "auto-validated"
+ },
+ "cast": [
+  {
+   "id": "mira",
+   "name": "Mira",
+   "role": "partner"
+  },
+  {
+   "id": "summary",
+   "name": "The Summary",
+   "role": "suspect"
+  }
+ ],
+ "levels": [
+  {
+   "levelId": "L1",
+   "intro": [
+    {
+     "speaker": "mira",
+     "text": "New case: deeper plain networks keep stumbling, and it's not from overfitting. Something else is going on.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "summary",
+     "text": "Relax, I skimmed the abstract. Deeper is better, case closed.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "mira",
+     "text": "The file says the opposite happened on CIFAR-10. Let's actually read it.",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {},
+   "rooms": [],
+   "boss": {
+    "unitId": "L1BOSS",
+    "knowledgeType": "claim",
+    "mechanic": "crossexam",
+    "mechanicReason": "Frame boss: the suspect's retelling of the degradation problem mixes solid findings with one claim that goes further than the paper allows.",
+    "item": {
+     "type": "crossexam",
+     "speaker": "summary",
+     "prompt": "The Summary's version of why deep plain networks degrade and how residual learning fixes it. One claim overclaims - find the passage that limits it.",
+     "statements": [
+      {
+       "id": "st1",
+       "text": "On CIFAR-10, the 56-layer plain network has higher training error (and test error) than the 20-layer plain network.",
+       "flawed": false,
+       "why": "Figure 1, as described in the paper, reports exactly this.",
+       "sourceRefs": [
+        {
+         "chunkId": "c3",
+         "quote": "The deeper network has higher training error, and thus test error."
+        }
+       ]
+      },
+      {
+       "id": "st2",
+       "text": "This degradation in deep plain networks is not caused by overfitting.",
+       "flawed": false,
+       "why": "The paper states this directly as an unexpected finding.",
+       "sourceRefs": [
+        {
+         "chunkId": "c4",
+         "quote": "such degradation is not caused by overfitting"
+        }
+       ]
+      },
+      {
+       "id": "st3",
+       "text": "Residual learning reformulates the problem so stacked layers fit F(x) := H(x) − x instead of the desired mapping H(x) directly.",
+       "flawed": false,
+       "why": "This is the paper's explicit reformulation of the building block.",
+       "sourceRefs": [
+        {
+         "chunkId": "c5",
+         "quote": "we let the stacked nonlinear layers fit another mapping of F(x) := H(x)−x."
+        }
+       ]
+      },
+      {
+       "id": "st4",
+       "text": "Residual learning works because identity mappings are always the optimal mapping for every layer.",
+       "flawed": true,
+       "why": "The paper explicitly says identity mappings are unlikely to be optimal in real cases; the reformulation only helps precondition the problem, it doesn't assume identity is optimal everywhere.",
+       "sourceRefs": [
+        {
+         "chunkId": "c11",
+         "quote": "In real cases, it is unlikely that identity mappings are op- timal, but our reformulation may help to precondition the problem."
+        }
+       ]
+      }
+     ]
+    },
+    "hints": [
+     "Which statement claims something is 'always' true, when the paper calls it 'unlikely' in real cases?"
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "mira",
+     "text": "Case closed on the degradation mystery: it's an optimization problem, not overfitting, and residual learning just makes identity easier to approach - not guaranteed optimal.",
+     "sourceRefs": []
+    }
+   ]
+  },
+  {
+   "levelId": "L2",
+   "intro": [
+    {
+     "speaker": "mira",
+     "text": "Next file: how ResNet actually builds its shortcut options and bottleneck blocks, and whether depth always pays off.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "summary",
+     "text": "Don't bother with the tables. More layers always means more accuracy - open and shut.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "mira",
+     "text": "Their own 1202-layer experiment says otherwise. Let's look at the evidence.",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {},
+   "rooms": [],
+   "boss": {
+    "unitId": "L2BOSS",
+    "knowledgeType": "claim",
+    "mechanic": "crossexam",
+    "mechanicReason": "Frame boss: the suspect's summary of shortcut options and depth results hides one claim the paper's own deepest experiment disproves.",
+    "item": {
+     "type": "crossexam",
+     "speaker": "summary",
+     "prompt": "The Summary's take on shortcut options and depth. One claim overclaims - find the passage that shows its limit.",
+     "statements": [
+      {
+       "id": "st1",
+       "text": "Option A, with zero-padding shortcuts, introduces no extra parameters.",
+       "flawed": false,
+       "why": "The paper defines option A exactly this way.",
+       "sourceRefs": [
+        {
+         "chunkId": "c26",
+         "quote": "zero-padding shortcuts are used for increasing dimensions, and all shortcuts are parameter- free"
+        }
+       ]
+      },
+      {
+       "id": "st2",
+       "text": "Option B uses projection shortcuts only to increase dimensions, keeping other shortcuts as identity.",
+       "flawed": false,
+       "why": "This is exactly how the paper describes option B.",
+       "sourceRefs": [
+        {
+         "chunkId": "c26",
+         "quote": "projec- tion shortcuts are used for increasing dimensions, and other shortcuts are identity"
+        }
+       ]
+      },
+      {
+       "id": "st3",
+       "text": "The 1202-layer ResNet trained with no optimization difficulty, reaching training error under 0.1%.",
+       "flawed": false,
+       "why": "The paper reports this directly as a successful training outcome.",
+       "sourceRefs": [
+        {
+         "chunkId": "c37",
+         "quote": "Our method shows no optimization difficulty, and this 103-layer network is able to achieve training error <0.1%"
+        }
+       ]
+      },
+      {
+       "id": "st4",
+       "text": "Because the 1202-layer network trained almost perfectly, it also achieved the best test results of all the ResNets tested.",
+       "flawed": true,
+       "why": "The paper reports the opposite: despite near-perfect training, the 1202-layer network's test result was worse than the 110-layer network's, attributed to overfitting.",
+       "sourceRefs": [
+        {
+         "chunkId": "c37",
+         "quote": "The testing result of this 1202-layer network is worse than that of our 110-layer network"
+        }
+       ]
+      }
+     ]
+    },
+    "hints": [
+     "Check the test error, not just the training error, for the 1202-layer network."
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "mira",
+     "text": "Case closed. Shortcut options and bottleneck blocks pay off, but depth alone is no guarantee - the 1202-layer network proved that the hard way.",
+     "sourceRefs": []
+    }
+   ]
+  }
+ ],
+ "board": {
+  "nodes": [
+   {
+    "id": "n1",
+    "label": "Degradation in plain networks",
+    "unitId": "L1U1"
+   },
+   {
+    "id": "n2",
+    "label": "Ruling out overfitting & vanishing gradients",
+    "unitId": "L1U2"
+   },
+   {
+    "id": "n3",
+    "label": "Residual function & shortcut terms",
+    "unitId": "L1U3"
+   },
+   {
+    "id": "n4",
+    "label": "Solver drives weights toward identity",
+    "unitId": "L1U4"
+   },
+   {
+    "id": "n5",
+    "label": "Shortcut options A/B/C",
+    "unitId": "L2U1"
+   },
+   {
+    "id": "n6",
+    "label": "Bottleneck block order",
+    "unitId": "L2U2"
+   },
+   {
+    "id": "n7",
+    "label": "Depth vs accuracy claims",
+    "unitId": "L2U3"
+   },
+   {
+    "id": "n8",
+    "label": "ResNet-101 boosts detection mAP",
+    "unitId": "L2U4"
+   }
+  ],
+  "edges": [
+   {
+    "from": "n1",
+    "to": "n2",
+    "label": "leads to"
+   },
+   {
+    "from": "n2",
+    "to": "n3",
+    "label": "leads to"
+   },
+   {
+    "from": "n3",
+    "to": "n4",
+    "label": "explains"
+   },
+   {
+    "from": "n4",
+    "to": "n5",
+    "label": "supports"
+   },
+   {
+    "from": "n5",
+    "to": "n6",
+    "label": "supports"
+   },
+   {
+    "from": "n6",
+    "to": "n7",
+    "label": "leads to"
+   },
+   {
+    "from": "n7",
+    "to": "n8",
+    "label": "supports"
+   },
+   {
+    "from": "n7",
+    "to": "n1",
+    "label": "contradicts"
+   }
+  ]
+ }
+}

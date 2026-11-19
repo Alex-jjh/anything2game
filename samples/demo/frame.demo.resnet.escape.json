@@ -1,0 +1,210 @@
+{
+ "schema": "a2g.frame/v1",
+ "frameId": "escape",
+ "packageId": "demo_resnet",
+ "contentVersion": "1",
+ "generation": {
+  "mode": "pre-generated",
+  "model": "us.anthropic.claude-sonnet-5",
+  "promptVersion": "frame-escape.v1",
+  "review": "auto-validated"
+ },
+ "cast": [
+  {
+   "id": "archive",
+   "name": "The Archive",
+   "role": "narrator"
+  }
+ ],
+ "levels": [
+  {
+   "levelId": "L1",
+   "intro": [
+    {
+     "speaker": "archive",
+     "text": "You are sealed inside a vault of old training logs. Something deep in these networks refuses to learn, and the door will not open until you understand why.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "archive",
+     "text": "Three rooms wait. Each one holds a piece of the puzzle.",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {},
+   "rooms": [
+    {
+     "id": "r1",
+     "title": "The error chamber",
+     "description": "Two chalkboards face each other, one marked 20-LAYER, one marked 56-LAYER, both covered in rising error curves.",
+     "unitIds": [
+      "L1U1"
+     ]
+    },
+    {
+     "id": "r2",
+     "title": "The suspects room",
+     "description": "A corkboard pins up two crossed-out culprits — OVERFITTING and VANISHING GRADIENTS — next to a stack of batch-normalization printouts.",
+     "unitIds": [
+      "L1U2"
+     ]
+    },
+    {
+     "id": "r3",
+     "title": "The filing room",
+     "description": "Three drawers sit under a diagram of a looping wire, labelled RESIDUAL FUNCTION, IDENTITY MAPPING, and SHORTCUT CONNECTION.",
+     "unitIds": [
+      "L1U3"
+     ]
+    },
+    {
+     "id": "r4",
+     "title": "The solver's desk",
+     "description": "A half-finished equation sits on the desk, F(x) waiting to be pushed toward zero.",
+     "unitIds": [
+      "L1U4"
+     ]
+    }
+   ],
+   "boss": {
+    "unitId": "L1LOCK",
+    "knowledgeType": "process",
+    "mechanic": "order",
+    "mechanicReason": "Frame boss: rebuild the chain of reasoning from broken depth to the residual fix.",
+    "item": {
+     "type": "order",
+     "prompt": "The vault door wants the story of the degradation problem told in the right order.",
+     "steps": [
+      {
+       "id": "p1",
+       "text": "A deeper plain network is trained and shows higher training error than its shallower counterpart."
+      },
+      {
+       "id": "p2",
+       "text": "Overfitting and vanishing gradients are both ruled out as the cause."
+      },
+      {
+       "id": "p3",
+       "text": "The layers are reformulated to fit a residual function F(x) = H(x) - x, added back to x via an identity shortcut."
+      }
+     ],
+     "why": "This is the order in which the passage builds its case: observe the problem, rule out the obvious causes, then introduce the fix.",
+     "sourceRefs": [
+      {
+       "chunkId": "c11",
+       "quote": "the solvers may simply drive the weights of the multiple nonlinear lay- ers toward zero to approach identity mappings."
+      }
+     ]
+    },
+    "hints": [
+     "Start with what Figure 1 showed, then think about what got ruled out before the fix was introduced."
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "archive",
+     "text": "The chalkboards go dark and the drawers slide shut. You've traced the fault line from broken depth to the residual fix — the door opens.",
+     "sourceRefs": []
+    }
+   ]
+  },
+  {
+   "levelId": "L2",
+   "intro": [
+    {
+     "speaker": "archive",
+     "text": "Deeper in the vault lie the blueprints for building these networks at scale, and a courtroom of claims about whether depth always wins.",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {},
+   "rooms": [
+    {
+     "id": "r1",
+     "title": "The shortcut office",
+     "description": "Three labeled folders sit on a desk: OPTION A, OPTION B, OPTION C, each with a different rule for handling dimension mismatches.",
+     "unitIds": [
+      "L2U1"
+     ]
+    },
+    {
+     "id": "r2",
+     "title": "The bottleneck workshop",
+     "description": "A conveyor belt narrows in the middle, flanked by crates labeled 1x1, 3x3, and 1x1 again.",
+     "unitIds": [
+      "L2U2"
+     ]
+    },
+    {
+     "id": "r3",
+     "title": "The verdict hall",
+     "description": "A judge's bench is piled with test-error reports, including one marked 1202-LAYERS stamped WORSE THAN EXPECTED.",
+     "unitIds": [
+      "L2U3"
+     ]
+    },
+    {
+     "id": "r4",
+     "title": "The detector's booth",
+     "description": "Two camera rigs sit side by side, one labeled VGG-16 and one labeled RESNET-101, aimed at the same test image.",
+     "unitIds": [
+      "L2U4"
+     ]
+    }
+   ],
+   "boss": {
+    "unitId": "L2LOCK",
+    "knowledgeType": "reasoning",
+    "mechanic": "deduce",
+    "mechanicReason": "Frame boss: apply the level's reasoning about depth and shortcut design to a single conclusive judgment.",
+    "item": {
+     "type": "deduce",
+     "scenario": "A colleague argues: 'Since the 1202-layer network trained to under 0.1% training error with no optimization difficulty, and residual networks keep gaining accuracy from depth, this 1202-layer model must also have the best test accuracy of all the CIFAR-10 models tested.'",
+     "prompt": "Is this conclusion correct?",
+     "options": [
+      {
+       "id": "o1",
+       "text": "No — the 1202-layer network actually tested worse than the 110-layer network, likely due to overfitting on the small dataset.",
+       "correct": true,
+       "feedback": "Correct. Training without optimization difficulty is not the same as best test accuracy; the passage attributes the 1202-layer network's worse test result to overfitting."
+      },
+      {
+       "id": "o2",
+       "text": "Yes — more depth with no optimization difficulty always produces the best test accuracy in this paper's experiments.",
+       "correct": false,
+       "feedback": "The passage directly reports the opposite for the 1202-layer network: despite training almost perfectly, its test result was worse than the 110-layer network's."
+      },
+      {
+       "id": "o3",
+       "text": "Yes — because the three shortcut options A, B, and C all showed the 1202-layer setup being best for test accuracy.",
+       "correct": false,
+       "feedback": "Options A/B/C are about shortcut handling for dimension changes, not about the 1202-layer depth experiment, and they don't support this claim."
+      }
+     ],
+     "sourceRefs": [
+      {
+       "chunkId": "c37",
+       "quote": "The testing result of this 1202-layer network is worse than that of our 110-layer network"
+      },
+      {
+       "chunkId": "c37",
+       "quote": "Our method shows no optimization difficulty, and this 103-layer network is able to achieve training error <0.1%"
+      }
+     ]
+    },
+    "hints": [
+     "Training without optimization difficulty is not the same thing as generalizing well on the test set."
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "archive",
+     "text": "The verdict is read, the camera rigs power down, and the vault's final door swings wide. You judged depth correctly, where it helps and where it doesn't.",
+     "sourceRefs": []
+    }
+   ]
+  }
+ ]
+}

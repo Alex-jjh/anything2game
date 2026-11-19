@@ -1,0 +1,123 @@
+{
+ "schema": "a2g.frame/v1",
+ "frameId": "escape",
+ "packageId": "demo_zh_spaced",
+ "contentVersion": "1",
+ "generation": {
+  "mode": "pre-generated",
+  "model": "us.anthropic.claude-sonnet-5",
+  "promptVersion": "frame-escape.v1",
+  "review": "auto-validated"
+ },
+ "cast": [
+  {
+   "id": "archive",
+   "name": "记忆档案馆",
+   "role": "narrator"
+  }
+ ],
+ "levels": [
+  {
+   "levelId": "L1",
+   "intro": [
+    {
+     "speaker": "archive",
+     "text": "欢迎来到记忆档案馆。这里封存着一项关于“间隔重复”的研究记录，三道门后面藏着它的原理、历史与应用。",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "archive",
+     "text": "只有理解每一部分，门才会为你打开。",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {},
+   "rooms": [
+    {
+     "id": "r1",
+     "title": "适用情境室",
+     "description": "墙上挂着一张外语单词表，旁边写满了关于“适用情境”的批注。",
+     "unitIds": [
+      "L1U1"
+     ]
+    },
+    {
+     "id": "r2",
+     "title": "年代长廊",
+     "description": "长廊两侧的档案柜分别贴着“理论与验证”“工具”“应用”的标签，墙上还钉着一条年代线。",
+     "unitIds": [
+      "L1U2",
+      "L1U3"
+     ]
+    },
+    {
+     "id": "r3",
+     "title": "自适应工作台",
+     "description": "一台老式终端屏幕闪烁着正确率数字，旁边散落着难词与简单词的抽认卡。",
+     "unitIds": [
+      "L1U4"
+     ]
+    }
+   ],
+   "boss": {
+    "unitId": "L1LOCK",
+    "knowledgeType": "process",
+    "mechanic": "order",
+    "mechanicReason": "终极之门需要你把整个研究脉络——从理论提出到工具发明，再到软件的自适应调整——按时间与逻辑顺序重建出来。",
+    "item": {
+     "type": "order",
+     "prompt": "出口的锁需要你按正确顺序重建间隔重复从理论到应用的完整链条。",
+     "steps": [
+      {
+       "id": "b1",
+       "text": "梅斯在1932年的著作中提出复习间隔应逐渐增加的观点"
+      },
+      {
+       "id": "b2",
+       "text": "Spitzer于1939年用实验验证了间隔重复方法的效果"
+      },
+      {
+       "id": "b3",
+       "text": "莱特纳于1973年发明基于抽认卡的全功能间隔重复系统"
+      },
+      {
+       "id": "b4",
+       "text": "20世纪80年代软件普及后，系统依据用户辨认正确率动态调整词汇出现频率"
+      }
+     ],
+     "why": "文章按时间顺序依次介绍了理论提出、实验验证、工具发明，最终发展为软件根据正确率自动调节复习间隔的应用。",
+     "sourceRefs": [
+      {
+       "chunkId": "c1",
+       "quote": "将间隔重复应用到学习上的观点最初见于塞西尔·阿莱克·梅斯1932的著作《学习心理学》中"
+      },
+      {
+       "chunkId": "c1",
+       "quote": "1939年，H·F·Spitzer在爱荷华州对36名学生进行了一项实验，验证了间隔重复方法的效果"
+      },
+      {
+       "chunkId": "c1",
+       "quote": "1973年，瑟巴斯坦·莱特纳发明了他的“莱特纳系统”——一种基于抽认卡的全功能间隔重复学习系统"
+      },
+      {
+       "chunkId": "c1",
+       "quote": "难以辨认的词汇经常出现，并且简单词汇出现频率较低，其词汇难度由软件根据用户的辨认正确率确定"
+      }
+     ]
+    },
+    "hints": [
+     "先确定哪一年提出理论、哪一年做了实验验证，再找工具发明的时间。",
+     "最后一步不是某个具体年份事件，而是软件时代根据正确率调整难度的机制。"
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "archive",
+     "text": "档案柜的锁同时弹开——你重建了这项研究从理论到软件的完整链条。",
+     "sourceRefs": []
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,162 @@
+{
+ "schema": "a2g.frame/v1",
+ "frameId": "companion",
+ "packageId": "demo_resnet",
+ "contentVersion": "1",
+ "generation": {
+  "mode": "pre-generated",
+  "model": "us.anthropic.claude-sonnet-5",
+  "promptVersion": "frame-companion.v1",
+  "review": "auto-validated"
+ },
+ "cast": [
+  {
+   "id": "aya",
+   "name": "Aya",
+   "role": "companion"
+  }
+ ],
+ "levels": [
+  {
+   "levelId": "L1",
+   "intro": [
+    {
+     "speaker": "aya",
+     "text": "This paper starts with a puzzle: deeper networks should learn more, but something strange happens when you just stack layers.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "aya",
+     "text": "Let's work out what breaks, what doesn't explain it, and the fix the authors propose.",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {
+    "L1U1": [
+     {
+      "speaker": "aya",
+      "text": "Look at the 20-layer versus 56-layer plain networks on CIFAR-10 — depth doesn't automatically help here.",
+      "sourceRefs": [
+       {
+        "chunkId": "c3",
+        "quote": "The deeper network has higher training error, and thus test error."
+       }
+      ]
+     }
+    ],
+    "L1U2": [
+     {
+      "speaker": "aya",
+      "text": "If it's not overfitting, people often blame vanishing gradients next. Check whether that holds up under batch normalization.",
+      "sourceRefs": [
+       {
+        "chunkId": "c21",
+        "quote": "So neither forward nor backward signals vanish."
+       }
+      ]
+     }
+    ],
+    "L1U3": [
+     {
+      "speaker": "aya",
+      "text": "Now the vocabulary: residual function, identity mapping, shortcut connection. Each one plays a distinct role in the fix.",
+      "sourceRefs": [
+       {
+        "chunkId": "c5",
+        "quote": "The orig- inal mapping is recast intoF(x)+x."
+       }
+      ]
+     }
+    ],
+    "L1U4": [
+     {
+      "speaker": "aya",
+      "text": "Here's a thought experiment: what happens to the solver if the ideal mapping is basically identity?",
+      "sourceRefs": [
+       {
+        "chunkId": "c11",
+        "quote": "the solvers may simply drive the weights of the multiple nonlinear lay- ers toward zero to approach identity mappings."
+       }
+      ]
+     }
+    ]
+   },
+   "rooms": [],
+   "outro": [
+    {
+     "speaker": "aya",
+     "text": "So degradation isn't overfitting or vanishing gradients — it's an optimization quirk, and residual learning gives the solver an easier target.",
+     "sourceRefs": []
+    }
+   ]
+  },
+  {
+   "levelId": "L2",
+   "intro": [
+    {
+     "speaker": "aya",
+     "text": "Now we build the real ResNets: how shortcuts handle changing dimensions, how the bottleneck block is stacked, and whether depth alone guarantees better results.",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {
+    "L2U1": [
+     {
+      "speaker": "aya",
+      "text": "Three shortcut options, A, B, C — they differ in whether they add parameters and when they project.",
+      "sourceRefs": [
+       {
+        "chunkId": "c26",
+        "quote": "all shortcuts are projections"
+       }
+      ]
+     }
+    ],
+    "L2U2": [
+     {
+      "speaker": "aya",
+      "text": "The bottleneck block uses three convolutions in a particular order around a smaller 3x3 layer.",
+      "sourceRefs": [
+       {
+        "chunkId": "c27",
+        "quote": "leaving the 3×3 layer a bottleneck with smaller input/output dimensions"
+       }
+      ]
+     }
+    ],
+    "L2U3": [
+     {
+      "speaker": "aya",
+      "text": "Does going deeper always help? Watch what happens to a network pushed to 1202 layers.",
+      "sourceRefs": [
+       {
+        "chunkId": "c37",
+        "quote": "The testing result of this 1202-layer network is worse than that of our 110-layer network"
+       }
+      ]
+     }
+    ],
+    "L2U4": [
+     {
+      "speaker": "aya",
+      "text": "Swap VGG-16 for ResNet-101 in a detector and mAP jumps — but the detection pipeline itself didn't change.",
+      "sourceRefs": [
+       {
+        "chunkId": "c38",
+        "quote": "The detection implementation (see appendix) of using both models is the same, so the gains can only be attributed to better networks."
+       }
+      ]
+     }
+    ]
+   },
+   "rooms": [],
+   "outro": [
+    {
+     "speaker": "aya",
+     "text": "Shortcut design, bottleneck order, and the depth-versus-overfitting twist — that's how ResNet turns raw depth into real gains.",
+     "sourceRefs": []
+    }
+   ]
+  }
+ ]
+}

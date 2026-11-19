@@ -1,0 +1,170 @@
+{
+ "schema": "a2g.frame/v1",
+ "frameId": "companion",
+ "packageId": "demo_mapreduce",
+ "contentVersion": "1",
+ "generation": {
+  "mode": "pre-generated",
+  "model": "us.anthropic.claude-sonnet-5",
+  "promptVersion": "frame-companion.v1",
+  "review": "auto-validated"
+ },
+ "cast": [
+  {
+   "id": "aya",
+   "name": "Aya",
+   "role": "companion"
+  }
+ ],
+ "levels": [
+  {
+   "levelId": "L1",
+   "intro": [
+    {
+     "speaker": "aya",
+     "text": "This whole paper runs on two user-written functions. Let's see exactly what each one is supposed to do.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "aya",
+     "text": "Then we'll check the model against real examples, trace a job end to end, and design one ourselves.",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {
+    "L1U1": [
+     {
+      "speaker": "aya",
+      "text": "One function makes the intermediate pairs. The other one receives them, already grouped by key.",
+      "sourceRefs": [
+       {
+        "chunkId": "c5",
+        "quote": "Map, written by the user, takes an input pair and pro- duces a set of intermediate key/value pairs."
+       }
+      ]
+     }
+    ],
+    "L1U2": [
+     {
+      "speaker": "aya",
+      "text": "Same two functions, four different jobs - but reduce doesn't behave the same way every time.",
+      "sourceRefs": [
+       {
+        "chunkId": "c7",
+        "quote": "Distributed Grep: The map function emits a line if it matches a supplied pattern."
+       }
+      ]
+     }
+    ],
+    "L1U3": [
+     {
+      "speaker": "aya",
+      "text": "A job doesn't start with map workers running - something has to happen to the input first.",
+      "sourceRefs": [
+       {
+        "chunkId": "c13",
+        "quote": "The MapReduce library in the user program first splits the input files into M pieces of typically 16 megabytes to 64 megabytes (MB) per piece"
+       }
+      ]
+     }
+    ],
+    "L1U4": [
+     {
+      "speaker": "aya",
+      "text": "Remember the shape every map and reduce function has to fit.",
+      "sourceRefs": [
+       {
+        "chunkId": "c7",
+        "quote": "map (k1,v1) → list(k2,v2)"
+       }
+      ]
+     },
+     {
+      "speaker": "aya",
+      "text": "Now design word-count yourself: one pair per word from map, one total per word from reduce.",
+      "sourceRefs": []
+     }
+    ]
+   },
+   "rooms": [],
+   "outro": [
+    {
+     "speaker": "aya",
+     "text": "Map scatters, reduce gathers - and the same pair of functions reshapes itself for grep, counting, link graphs, and term vectors.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "aya",
+     "text": "And now you've seen the whole pipeline, from splitting files to the master waking your program up.",
+     "sourceRefs": []
+    }
+   ]
+  },
+  {
+   "levelId": "L3",
+   "intro": [
+    {
+     "speaker": "aya",
+     "text": "Now the numbers: how fast these jobs really ran, and what they were used for at Google.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "aya",
+     "text": "Some of the timing claims sound right but aren't - watch for the difference between a milestone and the actual finish.",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {
+    "L3U1": [
+     {
+      "speaker": "aya",
+      "text": "A rate dropping to zero isn't the same as the job being done - there's still overhead and other work left.",
+      "sourceRefs": [
+       {
+        "chunkId": "c36",
+        "quote": "The entire computation takes approximately 150 seconds from start to finish."
+       }
+      ]
+     }
+    ],
+    "L3U2": [
+     {
+      "speaker": "aya",
+      "text": "Google ran MapReduce on all sorts of problems - some are general techniques, others are specific web or query analyses.",
+      "sourceRefs": [
+       {
+        "chunkId": "c42",
+        "quote": "It has been used across a wide range of domains within Google, including:"
+       }
+      ]
+     }
+    ],
+    "L3U3": [
+     {
+      "speaker": "aya",
+      "text": "Picture one machine quietly getting slower and slower near the end of a job.",
+      "sourceRefs": [
+       {
+        "chunkId": "c23",
+        "quote": "a machine with a bad disk may experience fre- quent correctable errors that slow its read performance from 30 MB/s to 1 MB/s."
+       }
+      ]
+     }
+    ]
+   },
+   "rooms": [],
+   "outro": [
+    {
+     "speaker": "aya",
+     "text": "Backup tasks quietly save a lot of time - skip them and a sort job runs 44% longer.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "aya",
+     "text": "And MapReduce itself turned out to power everything from machine learning to Google Zeitgeist.",
+     "sourceRefs": []
+    }
+   ]
+  }
+ ]
+}

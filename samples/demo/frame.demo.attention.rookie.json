@@ -1,0 +1,375 @@
+{
+ "schema": "a2g.frame/v1",
+ "frameId": "rookie",
+ "packageId": "demo_attention",
+ "contentVersion": "1",
+ "generation": {
+  "mode": "pre-generated",
+  "model": "us.anthropic.claude-sonnet-5",
+  "promptVersion": "frame-rookie.v1",
+  "review": "auto-validated"
+ },
+ "cast": [
+  {
+   "id": "sam",
+   "name": "Sam",
+   "role": "rookie"
+  }
+ ],
+ "levels": [
+  {
+   "levelId": "L1",
+   "intro": [
+    {
+     "speaker": "sam",
+     "text": "Hi! I just started reading this Transformer paper and my notes are already a mess.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "sam",
+     "text": "Can we go through it together and fix whatever I got wrong?",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {
+    "L1U1": [
+     {
+      "speaker": "sam",
+      "text": "So the abstract is basically saying the Transformer wins on every single NLP benchmark out there, right?",
+      "sourceRefs": []
+     }
+    ],
+    "L1U2": [
+     {
+      "speaker": "sam",
+      "text": "I assumed the decoder is built exactly like the encoder, just mirrored - no extra parts.",
+      "sourceRefs": []
+     }
+    ],
+    "L1U3": [
+     {
+      "speaker": "sam",
+      "text": "I'd guess attention layers need MORE sequential steps than recurrent ones, since attention compares everything to everything.",
+      "sourceRefs": []
+     }
+    ],
+    "L1U4": [
+     {
+      "speaker": "sam",
+      "text": "If the sequence is shorter than the hidden dimension, I'd still bet recurrence wins since it processes tokens one by one, carefully.",
+      "sourceRefs": []
+     }
+    ]
+   },
+   "rooms": [],
+   "boss": {
+    "unitId": "L1NOTES",
+    "knowledgeType": "claim",
+    "mechanic": "crossexam",
+    "mechanicReason": "Frame boss: spot the wrong note among Sam's claims about the architecture.",
+    "item": {
+     "type": "crossexam",
+     "speaker": "sam",
+     "prompt": "Sam's notes. One line is wrong - show Sam the passage that proves it.",
+     "statements": [
+      {
+       "id": "n1",
+       "text": "The Transformer gets rid of recurrence and convolutions entirely, relying only on attention.",
+       "flawed": false,
+       "why": "This is exactly what the abstract claims.",
+       "sourceRefs": [
+        {
+         "chunkId": "c1",
+         "quote": "dispensing with recurrence and convolutions entirely"
+        }
+       ]
+      },
+      {
+       "id": "n2",
+       "text": "The decoder's self-attention is masked so a position's prediction depends only on earlier positions.",
+       "flawed": false,
+       "why": "The masking description states this directly.",
+       "sourceRefs": [
+        {
+         "chunkId": "c9",
+         "quote": "This masking, combined with fact that the output embeddings are offset by one position, ensures that the predictions for position i can depend only on the known outputs at positions less than i."
+        }
+       ]
+      },
+      {
+       "id": "n3",
+       "text": "Recurrent layers need O(n) sequential operations, while self-attention needs only O(1).",
+       "flawed": false,
+       "why": "This matches the complexity table exactly.",
+       "sourceRefs": [
+        {
+         "chunkId": "c16",
+         "quote": "Recurrent O(n · d2) O(n) O(n)"
+        }
+       ]
+      },
+      {
+       "id": "n4",
+       "text": "Self-attention is always faster than recurrent layers, no matter how long the sequence is.",
+       "flawed": true,
+       "why": "The paper only claims self-attention is faster when the sequence length n is smaller than the representation dimension d - not as an unconditional, always-true speed advantage.",
+       "sourceRefs": [
+        {
+         "chunkId": "c20",
+         "quote": "length n is smaller than the representation dimensionality d, which is most often the case with sentence representations used by state-of-the-art models in machine translations"
+        }
+       ]
+      }
+     ]
+    },
+    "hints": [
+     "Which note drops the paper's 'when n is smaller than d' condition and turns it into an always-true claim?"
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "sam",
+     "text": "Oh wow, I really would have mixed that one up. Thanks for catching it!",
+     "sourceRefs": []
+    }
+   ]
+  },
+  {
+   "levelId": "L2",
+   "intro": [
+    {
+     "speaker": "sam",
+     "text": "Okay, this is the attention math section and I'm already lost.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "sam",
+     "text": "My notes on query/key/value and the formula are definitely shaky - help me check them?",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {
+    "L2U1": [
+     {
+      "speaker": "sam",
+      "text": "I keep mixing these up - isn't the value the thing that gets compared against the query?",
+      "sourceRefs": []
+     }
+    ],
+    "L2U2": [
+     {
+      "speaker": "sam",
+      "text": "Wait, does softmax happen before we even compute the dot products?",
+      "sourceRefs": []
+     }
+    ],
+    "L2U3": [
+     {
+      "speaker": "sam",
+      "text": "Isn't 'encoder-decoder attention' just the encoder attending to its own earlier layer?",
+      "sourceRefs": []
+     }
+    ],
+    "L2U4": [
+     {
+      "speaker": "sam",
+      "text": "I assumed dot-product attention always beats additive attention, scaled or not.",
+      "sourceRefs": []
+     }
+    ]
+   },
+   "rooms": [],
+   "boss": {
+    "unitId": "L2NOTES",
+    "knowledgeType": "claim",
+    "mechanic": "crossexam",
+    "mechanicReason": "Frame boss: spot the wrong note among Sam's claims about attention mechanics.",
+    "item": {
+     "type": "crossexam",
+     "speaker": "sam",
+     "prompt": "Sam's notes. One line is wrong - show Sam the passage that proves it.",
+     "statements": [
+      {
+       "id": "n1",
+       "text": "The weight given to each value comes from a compatibility function between the query and the matching key.",
+       "flawed": false,
+       "why": "This is exactly how the attention function is defined.",
+       "sourceRefs": [
+        {
+         "chunkId": "c10",
+         "quote": "the weight assigned to each value is computed by a compatibility function of the query with the corresponding key."
+        }
+       ]
+      },
+      {
+       "id": "n2",
+       "text": "Scaled dot-product attention divides the dot products by √dk before applying softmax.",
+       "flawed": false,
+       "why": "This matches the formula's described steps.",
+       "sourceRefs": [
+        {
+         "chunkId": "c10",
+         "quote": "divide each by √ dk"
+        }
+       ]
+      },
+      {
+       "id": "n3",
+       "text": "Dot-product attention is faster and more space-efficient in practice than additive attention.",
+       "flawed": false,
+       "why": "The passage states this directly.",
+       "sourceRefs": [
+        {
+         "chunkId": "c11",
+         "quote": "dot-product attention is much faster and more space-efficient in practice, since it can be implemented using highly optimized matrix multiplication code."
+        }
+       ]
+      },
+      {
+       "id": "n4",
+       "text": "Decoder self-attention lets each position attend to every position in the decoder, including ones that come later.",
+       "flawed": true,
+       "why": "This confuses decoder self-attention with encoder self-attention - the decoder is explicitly restricted to positions up to and including the current one, to preserve the auto-regressive property.",
+       "sourceRefs": [
+        {
+         "chunkId": "c14",
+         "quote": "self-attention layers in the decoder allow each position in the decoder to attend to all positions in the decoder up to and including that position."
+        }
+       ]
+      }
+     ]
+    },
+    "hints": [
+     "Which note confuses the encoder's 'attend to all positions' rule with the decoder's restricted rule?"
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "sam",
+     "text": "Good catch - I would have told everyone the decoder peeks at future words!",
+     "sourceRefs": []
+    }
+   ]
+  },
+  {
+   "levelId": "L3",
+   "intro": [
+    {
+     "speaker": "sam",
+     "text": "Last section! I tried to summarize the results and the extra experiments, but I rushed it.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "sam",
+     "text": "Can you double-check my notes before I show them to anyone?",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {
+    "L3U1": [
+     {
+      "speaker": "sam",
+      "text": "So the big model got 41.8 BLEU on English-to-French, and that's the number everywhere in the paper, right?",
+      "sourceRefs": []
+     }
+    ],
+    "L3U2": [
+     {
+      "speaker": "sam",
+      "text": "I figured more attention heads is always better, no matter how many you pile on.",
+      "sourceRefs": []
+     }
+    ],
+    "L3U3": [
+     {
+      "speaker": "sam",
+      "text": "I bet the Transformer needed a huge semi-supervised dataset just to tie with the Berkeley Parser.",
+      "sourceRefs": []
+     }
+    ],
+    "L3U4": [
+     {
+      "speaker": "sam",
+      "text": "The paper proves self-attention models are definitely more interpretable than RNNs, right?",
+      "sourceRefs": []
+     }
+    ]
+   },
+   "rooms": [],
+   "boss": {
+    "unitId": "L3NOTES",
+    "knowledgeType": "claim",
+    "mechanic": "crossexam",
+    "mechanicReason": "Frame boss: spot the wrong note among Sam's claims about results and generalization.",
+    "item": {
+     "type": "crossexam",
+     "speaker": "sam",
+     "prompt": "Sam's notes. One line is wrong - show Sam the passage that proves it.",
+     "statements": [
+      {
+       "id": "n1",
+       "text": "The big Transformer reached 28.4 BLEU on English-to-German, beating the prior best (even ensembles) by over 2 BLEU.",
+       "flawed": false,
+       "why": "This matches the results section exactly.",
+       "sourceRefs": [
+        {
+         "chunkId": "c24",
+         "quote": "the big transformer model (Transformer (big) in Table 2) outperforms the best previously reported models (including ensembles) by more than 2.0 BLEU, establishing a new state-of-the-art BLEU score of 28.4."
+        }
+       ]
+      },
+      {
+       "id": "n2",
+       "text": "Reducing the attention key size dk hurt the model's quality.",
+       "flawed": false,
+       "why": "The ablation results state this directly.",
+       "sourceRefs": [
+        {
+         "chunkId": "c27",
+         "quote": "reducing the attention key size dk hurts model quality"
+        }
+       ]
+      },
+      {
+       "id": "n3",
+       "text": "On constituency parsing, the Transformer beat every previously reported model except the Recurrent Neural Network Grammar.",
+       "flawed": false,
+       "why": "The results table discussion states this exact exception.",
+       "sourceRefs": [
+        {
+         "chunkId": "c29",
+         "quote": "yielding better results than all previously reported models with the exception of the Recurrent Neural Network Grammar"
+        }
+       ]
+      },
+      {
+       "id": "n4",
+       "text": "The results section reports a BLEU score of 41.8 for English-to-French.",
+       "flawed": true,
+       "why": "This mixes up the abstract's rounded figure with the results section, which actually reports 41.0 BLEU for the big model on English-to-French.",
+       "sourceRefs": [
+        {
+         "chunkId": "c24",
+         "quote": "our big model achieves a BLEU score of 41.0, outperforming all of the previously published single models, at less than 1/4 the training cost of the previous state-of-the-art model."
+        }
+       ]
+      }
+     ]
+    },
+    "hints": [
+     "Which note's BLEU number for English-to-French doesn't match what the results section itself states?"
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "sam",
+     "text": "Phew, thanks for catching that number mix-up - I'd have cited the wrong score!",
+     "sourceRefs": []
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,1153 @@
+{
+ "schema": "a2g.package/v1",
+ "packageId": "demo_cs231n_l1",
+ "contentVersion": "1",
+ "documentId": "doc_demo_cs231n_l1",
+ "documentVersion": "sha256:d0ab8fe534bb4d6087c041e1033a5aba96aa5c327bd9a567defd91da839e6629",
+ "title": "cs231n-lecture",
+ "language": "en",
+ "generation": {
+  "mode": "pre-generated",
+  "model": "us.anthropic.claude-sonnet-5",
+  "promptVersion": "plan.v1+level.v1+support.v1",
+  "review": "auto-validated"
+ },
+ "sources": [
+  {
+   "chunkId": "c1",
+   "pageIndex": 0,
+   "pageLabel": "1",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung Lecture 1:   Introduction 4/4/20171"
+  },
+  {
+   "chunkId": "c2",
+   "pageIndex": 1,
+   "pageLabel": "2",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung Welcome to CS231n 4/4/20172 Top row, left to right: Image by Augustas Didžgalvis; licensed under CC BY-SA 3.0; changes made Image by Nesster is licensed under CC BY-SA 2.0 Image is CC0 1.0 public domain Image is CC0 1.0 public domain Middle row, left to right Image by BGPHP Conference is licensed under CC BY 2.0; changes made Image is CC0 1.0 public domain Image by NASA is licensed under CC BY 2.0; chang Image is CC0 1.0 public domain Bottom row, left to right Image is CC0 1.0 public domain Image by Derek Keats is licensed under CC BY 2.0; changes made Image is public domain Image by Ted Eytan is licensed under CC BY-SA 2.0; changes made"
+  },
+  {
+   "chunkId": "c3",
+   "pageIndex": 2,
+   "pageLabel": "3",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung Computer Vision Neuroscience Machine learning Speech, NLP Information retrieval Mathematics Computer  Science Biology Engineering Physics Robotics Cognitive sciences Psychology graphics, algorithms, theory,… Image processing 4/4/20173 systems, architecture, … optics"
+  },
+  {
+   "chunkId": "c4",
+   "pageIndex": 3,
+   "pageLabel": "4",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung Computer Vision Neuroscience Machine learning Speech, NLP Information retrieval Mathematics Computer  Science Biology Engineering Physics Robotics Cognitive sciences Psychology graphics, algorithms, theory,… Image processing 4/4/20174 systems, architecture, … optics"
+  },
+  {
+   "chunkId": "c5",
+   "pageIndex": 4,
+   "pageLabel": "5",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung Related Courses @ Stanford • CS131 (Fall 2016, Profs. Fei-Fei Li & Juan Carlos Niebles): – Undergraduate introductory class • CS 224n (Winter 2017, Prof. Chris Manning and Richard Socher) • CS231a (Spring 2017, Prof. Silvio Savarese) – Core computer vision class for seniors, masters, and PhDs – Topics include image processing, cameras, 3D reconstruction, segmentation, object recognition, scene understanding • CS231n (this term, Prof. Fei-Fei Li & Justin Johnson & Serena Yeung) – Neural network (aka “deep learning”) class on image classification • And an assortment of CS331 and CS431 for advanced topics in computer vision 4/4/20175"
+  },
+  {
+   "chunkId": "c6",
+   "pageIndex": 5,
+   "pageLabel": "6",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung Today’s agenda • A brief history of computer vision • CS231n overview 4/4/20176"
+  },
+  {
+   "chunkId": "c7",
+   "pageIndex": 6,
+   "pageLabel": "7",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung 4/4/20177 543million years, B.C. This image is licensed under CC-BY 3.0 This image is licensed under CC-BY 2.5 This image is licensed under CC-BY 2.5 Evolution’s Big Bang"
+  },
+  {
+   "chunkId": "c8",
+   "pageIndex": 7,
+   "pageLabel": "8",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung Camera Obscura 4/4/20178 Leonardo da Vinci, 16th Century AD This work is in the public domain This work is in the public domain Gemma Frisius, 1545 This work is in the public domain Encyclopedie, 18th Century"
+  },
+  {
+   "chunkId": "c9",
+   "pageIndex": 8,
+   "pageLabel": "9",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung 4/4/20179 Stimulus Electrical signal from brain Stimulus Response Cat image by CNX OpenStax is licensed under CC BY 4.0; changes made Simple cells:   Response to light orientation Complex cells: Response to light orientation and movement Hypercomplex cells: response to movement with an end point Hubel & Wiesel, 1959 No response Response (end point)"
+  },
+  {
+   "chunkId": "c10",
+   "pageIndex": 9,
+   "pageLabel": "10",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung 4/4/201710 Block world Larry Roberts, 1963 (a) Original picture (b) Differentiated picture (c) Feature points selected"
+  },
+  {
+   "chunkId": "c11",
+   "pageIndex": 10,
+   "pageLabel": "11",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung 4/4/201711"
+  },
+  {
+   "chunkId": "c12",
+   "pageIndex": 11,
+   "pageLabel": "12",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung 4/4/201712 David Marr, 1970s"
+  },
+  {
+   "chunkId": "c13",
+   "pageIndex": 12,
+   "pageLabel": "13",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung 4/4/201713 This image is CC0 1.0 public domain This image is CC0 1.0 public domain Input image Edge image 2 ½-D sketch 3-D model Input Image Perceived intensities Primal Sketch Zero crossings, blobs, edges, bars, ends, virtual lines, groups, curves boundaries 2 ½-D Sketch Local surface orientation and discontinuities in depth and in surface orientation 3-D Model Representation 3-D models hierarchically organized in terms of surface and volumetric primitives Stages of Visual Representation, David Marr, 1970s"
+  },
+  {
+   "chunkId": "c14",
+   "pageIndex": 13,
+   "pageLabel": "14",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung 4/4/201714 • Generalized Cylinder • Pictorial Structure Brooks & Binford, 1979 Fischler and Elschlager, 1973 b\n\nb"
+  },
+  {
+   "chunkId": "c15",
+   "pageIndex": 14,
+   "pageLabel": "15",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung 4/4/201715 David Lowe, 1987 Image is CC BY-SA 4.0"
+  },
+  {
+   "chunkId": "c16",
+   "pageIndex": 15,
+   "pageLabel": "16",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung 4/4/201716 Normalized Cut (Shi & Malik, 1997) Image is CC BY 3.0 Image is public domain Image is CC-BY SA 3.0"
+  },
+  {
+   "chunkId": "c17",
+   "pageIndex": 16,
+   "pageLabel": "17",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung 4/4/201717 Face Detection, Viola & Jones, 2001 Image is public domain"
+  },
+  {
+   "chunkId": "c18",
+   "pageIndex": 17,
+   "pageLabel": "18",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung 4/4/201718 “SIFT” & Object Recognition, David Lowe, 1999 Image is public domain Image is CC BY-SA 2.0"
+  },
+  {
+   "chunkId": "c19",
+   "pageIndex": 18,
+   "pageLabel": "19",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung 4/4/201719 Spatial Pyramid Matching, Lazebnik, Schmid & Ponce, 2006 Level 0 Level 1 Image is CC0 1.0 public domain"
+  },
+  {
+   "chunkId": "c20",
+   "pageIndex": 19,
+   "pageLabel": "20",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung 4/4/201720 Histogram of Gradients (HoG) Dalal & Triggs, 2005 Deformable Part Model Felzenswalb, McAllester, Ramanan, 2009 orientation Image is CC0 1.0 public domain"
+  },
+  {
+   "chunkId": "c21",
+   "pageIndex": 20,
+   "pageLabel": "21",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung 4/4/201721 PASCAL Visual Object Challenge (20 object categories) [Everingham et al. 2006-2012] Airplane Image is CC0 1.0 public domain Image is CC BY-SA 3.0 Train This image is licensed under CC BY-SA 2.0; changes made Person"
+  },
+  {
+   "chunkId": "c22",
+   "pageIndex": 21,
+   "pageLabel": "22",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung 4/4/201722 22K categories and 14M images www.image-net.org Deng, Dong, Socher, Li, Li, & Fei-Fei, 2009 • Animals • Bird • Fish • Mammal • Invertebrate • Plants • Tree • Flower • Food • Materials • Structures • Artifact • Tools • Appliances • Structures • Person • Scenes • Indoor • Geological Formations • Sport Activities"
+  },
+  {
+   "chunkId": "c23",
+   "pageIndex": 22,
+   "pageLabel": "23",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung 4/4/201723 Output: Scale T-shirt Steel drum Drumstick Mud turtle Steel drum ✔ ✗ Output: Scale T-shirt Giant panda Drumstick Mud turtle The Image Classification Challenge: 1,000 object classes 1,431,167 images Russakovsky et al. arXiv, 2014"
+  },
+  {
+   "chunkId": "c24",
+   "pageIndex": 23,
+   "pageLabel": "24",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung 4/4/201724 Steel drumThe Image Classification Challenge: 1,000 object classes 1,431,167 images Russakovsky et al. arXiv, 2014"
+  },
+  {
+   "chunkId": "c25",
+   "pageIndex": 24,
+   "pageLabel": "25",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung Today’s agenda • A brief history of computer vision • CS231n overview 4/4/201725"
+  },
+  {
+   "chunkId": "c26",
+   "pageIndex": 25,
+   "pageLabel": "26",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung CS231n focuses on one of the most important problems of visual recognition –   image classification 4/4/201726"
+  },
+  {
+   "chunkId": "c27",
+   "pageIndex": 26,
+   "pageLabel": "27",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung 4/4/201727 Image by Kippelboy is licensed under CC BY-SA 3.0 Image by Christina C. is licensed under CC BY-SA 4.0 Image by US Army is licensed under CC BY 2.0 Image is CC0 1.0 public domain"
+  },
+  {
+   "chunkId": "c28",
+   "pageIndex": 27,
+   "pageLabel": "28",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung There is a number of visual recognition problems that are related to image classification, such as   object detection, image captioning 4/4/201728"
+  },
+  {
+   "chunkId": "c29",
+   "pageIndex": 28,
+   "pageLabel": "29",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung 4/4/201729 • Object detection • Action classification • Image captioning • … This image is licensed under CC BY-NC-SA 2.0; changes made Person Hammer This image is licensed under CC BY-SA 2.0; changes made Person Bike Person on Bike This image is licensed under CC BY-SA 3.0; changes made"
+  },
+  {
+   "chunkId": "c30",
+   "pageIndex": 29,
+   "pageLabel": "30",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung Convolutional Neural Networks (CNN) have become an important tool for object recognition 4/4/201730"
+  },
+  {
+   "chunkId": "c31",
+   "pageIndex": 30,
+   "pageLabel": "31",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung GoogLeNet VGG MSRASuperVision [Krizhevsky NIPS 2012] Year 2012 Year 2014Year 2010 NEC-UIUC [Lin CVPR 2011] [Szegedy arxiv 2014] [Simonyan arxiv 2014] 4/4/201731 Year 2015 Dense descriptor grid: HOG, LBP Coding: local coordinate, super-vector Pooling, SPM Linear SVM Lion image by Swissfrog is licensed under CC BY 3.0 Image conv-64 conv-64 maxpool conv-128 conv-128 maxpool conv-256 conv-256 maxpool conv-512 conv-512 maxpool fc-4096 fc-4096 fc-1000 softmax conv-512 conv-512 maxpool Pooling Convolution Softmax Other [He ICCV 2015]Figure copyright Alex Krizhevsky, Ilya Sutskever, and Geoffrey Hinton, 2012. Reproduced with permission."
+  },
+  {
+   "chunkId": "c32",
+   "pageIndex": 31,
+   "pageLabel": "32",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung Convolutional Neural Networks (CNN)   were not invented overnight 4/4/201732"
+  },
+  {
+   "chunkId": "c33",
+   "pageIndex": 32,
+   "pageLabel": "33",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung 1998 2012 LeCun et al. Krizhevsky et al. # of transistors # of pixels used in training # of transistors # of pixels used in training 107 1014 106 109 GPUs 4/4/201733 K Input Image Maps Convolutions Subsampling Output Fully Connected Figure copyright Alex Krizhevsky, Ilya Sutskever, and Geoffrey Hinton, 2012. Reproduced with permission."
+  },
+  {
+   "chunkId": "c34",
+   "pageIndex": 33,
+   "pageLabel": "34",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung The quest for visual intelligence   goes far beyond object recognition… 4/4/201734"
+  },
+  {
+   "chunkId": "c35",
+   "pageIndex": 34,
+   "pageLabel": "35",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung 4/4/201735 Image is CC0 1.0 public domain Laptop Glass Desk Wall Wire Image is CC BY-SA 4.0 Image is GFDL Image is CC BY-SA 2.0 Waving"
+  },
+  {
+   "chunkId": "c36",
+   "pageIndex": 35,
+   "pageLabel": "36",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung 4/4/201736 Johnson et al., “Image Retrieval using Scene Graphs”, CVPR 2015 Figures copyright IEEE, 2015. Reproduced for educational purposes"
+  },
+  {
+   "chunkId": "c37",
+   "pageIndex": 36,
+   "pageLabel": "37",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung Some kind of game or fight. Two groups of two men? The man on the left is throwing something. Outdoors seemed like because i have an impression of grass and maybe lines on the grass? That would be why I think perhaps a game, rough game though, more like rugby than football because they pairs weren't in pads and helmets, though I did get the impression of similar clothing. maybe some trees? in the background. (Subject: SM) PT = 500ms Fei-Fei, Iyer, Koch, Perona, JoV, 2007 4/4/201737 Image is licensed under CC BY-SA 3.0; changes made"
+  },
+  {
+   "chunkId": "c38",
+   "pageIndex": 37,
+   "pageLabel": "38",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung 4/4/201738 This image is copyright-free United States government work Example credit: Andrej Karpathy"
+  },
+  {
+   "chunkId": "c39",
+   "pageIndex": 38,
+   "pageLabel": "39",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung Computer Vision Technology Can Better Our Lives 4/4/201739 Inside four images, clockwise, starting from top left: Image is CC0 1.0 public domain Image by Tucania is licensed under CC BY-SA 3.0; changes made Image by Intuitive Surgical, Inc. is licensed under CC BY-SA 3.0; changes made Image by Oyundari Zorigtbaatar is licensed under CC BY-SA 4.0 Outside border images, clockwise, starting from top left: Image by Pop Culture Geek is licensed under CC BY 2.0; changes made Image by the US Government is in the public domain Image by the US Government is in the public domain Image by Glogger is licensed under CC BY-SA 3.0; changes made Image by Sylenius is licensed under CC BY 3.0; changes made Image by US Government is in the public domain"
+  },
+  {
+   "chunkId": "c40",
+   "pageIndex": 39,
+   "pageLabel": "40",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung Who we are 4/4/201740 Instructors Emeritus Teaching Assistants"
+  },
+  {
+   "chunkId": "c41",
+   "pageIndex": 40,
+   "pageLabel": "41",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung Course Logistics • Keeping in touch: – Piazza – cs231n-spring1617-staff@lists.stanford.edu • Optional textbook: – Deep Learning by Goodfellow,   Bengio, and Courville – Free online 4/4/201741"
+  },
+  {
+   "chunkId": "c42",
+   "pageIndex": 41,
+   "pageLabel": "42",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung Our philosophy • Thorough and Detailed. – Understand how to write from scratch, debug and train convolutional neural networks. • Practical. – Focus on practical techniques for training these networks at scale, and on GPUs (e.g. will touch on distributed optimization, differences between CPU vs. GPU, etc.) Also look at state of the art software tools such as Caffe, TensorFlow, and (Py)Torch • State of the art. – Most materials are new from research world in the past 1-3 years. Very exciting stuff! • Fun. – Some fun topics such as Image Captioning (using RNN) – Also DeepDream, NeuralStyle, etc. 4/4/201742"
+  },
+  {
+   "chunkId": "c43",
+   "pageIndex": 42,
+   "pageLabel": "43",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung Our philosophy (cont’d) • Fun. – Some fun topics such as Image Captioning (using RNN) – Also DeepDream, NeuralStyle, etc. 4/4/201743"
+  },
+  {
+   "chunkId": "c44",
+   "pageIndex": 43,
+   "pageLabel": "44",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung Grading policy • 3 Problem Sets: 15% x 3 = 45% • Midterm Exam: 15% • Final Course Project: 40% – Milestone: 5% – Final write-up: 35% – Bonus points for exceptional poster presentation • Late policy – 7 free late days – use them in your ways – Afterwards, 25% off per day late – Not accepted after 3 late days per PS – Does not apply to Final Course Project • Collaboration policy – Read the student code book, understand what is ‘collaboration’ and what is ‘academic infraction’ 4/4/201744"
+  },
+  {
+   "chunkId": "c45",
+   "pageIndex": 44,
+   "pageLabel": "45",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung Pre-requisite • Proficiency in Python, some high-level familiarity with C/C++ – All class assignments will be in Python (and use numpy), but some of the deep learning libraries we may look at later in the class are written in C++. – A Python tutorial available on course website • College Calculus, Linear Algebra • Equivalent knowledge of CS229 (Machine Learning) – We will be formulating cost functions, taking derivatives and performing optimization with gradient descent. 4/4/201745"
+  },
+  {
+   "chunkId": "c46",
+   "pageIndex": 45,
+   "pageLabel": "46",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung Syllabus • Go to website… http://cs231n.stanford.edu/ 4/4/201746"
+  },
+  {
+   "chunkId": "c47",
+   "pageIndex": 46,
+   "pageLabel": "47",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung 4/4/201747 • Hubel, David H., and Torsten N. Wiesel. \"Receptive fields, binocular interaction and functional architecture in the cat's visual cortex.\" The Journal of physiology 160.1 (1962): 106. [PDF] • Roberts, Lawrence Gilman. \"Machine Perception of Three-dimensional Solids.\" Diss. Massachusetts Institute of Technology, 1963. [PDF] • Marr, David. \"Vision.” The MIT Press, 1982. [PDF] • Brooks, Rodney A., and Creiner, Russell and Binford, Thomas O. \"The ACRONYM model-based vision system. \" In Proceedings of the 6th International Joint Conference on Artificial Intelligence (1979): 105-113. [PDF] • Fischler, Martin A., and Robert A. Elschlager. \"The representation and matching of pictorial structures.\" IEEE Transactions on Computers 22.1 (1973): 67-92. [PDF] • Lowe, David G., \"Three-dimensional object recognition from single two-dimensional images,\" Artificial Intelligence, 31, 3 (1987), pp. 355-395. [PDF] • Shi, Jianbo, and Jitendra Malik. \"Normalized cuts and image segmentation.\" Pattern Analysis and Machine Intelligence, IEEE Transactions on 22.8 (2000): 888-905. [PDF] • Viola, Paul, and Michael Jones."
+  },
+  {
+   "chunkId": "c48",
+   "pageIndex": 46,
+   "pageLabel": "47",
+   "text": "\"Rapid object detection using a boosted cascade of simple features.\" Computer Vision and Pattern Recognition, 2001. CVPR 2001. Proceedings of the 2001 IEEE Computer Society Conference on. Vol. 1. IEEE, 2001. [PDF] • Lowe, David G. \"Distinctive image features from scale-invariant keypoints.\" International Journal of Computer Vision 60.2 (2004): 91-110. [PDF] • Lazebnik, Svetlana, Cordelia Schmid, and Jean Ponce. \"Beyond bags of features: Spatial pyramid matching for recognizing natural scene categories.\" Computer Vision and Pattern Recognition, 2006 IEEE Computer Society Conference on. Vol. 2. IEEE, 2006. [PDF] References"
+  },
+  {
+   "chunkId": "c49",
+   "pageIndex": 47,
+   "pageLabel": "48",
+   "text": "Lecture 1 - Fei-Fei Li & Justin Johnson & Serena Yeung 4/4/201748 • Dalal, Navneet, and Bill Triggs. \"Histograms of oriented gradients for human detection.\" Computer Vision and Pattern Recognition, 2005. CVPR 2005. IEEE Computer Society Conference on. Vol. 1. IEEE, 2005. [PDF] • Felzenszwalb, Pedro, David McAllester, and Deva Ramanan. \"A discriminatively trained, multiscale, deformable part model.\" Computer Vision and Pattern Recognition, 2008. CVPR 2008. IEEE Conference on. IEEE, 2008 [PDF] • Everingham, Mark, et al. \"The pascal visual object classes (VOC) challenge.\" International Journal of Computer Vision 88.2 (2010): 303-338. [PDF] • Deng, Jia, et al. \"Imagenet: A large-scale hierarchical image database.\" Computer Vision and Pattern Recognition, 2009. CVPR 2009. IEEE Conference on. IEEE, 2009. [PDF] • Russakovsky, Olga, et al. \"Imagenet Large Scale Visual Recognition Challenge.\" arXiv:1409.0575. [PDF] • Lin, Yuanqing, et al. \"Large-scale image classification: fast feature extraction and SVM training.\" Computer Vision and Pattern Recognition (CVPR), 2011 IEEE Conference on. IEEE, 2011. [PDF] • Krizhevsky, Alex, Ilya Sutskever, and Geoffrey E. Hinton."
+  },
+  {
+   "chunkId": "c50",
+   "pageIndex": 47,
+   "pageLabel": "48",
+   "text": "\"Imagenet classification with deep convolutional neural networks.\" Advances in neural information processing systems. 2012. [PDF] • Szegedy, Christian, et al. \"Going deeper with convolutions.\" arXiv preprint arXiv:1409.4842 (2014). [PDF] • Simonyan, Karen, and Andrew Zisserman. \"Very deep convolutional networks for large-scale image recognition.\" arXiv preprint arXiv:1409.1556 (2014). [PDF] • He, Kaiming, et al. \"Spatial Pyramid Pooling in Deep Convolutional Networks for Visual Recognition.\" arXiv preprint arXiv:1406.4729 (2014). [PDF] • LeCun, Yann, et al. \"Gradient-based learning applied to document recognition.\" Proceedings of the IEEE 86.11 (1998): 2278-2324. [PDF] • Fei-Fei, Li, et al. \"What do we perceive in a glance of a real-world scene?.\" Journal of vision 7.1 (2007): 10. [PDF]"
+  }
+ ],
+ "levels": [
+  {
+   "levelId": "L1",
+   "title": "The History of Computer Vision",
+   "goal": "Trace the key breakthroughs and ideas that shaped computer vision over the decades.",
+   "units": [
+    {
+     "unitId": "L1U1",
+     "knowledgeType": "process",
+     "mechanic": "order",
+     "mechanicReason": "These discoveries happened in a specific historical sequence that must be reconstructed in order.",
+     "item": {
+      "type": "order",
+      "prompt": "Put these milestones in computer vision in the order they happened.",
+      "steps": [
+       {
+        "id": "st1",
+        "text": "Hubel & Wiesel study how simple, complex, and hypercomplex cells respond to light orientation and movement."
+       },
+       {
+        "id": "st2",
+        "text": "Larry Roberts builds the 'Block World' program, extracting feature points from simple shapes."
+       },
+       {
+        "id": "st3",
+        "text": "Viola & Jones develop a practical face detection algorithm."
+       }
+      ],
+      "why": "The dates attached to each milestone place neuroscience research first, early computer vision programs second, and automated face detection last.",
+      "sourceRefs": [
+       {
+        "chunkId": "c9",
+        "quote": "Hubel & Wiesel, 1959"
+       },
+       {
+        "chunkId": "c10",
+        "quote": "Larry Roberts, 1963"
+       },
+       {
+        "chunkId": "c17",
+        "quote": "Face Detection, Viola & Jones, 2001"
+       }
+      ]
+     },
+     "hints": [
+      "Think about which came first: studying how brain cells react to images, or building computer programs that analyze images.",
+      "One milestone is about cat brains, one is about simple block shapes, and one is about finding faces in real time."
+     ],
+     "variants": [
+      {
+       "type": "order",
+       "prompt": "Arrange these computer vision discoveries chronologically.",
+       "steps": [
+        {
+         "id": "vt1",
+         "text": "Researchers find that simple, complex, and hypercomplex cells respond differently to orientation and movement of light."
+        },
+        {
+         "id": "vt2",
+         "text": "A program analyzes a 'Block World' scene, selecting feature points from an original picture."
+        },
+        {
+         "id": "vt3",
+         "text": "An algorithm for detecting faces in images is introduced."
+        }
+       ],
+       "why": "Each discovery carries a year that fixes its place in the timeline, from brain cell studies to block-world vision to face detection.",
+       "sourceRefs": [
+        {
+         "chunkId": "c9",
+         "quote": "Hubel & Wiesel, 1959"
+        },
+        {
+         "chunkId": "c10",
+         "quote": "Larry Roberts, 1963"
+        },
+        {
+         "chunkId": "c17",
+         "quote": "Face Detection, Viola & Jones, 2001"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "unitId": "L1U2",
+     "knowledgeType": "pair",
+     "mechanic": "sort",
+     "mechanicReason": "Marr's theory pairs each visual representation stage with its own definition.",
+     "item": {
+      "type": "sort",
+      "prompt": "Match each stage of Marr's theory to its definition.",
+      "bins": [
+       {
+        "id": "b1",
+        "label": "Input Image"
+       },
+       {
+        "id": "b2",
+        "label": "Primal Sketch"
+       },
+       {
+        "id": "b3",
+        "label": "2 ½-D Sketch"
+       },
+       {
+        "id": "b4",
+        "label": "3-D Model"
+       }
+      ],
+      "cards": [
+       {
+        "id": "c1",
+        "text": "Perceived intensities",
+        "binId": "b1"
+       },
+       {
+        "id": "c2",
+        "text": "Zero crossings, blobs, edges, bars, ends, virtual lines, groups, curves boundaries",
+        "binId": "b2"
+       },
+       {
+        "id": "c3",
+        "text": "Local surface orientation and discontinuities in depth and in surface orientation",
+        "binId": "b3"
+       },
+       {
+        "id": "c4",
+        "text": "3-D models hierarchically organized in terms of surface and volumetric primitives",
+        "binId": "b4"
+       }
+      ],
+      "why": "Marr proposed that vision moves through distinct representational stages, from raw intensities to a full 3-D model.",
+      "sourceRefs": [
+       {
+        "chunkId": "c13",
+        "quote": "Stages of Visual Representation, David Marr, 1970s"
+       }
+      ]
+     },
+     "hints": [
+      "Think about what each stage reveals: raw brightness values, edges and boundaries, surface orientation, or complete 3-D shape.",
+      "The first stage only has perceived intensities; the last stage has volumetric 3-D primitives."
+     ],
+     "variants": [
+      {
+       "type": "sort",
+       "prompt": "Sort each description to its correct stage in Marr's model.",
+       "bins": [
+        {
+         "id": "vb1",
+         "label": "Input Image"
+        },
+        {
+         "id": "vb2",
+         "label": "Primal Sketch"
+        },
+        {
+         "id": "vb3",
+         "label": "2 ½-D Sketch"
+        },
+        {
+         "id": "vb4",
+         "label": "3-D Model"
+        }
+       ],
+       "cards": [
+        {
+         "id": "vc1",
+         "text": "The raw perceived brightness values of the scene",
+         "binId": "vb1"
+        },
+        {
+         "id": "vc2",
+         "text": "Edges, bars, ends, and curve boundaries extracted from the image",
+         "binId": "vb2"
+        },
+        {
+         "id": "vc3",
+         "text": "Discontinuities in depth and local surface orientation",
+         "binId": "vb3"
+        },
+        {
+         "id": "vc4",
+         "text": "A hierarchy of surface and volumetric primitives",
+         "binId": "vb4"
+        }
+       ],
+       "why": "Each stage represents a different level of abstraction, from raw intensities to structured 3-D shapes.",
+       "sourceRefs": [
+        {
+         "chunkId": "c13",
+         "quote": "Stages of Visual Representation, David Marr, 1970s"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "unitId": "L1U3",
+     "knowledgeType": "category",
+     "mechanic": "sort",
+     "mechanicReason": "ImageNet groups images into named semantic categories that students sort.",
+     "item": {
+      "type": "sort",
+      "prompt": "Sort each term into its ImageNet category.",
+      "bins": [
+       {
+        "id": "cat1",
+        "label": "Animals"
+       },
+       {
+        "id": "cat2",
+        "label": "Plants"
+       },
+       {
+        "id": "cat3",
+        "label": "Artifact"
+       }
+      ],
+      "cards": [
+       {
+        "id": "it1",
+        "text": "Bird",
+        "binId": "cat1"
+       },
+       {
+        "id": "it2",
+        "text": "Fish",
+        "binId": "cat1"
+       },
+       {
+        "id": "it3",
+        "text": "Tree",
+        "binId": "cat2"
+       },
+       {
+        "id": "it4",
+        "text": "Flower",
+        "binId": "cat2"
+       },
+       {
+        "id": "it5",
+        "text": "Tools",
+        "binId": "cat3"
+       },
+       {
+        "id": "it6",
+        "text": "Appliances",
+        "binId": "cat3"
+       }
+      ],
+      "why": "ImageNet organizes millions of images into a large set of semantic categories, including groups like animals, plants, and artifacts.",
+      "sourceRefs": [
+       {
+        "chunkId": "c22",
+        "quote": "22K categories and 14M images"
+       }
+      ]
+     },
+     "hints": [
+      "Group living things separately from man-made objects.",
+      "Birds and fish are living creatures; tools and appliances are things people build."
+     ],
+     "variants": [
+      {
+       "type": "sort",
+       "prompt": "File each ImageNet term under its category.",
+       "bins": [
+        {
+         "id": "vcat1",
+         "label": "Animals"
+        },
+        {
+         "id": "vcat2",
+         "label": "Plants"
+        },
+        {
+         "id": "vcat3",
+         "label": "Artifact"
+        }
+       ],
+       "cards": [
+        {
+         "id": "vit1",
+         "text": "Mammal",
+         "binId": "vcat1"
+        },
+        {
+         "id": "vit2",
+         "text": "Invertebrate",
+         "binId": "vcat1"
+        },
+        {
+         "id": "vit3",
+         "text": "Flower",
+         "binId": "vcat2"
+        },
+        {
+         "id": "vit4",
+         "text": "Tree",
+         "binId": "vcat2"
+        },
+        {
+         "id": "vit5",
+         "text": "Appliances",
+         "binId": "vcat3"
+        },
+        {
+         "id": "vit6",
+         "text": "Tools",
+         "binId": "vcat3"
+        }
+       ],
+       "why": "ImageNet's hierarchy groups many specific terms, such as mammals and invertebrates, under broader categories like animals.",
+       "sourceRefs": [
+        {
+         "chunkId": "c22",
+         "quote": "22K categories and 14M images"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "unitId": "L1U4",
+     "knowledgeType": "claim",
+     "mechanic": "swipe",
+     "mechanicReason": "These are statements about CNN history that can be judged true or overstated.",
+     "item": {
+      "type": "swipe",
+      "cards": [
+       {
+        "id": "sw1",
+        "statement": "CNNs have become an important tool for object recognition.",
+        "supported": true,
+        "why": "The passage directly states that CNNs have become an important tool for object recognition.",
+        "sourceRefs": [
+         {
+          "chunkId": "c30",
+          "quote": "Convolutional Neural Networks (CNN) have become an important tool for object recognition"
+         }
+        ]
+       },
+       {
+        "id": "sw2",
+        "statement": "CNNs were invented overnight, in a single breakthrough.",
+        "supported": false,
+        "why": "The passage explicitly says CNNs were not invented overnight.",
+        "sourceRefs": [
+         {
+          "chunkId": "c32",
+          "quote": "were not invented overnight"
+         }
+        ]
+       },
+       {
+        "id": "sw3",
+        "statement": "CNNs are the only tool used for object recognition.",
+        "supported": false,
+        "why": "The passage only describes CNNs as 'an important tool,' not the sole method for object recognition.",
+        "sourceRefs": [
+         {
+          "chunkId": "c30",
+          "quote": "an important tool for object recognition"
+         }
+        ]
+       }
+      ]
+     },
+     "hints": [
+      "Think about whether the passage says CNNs appeared suddenly or developed gradually.",
+      "Check the exact wording used to describe CNNs' importance—does it claim they're the only method?"
+     ],
+     "variants": [
+      {
+       "type": "swipe",
+       "cards": [
+        {
+         "id": "vsw1",
+         "statement": "By the time of this lecture, CNNs had become essential for recognizing objects.",
+         "supported": true,
+         "why": "The passage states CNNs have become an important tool for object recognition.",
+         "sourceRefs": [
+          {
+           "chunkId": "c30",
+           "quote": "Convolutional Neural Networks (CNN) have become an important tool for object recognition"
+          }
+         ]
+        },
+        {
+         "id": "vsw2",
+         "statement": "CNNs appeared suddenly, with no earlier groundwork.",
+         "supported": false,
+         "why": "The passage explicitly denies that CNNs were invented overnight.",
+         "sourceRefs": [
+          {
+           "chunkId": "c32",
+           "quote": "were not invented overnight"
+          }
+         ]
+        },
+        {
+         "id": "vsw3",
+         "statement": "CNNs are the single method used for object recognition today.",
+         "supported": false,
+         "why": "The passage calls CNNs only 'an important tool,' not the exclusive method.",
+         "sourceRefs": [
+          {
+           "chunkId": "c30",
+           "quote": "an important tool for object recognition"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "recap": {
+    "points": [
+     "Computer vision's history runs from 1950s brain-cell studies to early block-world programs to modern face detection and deep learning.",
+     "Marr's theory describes vision as moving through stages, from raw perceived intensities to a full 3-D model.",
+     "ImageNet organized millions of images into a large hierarchy of semantic categories, such as animals, plants, and artifacts.",
+     "CNNs became an important tool for object recognition only after decades of incremental research, not overnight."
+    ]
+   }
+  },
+  {
+   "levelId": "L2",
+   "title": "CS231n Course Overview",
+   "goal": "Understand what CS231n covers, how visual-recognition tasks relate to each other, and how the course is graded.",
+   "units": [
+    {
+     "unitId": "L2U1",
+     "knowledgeType": "category",
+     "mechanic": "sort",
+     "mechanicReason": "Visual recognition tasks fall into distinct named categories that can be sorted.",
+     "item": {
+      "type": "sort",
+      "prompt": "Sort each visual recognition task by where it first appears in the lecture material.",
+      "bins": [
+       {
+        "id": "introduced",
+        "label": "Named as a related problem (first list)"
+       },
+       {
+        "id": "additional",
+        "label": "Added to the expanded list"
+       }
+      ],
+      "cards": [
+       {
+        "id": "t1",
+        "text": "Object detection",
+        "binId": "introduced"
+       },
+       {
+        "id": "t2",
+        "text": "Image captioning",
+        "binId": "introduced"
+       },
+       {
+        "id": "t3",
+        "text": "Action classification",
+        "binId": "additional"
+       }
+      ],
+      "why": "The lecture first names object detection and image captioning as related problems, then the expanded slide adds action classification to the list.",
+      "sourceRefs": [
+       {
+        "chunkId": "c28",
+        "quote": "object detection, image captioning"
+       },
+       {
+        "chunkId": "c29",
+        "quote": "Action classification"
+       }
+      ]
+     },
+     "hints": [
+      "Look at which tasks are mentioned right alongside image classification first, versus which one shows up only in the bullet-point list.",
+      "Two tasks are named together in one sentence; the third appears as an extra bullet on its own."
+     ],
+     "variants": [
+      {
+       "type": "sort",
+       "prompt": "File each task by the slide that mentions it.",
+       "bins": [
+        {
+         "id": "introduced",
+         "label": "Mentioned when related problems are first described"
+        },
+        {
+         "id": "additional",
+         "label": "Appears in the bullet list of tasks"
+        }
+       ],
+       "cards": [
+        {
+         "id": "v1",
+         "text": "Image captioning",
+         "binId": "introduced"
+        },
+        {
+         "id": "v2",
+         "text": "Object detection",
+         "binId": "introduced"
+        },
+        {
+         "id": "v3",
+         "text": "Action classification",
+         "binId": "additional"
+        }
+       ],
+       "why": "Object detection and image captioning are introduced together in one sentence, while action classification only appears in the later bullet list.",
+       "sourceRefs": [
+        {
+         "chunkId": "c28",
+         "quote": "object detection, image captioning"
+        },
+        {
+         "chunkId": "c29",
+         "quote": "Action classification"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "unitId": "L2U2",
+     "knowledgeType": "claim",
+     "mechanic": "swipe",
+     "mechanicReason": "These are claims about the course's scope that can be judged true or overstated.",
+     "item": {
+      "type": "swipe",
+      "cards": [
+       {
+        "id": "s1",
+        "statement": "CS231n treats image classification as one of the central problems of visual recognition.",
+        "supported": true,
+        "why": "The lecture states image classification is one of the most important visual recognition problems the course focuses on.",
+        "sourceRefs": [
+         {
+          "chunkId": "c26",
+          "quote": "CS231n focuses on one of the most important problems of visual recognition"
+         }
+        ]
+       },
+       {
+        "id": "s2",
+        "statement": "The course claims visual intelligence is just about recognizing objects.",
+        "supported": false,
+        "why": "The lecture explicitly says the quest for visual intelligence goes far beyond object recognition.",
+        "sourceRefs": [
+         {
+          "chunkId": "c34",
+          "quote": "goes far beyond object recognition"
+         }
+        ]
+       },
+       {
+        "id": "s3",
+        "statement": "According to the course, solving image classification alone is enough to achieve visual intelligence.",
+        "supported": false,
+        "why": "The lecture says visual intelligence goes far beyond object recognition, implying classification alone isn't the full goal.",
+        "sourceRefs": [
+         {
+          "chunkId": "c34",
+          "quote": "goes far beyond object recognition"
+         }
+        ]
+       }
+      ]
+     },
+     "hints": [
+      "One slide names the course's core focus; another slide talks about a bigger, further goal.",
+      "Being the 'focus' of the course is not the same as being the 'whole' goal of visual intelligence."
+     ],
+     "variants": [
+      {
+       "type": "swipe",
+       "cards": [
+        {
+         "id": "v1",
+         "statement": "Image classification is described as one of the most important problems the course centers on.",
+         "supported": true,
+         "why": "The lecture directly calls image classification one of the most important problems CS231n focuses on.",
+         "sourceRefs": [
+          {
+           "chunkId": "c26",
+           "quote": "CS231n focuses on one of the most important problems of visual recognition"
+          }
+         ]
+        },
+        {
+         "id": "v2",
+         "statement": "The lecture suggests that achieving visual intelligence requires nothing more than object recognition.",
+         "supported": false,
+         "why": "The lecture says the quest for visual intelligence goes far beyond object recognition.",
+         "sourceRefs": [
+          {
+           "chunkId": "c34",
+           "quote": "goes far beyond object recognition"
+          }
+         ]
+        },
+        {
+         "id": "v3",
+         "statement": "Visual intelligence is presented as a much larger goal than just recognizing objects.",
+         "supported": true,
+         "why": "The lecture states the quest for visual intelligence goes far beyond object recognition.",
+         "sourceRefs": [
+          {
+           "chunkId": "c34",
+           "quote": "goes far beyond object recognition"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "unitId": "L2U3",
+     "knowledgeType": "pair",
+     "mechanic": "sort",
+     "mechanicReason": "Each grading component must be matched with its exact percentage weight.",
+     "item": {
+      "type": "sort",
+      "prompt": "Match each grading component to its weight in the final grade.",
+      "bins": [
+       {
+        "id": "ps45",
+        "label": "45%"
+       },
+       {
+        "id": "midterm15",
+        "label": "15%"
+       },
+       {
+        "id": "project40",
+        "label": "40%"
+       }
+      ],
+      "cards": [
+       {
+        "id": "g1",
+        "text": "3 Problem Sets",
+        "binId": "ps45"
+       },
+       {
+        "id": "g2",
+        "text": "Midterm Exam",
+        "binId": "midterm15"
+       },
+       {
+        "id": "g3",
+        "text": "Final Course Project",
+        "binId": "project40"
+       }
+      ],
+      "why": "The grading policy lists the three components with these exact weights.",
+      "sourceRefs": [
+       {
+        "chunkId": "c44",
+        "quote": "3 Problem Sets: 15% x 3 = 45%"
+       },
+       {
+        "chunkId": "c44",
+        "quote": "Midterm Exam: 15%"
+       },
+       {
+        "chunkId": "c44",
+        "quote": "Final Course Project: 40%"
+       }
+      ]
+     },
+     "hints": [
+      "There are three main grading pieces, and each one has its own single weight.",
+      "The problem sets are weighted together as one combined percentage, not per-set."
+     ],
+     "variants": [
+      {
+       "type": "sort",
+       "prompt": "Pair each part of the course grade with its percentage.",
+       "bins": [
+        {
+         "id": "ps45",
+         "label": "45% of the grade"
+        },
+        {
+         "id": "midterm15",
+         "label": "15% of the grade"
+        },
+        {
+         "id": "project40",
+         "label": "40% of the grade"
+        }
+       ],
+       "cards": [
+        {
+         "id": "h1",
+         "text": "Three problem sets combined",
+         "binId": "ps45"
+        },
+        {
+         "id": "h2",
+         "text": "The midterm exam",
+         "binId": "midterm15"
+        },
+        {
+         "id": "h3",
+         "text": "The final course project",
+         "binId": "project40"
+        }
+       ],
+       "why": "The three problem sets together make 45%, the midterm is 15%, and the final project is 40%.",
+       "sourceRefs": [
+        {
+         "chunkId": "c44",
+         "quote": "3 Problem Sets: 15% x 3 = 45%"
+        },
+        {
+         "chunkId": "c44",
+         "quote": "Midterm Exam: 15%"
+        },
+        {
+         "chunkId": "c44",
+         "quote": "Final Course Project: 40%"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "unitId": "L2U4",
+     "knowledgeType": "reasoning",
+     "mechanic": "deduce",
+     "mechanicReason": "Applying the late-day policy to a new student scenario requires deduction, not recall.",
+     "item": {
+      "type": "deduce",
+      "scenario": "Mia has already used 5 of her free late days this quarter on problem sets. She now wants to submit her final course project write-up late, and she also has a problem set that is already 4 days late.",
+      "prompt": "Based on the grading and late policy, which statement is best supported?",
+      "options": [
+       {
+        "id": "o1",
+        "text": "Mia still has 2 free late days left to use on problem sets.",
+        "correct": true,
+        "feedback": "Correct: there are 7 free late days total, and she has used 5, leaving 2."
+       },
+       {
+        "id": "o2",
+        "text": "Mia can use her remaining free late days on the final project write-up.",
+        "correct": false,
+        "feedback": "Incorrect: the late policy does not apply to the Final Course Project."
+       },
+       {
+        "id": "o3",
+        "text": "A problem set that is 4 days late will still be accepted with a point deduction.",
+        "correct": false,
+        "feedback": "Incorrect: problem sets are not accepted after 3 late days."
+       }
+      ],
+      "sourceRefs": [
+       {
+        "chunkId": "c44",
+        "quote": "7 free late days – use them in your ways"
+       },
+       {
+        "chunkId": "c44",
+        "quote": "Not accepted after 3 late days per PS"
+       },
+       {
+        "chunkId": "c44",
+        "quote": "Does not apply to Final Course Project"
+       }
+      ]
+     },
+     "hints": [
+      "Check whether the late-day rules apply the same way to problem sets and to the final project.",
+      "There's a hard cutoff for how many days late a problem set can be and still count."
+     ],
+     "variants": [
+      {
+       "type": "deduce",
+       "scenario": "Jorge has used all 7 of his free late days on problem sets already, and now wants to turn in his final project milestone a few days late.",
+       "prompt": "Which outcome is best supported by the course's late policy?",
+       "options": [
+        {
+         "id": "p1",
+         "text": "Jorge can still use free late days on the final project milestone.",
+         "correct": false,
+         "feedback": "Incorrect: the late policy does not apply to the Final Course Project."
+        },
+        {
+         "id": "p2",
+         "text": "Jorge has zero free late days left for problem sets.",
+         "correct": true,
+         "feedback": "Correct: he has already used all 7 free late days, leaving none."
+        },
+        {
+         "id": "p3",
+         "text": "Jorge will lose 25% off per day late on his final project if he submits it late.",
+         "correct": false,
+         "feedback": "Incorrect: that penalty applies to problem sets, and the late policy does not apply to the Final Course Project."
+        }
+       ],
+       "sourceRefs": [
+        {
+         "chunkId": "c44",
+         "quote": "7 free late days – use them in your ways"
+        },
+        {
+         "chunkId": "c44",
+         "quote": "Does not apply to Final Course Project"
+        },
+        {
+         "chunkId": "c44",
+         "quote": "Afterwards, 25% off per day late"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "recap": {
+    "points": [
+     "CS231n centers on image classification as one of the key visual recognition problems, but related tasks like object detection, image captioning, and action classification are also part of the field.",
+     "The course frames visual intelligence as a goal that goes far beyond just object recognition.",
+     "Grades are split into 3 Problem Sets (45%), a Midterm Exam (15%), and a Final Course Project (40%).",
+     "The late policy gives 7 free late days usable on problem sets (not the final project); after that it's 25% off per day, and problem sets aren't accepted more than 3 days late."
+    ]
+   }
+  }
+ ]
+}

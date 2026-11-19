@@ -1,0 +1,430 @@
+{
+ "schema": "a2g.package/v1",
+ "packageId": "demo_zh_spaced",
+ "contentVersion": "1",
+ "documentId": "doc_demo_zh_spaced",
+ "documentVersion": "sha256:1689d305bcf68d5dac29bd1d57fe58dd29c5ac6361edd8a392ec8af4a957a752",
+ "title": "间隔重复",
+ "language": "zh",
+ "generation": {
+  "mode": "pre-generated",
+  "model": "us.anthropic.claude-sonnet-5",
+  "promptVersion": "plan.v1+level.v1+support.v1",
+  "review": "auto-validated"
+ },
+ "sources": [
+  {
+   "chunkId": "c1",
+   "pageIndex": 0,
+   "pageLabel": "1",
+   "text": "间隔重复（英语：Spaced repetition）是一种利用心理学间隔效应，通过不断复习所学内容并逐步增加两次复习间的时间间隔来提升效率的学习技巧。 间隔重复适用于诸多学习情境，特别是学习者需要牢固记忆大量知识的情形，比如外语词汇的学习，尤其是在目标语言的基础词汇数量很大的时候。\n\n== 研究和应用 ==\n\n将间隔重复应用到学习上的观点最初见于塞西尔·阿莱克·梅斯1932的著作《学习心理学》中：“那些关于恰当分布学习时间的发现大概是最为重要的……对知识的复习和回顾应该反复多次，并且逐渐增加时间间隔，比如一天、两天、四天、八天，以此类推。” 1939年，H·F·Spitzer在爱荷华州对36名学生进行了一项实验，验证了间隔重复方法的效果。这一工作起初并未引起关注，直到20世纪60年代，认知心理学家亚瑟·梅尔顿、托马斯·兰道尔及罗伯特·A·比约克再次研究了间隔时间对于复习效果的影响。大概在同一时间，皮姆斯勒语言计划率先决定将间隔重复理论应用于语言学习。1973年，瑟巴斯坦·莱特纳发明了他的“莱特纳系统”——一种基于抽认卡的全功能间隔重复学习系统。 随着20世纪80年代个人计算机的普及，基于间隔重复方法的软件被广泛应用于计算机辅助语言学习。通过软件的自动发放和统计，学习者可以通过间隔重复的方法辨认数以千计的抽认卡。 为了使用户达到目标水平（例如，在任何给定时间点正确辨认90％的卡片），软件会调整重复的时间间隔。难以辨认的词汇经常出现，并且简单词汇出现频率较低，其词汇难度由软件根据用户的辨认正确率确定。"
+  },
+  {
+   "chunkId": "c2",
+   "pageIndex": 0,
+   "pageLabel": "1",
+   "text": "== 参考文献 ==\n\n== 参见 == Caple, C. (1996). \"The Effects of Spaced Practice and Spaced Review on Recall and Retention Using Computer Assisted Instruction\". Dissertation for the degree of Doctor of Education, North Carolina State University.[1] （页面存档备份，存于互联网档案馆） de Boer, V. (2003, August). \"Optimal Learning and the Spacing Effect: Theory, Application and Experiments based on the Memory Chain Model\". Artificial Intelligence Master's Thesis for Computational Psychology, University of Amsterdam.[2] （页面存档备份，存于互联网档案馆） Dempster, F. N. (1988). \"The Spacing Effect: A Case Study in the Failure to Apply the Results of Psychological Research\". American Psychologist, 43(8), 627-634."
+  },
+  {
+   "chunkId": "c3",
+   "pageIndex": 1,
+   "pageLabel": "2",
+   "text": "Greene R. L. (2008). Repetition and spacing effects. In Roediger H. L. III (Ed.), Learning and memory: A comprehensive reference. Vol. 2: Cognitive psychology of memory (pp. 65–78). Oxford: Elsevier. The Guardian (2016). \"Spaced Repetition: A hack to make your brain learn more information\". [3] （页面存档备份，存于互联网档案馆） Karpicke, J. D., & Roediger, H. L. (2007). \"Expanding Retrieval Practice Promotes Short-Term Retention, but Equally Spaced Retrieval Enhances Long-Term Retention\". Journal of Experimental Psychology: Learning, * Memory, and Cognition, 33(4), 704-719.[4] Kerfoot, B. P.; Baker, H. E.; Koch, M. O.; Connelly, D.; Joseph, D. B.; Ritchey, M. L. Randomized, Controlled Trial of Spaced Education to Urology Residents in the United States and Canada. The Journal of Urology. 2007, 177 (4): 1481–1487. PMID 17382760. doi:10.1016/j.juro.2006.11.074. Pavlik, P. I. (2005). The Microeconomics of Learning: Optimizing Paired-Associate Memory. PhD, Carnegie Mellon. Pavlik, P. I.; Anderson, J. R. Using a model to compute the optimal schedule of practice. Journal of Experimental Psychology. 2008, 14 (2): 101–117. PMID 18590367. doi:10.1037/1076-898X.14.2.101. Dr Piotr Wozniak."
+  },
+  {
+   "chunkId": "c4",
+   "pageIndex": 1,
+   "pageLabel": "2",
+   "text": "Effective learning: Twenty rules of formulating knowledge. Feb 1999 [2018-02-28]. （原始内容存档于2015-11-15）. — advice on making flashcards for spaced repetition."
+  }
+ ],
+ "levels": [
+  {
+   "levelId": "L1",
+   "title": "间隔重复：原理与历史",
+   "goal": "理解间隔重复的适用场景、发展历程，以及软件如何根据记忆效果调整复习间隔。",
+   "units": [
+    {
+     "unitId": "L1U1",
+     "knowledgeType": "claim",
+     "mechanic": "swipe",
+     "mechanicReason": "该说法指出了间隔重复适用的具体情境，可能被夸大或误判，适合用判断真假的方式检验。",
+     "item": {
+      "type": "swipe",
+      "cards": [
+       {
+        "id": "s1",
+        "statement": "间隔重复尤其适合需要牢固记忆大量知识的学习情境，比如外语词汇。",
+        "supported": true,
+        "why": "文章明确指出间隔重复适用于需要牢固记忆大量知识的情形，并以外语词汇为例。",
+        "sourceRefs": [
+         {
+          "chunkId": "c1",
+          "quote": "间隔重复适用于诸多学习情境，特别是学习者需要牢固记忆大量知识的情形，比如外语词汇的学习"
+         }
+        ]
+       },
+       {
+        "id": "s2",
+        "statement": "间隔重复只能用于外语词汇学习，不适用于其他学习情境。",
+        "supported": false,
+        "why": "文章说间隔重复适用于“诸多学习情境”，外语词汇只是其中一个例子，并非唯一适用范围。",
+        "sourceRefs": [
+         {
+          "chunkId": "c1",
+          "quote": "间隔重复适用于诸多学习情境"
+         }
+        ]
+       },
+       {
+        "id": "s3",
+        "statement": "当目标语言基础词汇数量很大时，间隔重复的作用尤为明显。",
+        "supported": true,
+        "why": "文章特别提到在目标语言基础词汇数量很大时，间隔重复的效果会更突出。",
+        "sourceRefs": [
+         {
+          "chunkId": "c1",
+          "quote": "尤其是在目标语言的基础词汇数量很大的时候"
+         }
+        ]
+       }
+      ]
+     },
+     "hints": [
+      "想想文章是用“诸多学习情境”还是只举了一个例子来描述适用范围。",
+      "注意“特别是……比如……”这种表达，外语词汇只是举例，不是全部。"
+     ],
+     "variants": [
+      {
+       "type": "swipe",
+       "cards": [
+        {
+         "id": "v1",
+         "statement": "间隔重复的核心原理是逐步增加两次复习之间的时间间隔。",
+         "supported": true,
+         "why": "文章定义中提到间隔重复正是通过逐步增加复习间隔来提升效率的方法。",
+         "sourceRefs": [
+          {
+           "chunkId": "c1",
+           "quote": "通过不断复习所学内容并逐步增加两次复习间的时间间隔来提升效率的学习技巧"
+          }
+         ]
+        },
+        {
+         "id": "v2",
+         "statement": "间隔重复对任何学习任务都同样有效，与知识量多少无关。",
+         "supported": false,
+         "why": "文章强调间隔重复特别适合需要牢固记忆大量知识的情形，说明其效果与知识量有关，并非“任何任务都同样有效”。",
+         "sourceRefs": [
+          {
+           "chunkId": "c1",
+           "quote": "间隔重复适用于诸多学习情境，特别是学习者需要牢固记忆大量知识的情形，比如外语词汇的学习"
+          }
+         ]
+        },
+        {
+         "id": "v3",
+         "statement": "间隔重复利用了心理学中的间隔效应。",
+         "supported": true,
+         "why": "文章开头就指出间隔重复是利用心理学间隔效应的学习技巧。",
+         "sourceRefs": [
+          {
+           "chunkId": "c1",
+           "quote": "间隔重复（英语：Spaced repetition）是一种利用心理学间隔效应"
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "unitId": "L1U2",
+     "knowledgeType": "process",
+     "mechanic": "order",
+     "mechanicReason": "间隔重复理论从1932年提出到1980年代软件普及，经历了明确的时间顺序发展，适合排序练习。",
+     "item": {
+      "type": "order",
+      "prompt": "请按时间顺序排列间隔重复理论与应用的发展历程。",
+      "steps": [
+       {
+        "id": "p1",
+        "text": "塞西尔·阿莱克·梅斯在1932年的著作中提出了关于合理分布复习时间的观点"
+       },
+       {
+        "id": "p2",
+        "text": "1939年，H·F·Spitzer在爱荷华州通过实验验证了间隔重复方法的效果"
+       },
+       {
+        "id": "p3",
+        "text": "20世纪60年代，认知心理学家梅尔顿、兰道尔及比约克重新研究了间隔时间对复习效果的影响"
+       },
+       {
+        "id": "p4",
+        "text": "1973年，瑟巴斯坦·莱特纳发明了基于抽认卡的“莱特纳系统”"
+       },
+       {
+        "id": "p5",
+        "text": "20世纪80年代，个人计算机普及，间隔重复软件被广泛应用于计算机辅助语言学习"
+       }
+      ],
+      "why": "文章按照时间先后依次介绍了梅斯提出观点、Spitzer实验验证、认知心理学家再研究、莱特纳发明系统，以及80年代软件普及的发展顺序。",
+      "sourceRefs": [
+       {
+        "chunkId": "c1",
+        "quote": "将间隔重复应用到学习上的观点最初见于塞西尔·阿莱克·梅斯1932的著作《学习心理学》中"
+       },
+       {
+        "chunkId": "c1",
+        "quote": "随着20世纪80年代个人计算机的普及，基于间隔重复方法的软件被广泛应用于计算机辅助语言学习"
+       }
+      ]
+     },
+     "hints": [
+      "先找出文章中明确标注的年份，比如1932、1939、1973。",
+      "注意“直到20世纪60年代”和“20世纪80年代”这两个相对时间点分别排在哪两个事件之间。"
+     ],
+     "variants": [
+      {
+       "type": "order",
+       "prompt": "请将下列事件按发生的先后顺序排列。",
+       "steps": [
+        {
+         "id": "q1",
+         "text": "梅斯在著作中建议复习间隔应逐渐增加，如一天、两天、四天"
+        },
+        {
+         "id": "q2",
+         "text": "Spitzer对36名学生进行实验，证明间隔重复有效"
+        },
+        {
+         "id": "q3",
+         "text": "梅尔顿、兰道尔和比约克重新关注间隔时间对记忆的影响"
+        },
+        {
+         "id": "q4",
+         "text": "莱特纳发明了基于抽认卡的学习系统"
+        },
+        {
+         "id": "q5",
+         "text": "计算机软件开始自动管理间隔重复的抽认卡"
+        }
+       ],
+       "why": "这与文章描述的时间线一致：先有理论提出，再有实验验证，之后学界重新研究，接着出现具体工具，最后进入软件化阶段。",
+       "sourceRefs": [
+        {
+         "chunkId": "c1",
+         "quote": "对知识的复习和回顾应该反复多次，并且逐渐增加时间间隔，比如一天、两天、四天、八天，以此类推"
+        },
+        {
+         "chunkId": "c1",
+         "quote": "1973年，瑟巴斯坦·莱特纳发明了他的“莱特纳系统”——一种基于抽认卡的全功能间隔重复学习系统"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "unitId": "L1U3",
+     "knowledgeType": "pair",
+     "mechanic": "sort",
+     "mechanicReason": "不同学者、系统（如莱特纳系统、皮姆斯勒计划）与其贡献构成术语-含义对应关系，适合配对分类。",
+     "item": {
+      "type": "sort",
+      "prompt": "请将每位学者或系统归入其主要贡献类型。",
+      "bins": [
+       {
+        "id": "theory",
+        "label": "提出或验证理论"
+       },
+       {
+        "id": "tool",
+        "label": "开发具体工具/系统"
+       },
+       {
+        "id": "application",
+        "label": "应用于语言教学"
+       }
+      ],
+      "cards": [
+       {
+        "id": "k1",
+        "text": "塞西尔·阿莱克·梅斯提出分布学习时间的观点",
+        "binId": "theory"
+       },
+       {
+        "id": "k2",
+        "text": "H·F·Spitzer通过实验验证间隔重复方法的效果",
+        "binId": "theory"
+       },
+       {
+        "id": "k3",
+        "text": "瑟巴斯坦·莱特纳发明基于抽认卡的学习系统",
+        "binId": "tool"
+       },
+       {
+        "id": "k4",
+        "text": "皮姆斯勒语言计划将间隔重复理论应用于语言学习",
+        "binId": "application"
+       }
+      ],
+      "why": "梅斯和Spitzer分别从理论和实验角度奠定了间隔重复的学术基础，莱特纳发明了具体的抽认卡工具，而皮姆斯勒语言计划则率先把理论用于实际语言教学。",
+      "sourceRefs": [
+       {
+        "chunkId": "c1",
+        "quote": "1939年，H·F·Spitzer在爱荷华州对36名学生进行了一项实验，验证了间隔重复方法的效果"
+       },
+       {
+        "chunkId": "c1",
+        "quote": "1973年，瑟巴斯坦·莱特纳发明了他的“莱特纳系统”——一种基于抽认卡的全功能间隔重复学习系统"
+       },
+       {
+        "chunkId": "c1",
+        "quote": "皮姆斯勒语言计划率先决定将间隔重复理论应用于语言学习"
+       }
+      ]
+     },
+     "hints": [
+      "先分清谁是在做“研究/验证”，谁是在“造工具”，谁是在“用到教学中”。",
+      "莱特纳系统是一种抽认卡工具，皮姆斯勒计划是语言教学项目。"
+     ],
+     "variants": [
+      {
+       "type": "sort",
+       "prompt": "请为以下贡献匹配正确的类型。",
+       "bins": [
+        {
+         "id": "theory2",
+         "label": "理论提出或实验验证"
+        },
+        {
+         "id": "tool2",
+         "label": "具体学习工具"
+        },
+        {
+         "id": "application2",
+         "label": "语言学习应用"
+        }
+       ],
+       "cards": [
+        {
+         "id": "m1",
+         "text": "在1932年著作中建议复习间隔应逐渐增加",
+         "binId": "theory2"
+        },
+        {
+         "id": "m2",
+         "text": "对36名学生做实验以检验间隔重复效果",
+         "binId": "theory2"
+        },
+        {
+         "id": "m3",
+         "text": "发明了一种基于抽认卡的全功能学习系统",
+         "binId": "tool2"
+        },
+        {
+         "id": "m4",
+         "text": "率先把间隔重复理论用在外语学习项目中",
+         "binId": "application2"
+        }
+       ],
+       "why": "这与原文一致：梅斯和Spitzer属于理论与实验层面，莱特纳系统是具体工具，皮姆斯勒语言计划是语言学习中的应用。",
+       "sourceRefs": [
+        {
+         "chunkId": "c1",
+         "quote": "将间隔重复应用到学习上的观点最初见于塞西尔·阿莱克·梅斯1932的著作《学习心理学》中"
+        },
+        {
+         "chunkId": "c1",
+         "quote": "皮姆斯勒语言计划率先决定将间隔重复理论应用于语言学习"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "unitId": "L1U4",
+     "knowledgeType": "reasoning",
+     "mechanic": "deduce",
+     "mechanicReason": "需要运用软件根据正确率调整复习间隔的原理，推断在新学习情境下系统会如何反应。",
+     "item": {
+      "type": "deduce",
+      "scenario": "小李使用一款间隔重复软件学习日语单词，软件的目标是让她在任意时间点都能正确辨认90%的卡片。其中一个单词她总是记错。",
+      "prompt": "根据软件调整重复间隔的原理，软件接下来最可能如何处理这个单词？",
+      "options": [
+       {
+        "id": "o1",
+        "text": "让这个单词更频繁地出现，缩短它的复习间隔。",
+        "correct": true,
+        "feedback": "正确。软件会根据辨认正确率调整难度，难以辨认的词汇会更频繁出现，直到用户达到目标正确率。"
+       },
+       {
+        "id": "o2",
+        "text": "因为她已经学过这个单词，所以降低它出现的频率。",
+        "correct": false,
+        "feedback": "不对。文章说简单词汇才会降低出现频率，而这个单词她总是记错，属于难词，应更频繁出现。"
+       },
+       {
+        "id": "o3",
+        "text": "直接把这个单词永久从复习列表中移除。",
+        "correct": false,
+        "feedback": "不对。文章描述的是软件会调整复习的时间间隔，而不是移除词汇；移除并不符合间隔重复根据正确率调整难度的机制。"
+       }
+      ],
+      "sourceRefs": [
+       {
+        "chunkId": "c1",
+        "quote": "难以辨认的词汇经常出现，并且简单词汇出现频率较低，其词汇难度由软件根据用户的辨认正确率确定"
+       }
+      ]
+     },
+     "hints": [
+      "想一想软件是依据什么标准（辨认正确率）来决定一个词出现得多还是少。",
+      "难词和简单词在出现频率上的处理方式正好相反。"
+     ],
+     "variants": [
+      {
+       "type": "deduce",
+       "scenario": "小王用间隔重复软件背单词，目标正确率设为90%。某个单词他每次都能轻松答对。",
+       "prompt": "根据软件的调整原理，这个单词接下来最可能被如何处理？",
+       "options": [
+        {
+         "id": "p1",
+         "text": "降低该单词出现的频率，拉长复习间隔。",
+         "correct": true,
+         "feedback": "正确。文章指出简单词汇出现频率较低，软件会根据正确率降低其复习频率。"
+        },
+        {
+         "id": "p2",
+         "text": "提高该单词出现的频率，让它更频繁复习。",
+         "correct": false,
+         "feedback": "不对。文章说难以辨认的词汇才会更频繁出现，这个单词他总能答对，属于简单词汇。"
+        },
+        {
+         "id": "p3",
+         "text": "把目标正确率调整为100%后再决定。",
+         "correct": false,
+         "feedback": "不对。文章中软件是根据用户当前的辨认正确率来调整词汇出现频率，并没有提到用户可以随意更改目标正确率这一机制。"
+        }
+       ],
+       "sourceRefs": [
+        {
+         "chunkId": "c1",
+         "quote": "难以辨认的词汇经常出现，并且简单词汇出现频率较低，其词汇难度由软件根据用户的辨认正确率确定"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "recap": {
+    "points": [
+     "间隔重复适用于需要牢固记忆大量知识的学习情境，如外语词汇量较大时效果尤为明显。",
+     "其发展经历了梅斯1932年提出理论、Spitzer1939年实验验证、60年代学界再研究、1973年莱特纳系统、到80年代软件普及的过程。",
+     "梅斯与Spitzer奠定理论基础，莱特纳发明了抽认卡工具，皮姆斯勒语言计划率先将理论应用于语言教学。",
+     "间隔重复软件会依据用户的辨认正确率动态调整词汇出现频率：难词更频繁出现，简单词则减少出现。"
+    ]
+   }
+  }
+ ]
+}

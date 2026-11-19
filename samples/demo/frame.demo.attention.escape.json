@@ -1,0 +1,332 @@
+{
+ "schema": "a2g.frame/v1",
+ "frameId": "escape",
+ "packageId": "demo_attention",
+ "contentVersion": "1",
+ "generation": {
+  "mode": "pre-generated",
+  "model": "us.anthropic.claude-sonnet-5",
+  "promptVersion": "frame-escape.v1",
+  "review": "auto-validated"
+ },
+ "cast": [
+  {
+   "id": "archive",
+   "name": "The Archive",
+   "role": "narrator"
+  }
+ ],
+ "levels": [
+  {
+   "levelId": "L1",
+   "intro": [
+    {
+     "speaker": "archive",
+     "text": "Deep in the paper stacks, a vault hums with the promise of a new architecture. Three doors stand between you and the exit.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "archive",
+     "text": "Each door opens only once you understand the piece of the Transformer locked inside it.",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {},
+   "rooms": [
+    {
+     "id": "r1",
+     "title": "The Abstract Alcove",
+     "description": "A single framed paragraph glows on the wall, daring you to separate its real claims from its overreach.",
+     "unitIds": [
+      "L1U1"
+     ]
+    },
+    {
+     "id": "r2",
+     "title": "The Blueprint Hall",
+     "description": "Scaffolding diagrams of stacked layers line the walls, next to a table sorting layer types by their speed.",
+     "unitIds": [
+      "L1U2",
+      "L1U3"
+     ]
+    },
+    {
+     "id": "r3",
+     "title": "The Dimension Chamber",
+     "description": "A chalkboard compares sequence length n against dimension d, waiting for the right layer to be chosen.",
+     "unitIds": [
+      "L1U4"
+     ]
+    }
+   ],
+   "boss": {
+    "unitId": "L1LOCK",
+    "knowledgeType": "process",
+    "mechanic": "order",
+    "mechanicReason": "The exit lock rebuilds the paper's core logic as a sequence: what it discards, how it is built, and why that choice wins.",
+    "item": {
+     "type": "order",
+     "prompt": "The vault door wants the Transformer's logic rebuilt in order.",
+     "steps": [
+      {
+       "id": "p1",
+       "text": "The Transformer dispenses with recurrence and convolutions, relying solely on attention."
+      },
+      {
+       "id": "p2",
+       "text": "The encoder-decoder stack applies residual connections and layer normalization around each sub-layer."
+      },
+      {
+       "id": "p3",
+       "text": "Self-attention needs only O(1) sequential operations, while a recurrent layer needs O(n)."
+      },
+      {
+       "id": "p4",
+       "text": "This makes self-attention faster whenever sequence length n is smaller than representation dimension d."
+      }
+     ],
+     "why": "This is the order the paper builds its case: first the architectural choice, then how the stack is constructed, then the complexity evidence, then the practical conclusion it supports.",
+     "sourceRefs": [
+      {
+       "chunkId": "c1",
+       "quote": "dispensing with recurrence and convolutions entirely"
+      },
+      {
+       "chunkId": "c8",
+       "quote": "the output of each sub-layer is LayerNorm(x + Sublayer(x))"
+      },
+      {
+       "chunkId": "c16",
+       "quote": "Self-Attention O(n2 · d) O(1) O(1)"
+      },
+      {
+       "chunkId": "c20",
+       "quote": "length n is smaller than the representation dimensionality d, which is most often the case with sentence representations used by state-of-the-art models in machine translations"
+      }
+     ]
+    },
+    "hints": [
+     "Start with what the architecture throws away, then how it's assembled, then the complexity table, then the practical payoff."
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "archive",
+     "text": "The vault door grinds open. You've rebuilt the Transformer's logic from the ground up.",
+     "sourceRefs": []
+    }
+   ]
+  },
+  {
+   "levelId": "L2",
+   "intro": [
+    {
+     "speaker": "archive",
+     "text": "Behind this door lies the attention mechanism itself, taken apart into queries, keys, values, and formulas.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "archive",
+     "text": "Four rooms, four pieces of the machine. Reassemble them to proceed.",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {},
+   "rooms": [
+    {
+     "id": "r1",
+     "title": "The Triage Room",
+     "description": "Three trays labelled QUERY, KEY and VALUE sit beneath a diagram of weighted sums.",
+     "unitIds": [
+      "L2U1"
+     ]
+    },
+    {
+     "id": "r2",
+     "title": "The Formula Corridor",
+     "description": "A chalked equation stretches across the corridor, its operations scrambled out of order.",
+     "unitIds": [
+      "L2U2"
+     ]
+    },
+    {
+     "id": "r3",
+     "title": "The Three Doors of Attention",
+     "description": "Three identical doors are marked only by where their queries, keys and values come from.",
+     "unitIds": [
+      "L2U3"
+     ]
+    },
+    {
+     "id": "r4",
+     "title": "The Scaling Nook",
+     "description": "A faded note compares two attention mechanisms at different values of dk.",
+     "unitIds": [
+      "L2U4"
+     ]
+    }
+   ],
+   "boss": {
+    "unitId": "L2LOCK",
+    "knowledgeType": "reasoning",
+    "mechanic": "deduce",
+    "mechanicReason": "The final lock asks you to apply the three attention uses correctly to a combined decoder scenario, not just recall them.",
+    "item": {
+     "type": "deduce",
+     "scenario": "A decoder position must gather information from the entire input sequence while still being blocked from seeing its own future positions.",
+     "prompt": "Which description of the decoder's attention setup is correct?",
+     "options": [
+      {
+       "id": "o1",
+       "text": "The decoder uses masked self-attention so each position sees only earlier decoder positions, then encoder-decoder attention where the decoder supplies the queries and the encoder's output supplies the keys and values.",
+       "correct": true,
+       "feedback": "This matches the paper: encoder-decoder attention takes queries from the decoder and keys/values from the encoder, while decoder self-attention is masked to block future positions."
+      },
+      {
+       "id": "o2",
+       "text": "The decoder's self-attention attends freely to all future positions, since masking only applies inside the encoder.",
+       "correct": false,
+       "feedback": "Masking is applied inside the decoder's self-attention precisely to prevent this kind of information flow and preserve the auto-regressive property."
+      },
+      {
+       "id": "o3",
+       "text": "In encoder-decoder attention, the queries come from the encoder and the keys and values come from the decoder.",
+       "correct": false,
+       "feedback": "It's the reverse: the queries come from the previous decoder layer, while the memory keys and values come from the encoder's output."
+      }
+     ],
+     "sourceRefs": [
+      {
+       "chunkId": "c13",
+       "quote": "the queries come from the previous decoder layer, and the memory keys and values come from the output of the encoder."
+      },
+      {
+       "chunkId": "c14",
+       "quote": "We need to prevent leftward information flow in the decoder to preserve the auto-regressive property."
+      }
+     ]
+    },
+    "hints": [
+     "Figure out which attention layer supplies the queries and which supplies the keys and values, and remember why the decoder's self-attention is masked."
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "archive",
+     "text": "The corridor doors swing open together. You've traced every query to its key and every key to its value.",
+     "sourceRefs": []
+    }
+   ]
+  },
+  {
+   "levelId": "L3",
+   "intro": [
+    {
+     "speaker": "archive",
+     "text": "The final chamber holds the paper's results — and its careful hedges. Read closely before you act.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "archive",
+     "text": "The exit lock wants the paper's own conclusion, rebuilt word by word.",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {},
+   "rooms": [
+    {
+     "id": "r1",
+     "title": "The Scoreboard Room",
+     "description": "BLEU scores are chalked on a board, some circled, some crossed out as too generous.",
+     "unitIds": [
+      "L3U1"
+     ]
+    },
+    {
+     "id": "r2",
+     "title": "The Tuning Bench",
+     "description": "Dials for heads, key size, model size and dropout sit beside a chart of quality shifts.",
+     "unitIds": [
+      "L3U2"
+     ]
+    },
+    {
+     "id": "r3",
+     "title": "The Parsing Annex",
+     "description": "A tree diagram of a parsed sentence hangs next to a table of rival parsers' scores.",
+     "unitIds": [
+      "L3U3"
+     ]
+    },
+    {
+     "id": "r4",
+     "title": "The Interpretability Nook",
+     "description": "A cautious note about attention heads 'possibly' revealing sentence structure sits under a magnifying glass.",
+     "unitIds": [
+      "L3U4"
+     ]
+    }
+   ],
+   "boss": {
+    "unitId": "L3LOCK",
+    "knowledgeType": "process",
+    "mechanic": "order",
+    "mechanicReason": "The exit lock rebuilds the paper's closing argument as a sequence, from design choice to achievement to future plan.",
+    "item": {
+     "type": "order",
+     "prompt": "Rebuild the paper's conclusion in the order it is stated.",
+     "steps": [
+      {
+       "id": "p1",
+       "text": "The Transformer replaces the recurrent layers of encoder-decoder architectures with multi-headed self-attention."
+      },
+      {
+       "id": "p2",
+       "text": "For translation tasks, the Transformer can be trained significantly faster than recurrent or convolutional architectures."
+      },
+      {
+       "id": "p3",
+       "text": "It achieves a new state of the art on both WMT 2014 English-to-German and English-to-French translation tasks."
+      },
+      {
+       "id": "p4",
+       "text": "The authors plan to extend the Transformer to other modalities and to make generation less sequential."
+      }
+     ],
+     "why": "This is the exact order of the conclusion: the architectural change, the training-speed payoff, the achieved results, and the stated future plans.",
+     "sourceRefs": [
+      {
+       "chunkId": "c30",
+       "quote": "replacing the recurrent layers most commonly used in encoder-decoder architectures with multi-headed self-attention"
+      },
+      {
+       "chunkId": "c30",
+       "quote": "the Transformer can be trained significantly faster than architectures based on recurrent or convolutional layers"
+      },
+      {
+       "chunkId": "c30",
+       "quote": "we achieve a new state of the art"
+      },
+      {
+       "chunkId": "c30",
+       "quote": "We plan to extend the Transformer to problems involving input and output modalities other than text"
+      }
+     ]
+    },
+    "hints": [
+     "Follow the conclusion's own flow: what changed, what that bought in training speed, what was achieved, and what comes next."
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "archive",
+     "text": "The chamber door opens onto daylight. You've rebuilt the paper's conclusion exactly as it was written.",
+     "sourceRefs": []
+    }
+   ]
+  }
+ ]
+}

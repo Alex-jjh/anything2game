@@ -23,6 +23,8 @@ android {
     }
     // Bundled samples ARE the contract examples: one source of truth, validated by :contract tests.
     sourceSets.getByName("main").assets.srcDir(rootProject.file("contract/examples"))
+    // Pre-generated demo courses (validated by :contract DemoSamplesTest). Labelled "pre-generated" in the UI.
+    sourceSets.getByName("main").assets.srcDir(rootProject.file("samples/demo"))
     androidResources { generateLocaleConfig = true }
     testOptions { unitTests { isIncludeAndroidResources = true } }
 }

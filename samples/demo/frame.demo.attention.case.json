@@ -1,0 +1,442 @@
+{
+ "schema": "a2g.frame/v1",
+ "frameId": "case",
+ "packageId": "demo_attention",
+ "contentVersion": "1",
+ "generation": {
+  "mode": "pre-generated",
+  "model": "us.anthropic.claude-sonnet-5",
+  "promptVersion": "frame-case.v1",
+  "review": "auto-validated"
+ },
+ "cast": [
+  {
+   "id": "mira",
+   "name": "Mira",
+   "role": "partner"
+  },
+  {
+   "id": "summary",
+   "name": "The Summary",
+   "role": "suspect"
+  }
+ ],
+ "levels": [
+  {
+   "levelId": "L1",
+   "intro": [
+    {
+     "speaker": "mira",
+     "text": "New case, detective. A paper claims it killed off recurrence and convolutions for good — using attention alone.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "summary",
+     "text": "Skip the reading. I'll just tell you: it's the best model ever, period.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "mira",
+     "text": "That's exactly the kind of line we're here to check.",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {},
+   "rooms": [],
+   "boss": {
+    "unitId": "L1BOSS",
+    "knowledgeType": "claim",
+    "mechanic": "crossexam",
+    "mechanicReason": "Frame boss: confront the suspect's version of the Transformer's core claim and architecture.",
+    "item": {
+     "type": "crossexam",
+     "speaker": "summary",
+     "prompt": "The Summary's take on why the Transformer matters. One claim overclaims — find the passage that limits it.",
+     "statements": [
+      {
+       "id": "st1",
+       "text": "The Transformer dispenses with recurrence and convolutions entirely, relying solely on attention.",
+       "flawed": false,
+       "why": "The abstract states this directly as the architecture's design.",
+       "sourceRefs": [
+        {
+         "chunkId": "c1",
+         "quote": "dispensing with recurrence and convolutions entirely"
+        }
+       ]
+      },
+      {
+       "id": "st2",
+       "text": "The encoder is built as a stack of six identical layers, each with self-attention and feed-forward sub-layers.",
+       "flawed": false,
+       "why": "This matches the described encoder construction.",
+       "sourceRefs": [
+        {
+         "chunkId": "c8",
+         "quote": "The encoder is composed of a stack of N = 6 identical layers."
+        }
+       ]
+      },
+      {
+       "id": "st3",
+       "text": "Self-attention needs only a constant number of sequential operations, while recurrent layers need operations that grow with sequence length.",
+       "flawed": false,
+       "why": "Table 1 reports exactly this contrast between self-attention and recurrent layers.",
+       "sourceRefs": [
+        {
+         "chunkId": "c16",
+         "quote": "Self-Attention O(n2 · d) O(1) O(1)"
+        },
+        {
+         "chunkId": "c16",
+         "quote": "Recurrent O(n · d2) O(n) O(n)"
+        }
+       ]
+      },
+      {
+       "id": "st4",
+       "text": "The paper proves the Transformer is superior across many NLP benchmarks.",
+       "flawed": true,
+       "why": "The experiments only cover two machine translation tasks, not a broad range of benchmarks — the claim goes beyond what was tested.",
+       "sourceRefs": [
+        {
+         "chunkId": "c1",
+         "quote": "Experiments on two machine translation tasks show these models to be superior in quality"
+        }
+       ]
+      }
+     ]
+    },
+    "hints": [
+     "Which claim talks about results the experiments section never actually tested?"
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "mira",
+     "text": "Case closed. The Transformer really does drop recurrence and convolutions — but 'superior across many benchmarks' was never on the record. Two translation tasks, that's it.",
+     "sourceRefs": []
+    }
+   ]
+  },
+  {
+   "levelId": "L2",
+   "intro": [
+    {
+     "speaker": "mira",
+     "text": "This case is about the engine room: queries, keys, values, and how attention actually gets computed.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "summary",
+     "text": "Details, details. Dot-product wins, always. Trust me.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "mira",
+     "text": "We don't trust, we check sources.",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {},
+   "rooms": [],
+   "boss": {
+    "unitId": "L2BOSS",
+    "knowledgeType": "claim",
+    "mechanic": "crossexam",
+    "mechanicReason": "Frame boss: test the suspect's claims about how scaled dot-product and multi-head attention actually work.",
+    "item": {
+     "type": "crossexam",
+     "speaker": "summary",
+     "prompt": "The Summary's version of the attention mechanism. One claim overreaches — produce the passage that corrects it.",
+     "statements": [
+      {
+       "id": "st1",
+       "text": "Attention maps a query and key-value pairs to an output, where the weight on each value comes from a compatibility function between the query and the key.",
+       "flawed": false,
+       "why": "This is exactly how the attention function is defined.",
+       "sourceRefs": [
+        {
+         "chunkId": "c10",
+         "quote": "the weight assigned to each value is computed by a compatibility function of the query with the corresponding key."
+        }
+       ]
+      },
+      {
+       "id": "st2",
+       "text": "Scaled dot-product attention divides the dot products by √dk before applying softmax.",
+       "flawed": false,
+       "why": "This matches the formula's second step exactly.",
+       "sourceRefs": [
+        {
+         "chunkId": "c10",
+         "quote": "divide each by √ dk"
+        }
+       ]
+      },
+      {
+       "id": "st3",
+       "text": "Dot-product attention is faster and more space-efficient in practice than additive attention because it uses optimized matrix multiplication.",
+       "flawed": false,
+       "why": "The paper states this practical advantage directly.",
+       "sourceRefs": [
+        {
+         "chunkId": "c11",
+         "quote": "dot-product attention is much faster and more space-efficient in practice, since it can be implemented using highly optimized matrix multiplication code."
+        }
+       ]
+      },
+      {
+       "id": "st4",
+       "text": "Dot-product attention always outperforms additive attention, since it's the simpler mechanism.",
+       "flawed": true,
+       "why": "Without scaling, additive attention actually outperforms dot-product attention for larger values of dk — it does not always win.",
+       "sourceRefs": [
+        {
+         "chunkId": "c11",
+         "quote": "additive attention outperforms dot product attention without scaling for larger values of dk"
+        }
+       ]
+      }
+     ]
+    },
+    "hints": [
+     "Check what happens without scaling when dk gets large — does dot-product still win?"
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "mira",
+     "text": "The math holds up — dot-product attention is faster in practice. But 'always outperforms' doesn't survive cross-examination; the paper says additive wins for large dk without scaling.",
+     "sourceRefs": []
+    }
+   ]
+  },
+  {
+   "levelId": "L3",
+   "intro": [
+    {
+     "speaker": "mira",
+     "text": "Final case: the results. State-of-the-art BLEU scores, some ablations, and a side-claim about interpretability.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "summary",
+     "text": "Record-breaking everywhere, no exceptions. Case basically solves itself.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "mira",
+     "text": "Let's see what the numbers actually say before you close the file.",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {},
+   "rooms": [],
+   "boss": {
+    "unitId": "L3BOSS",
+    "knowledgeType": "claim",
+    "mechanic": "crossexam",
+    "mechanicReason": "Frame boss: separate the Transformer's proven results from the suspect's sweeping conclusions.",
+    "item": {
+     "type": "crossexam",
+     "speaker": "summary",
+     "prompt": "The Summary's closing statement on the results. One claim overclaims — bring the passage that disproves it.",
+     "statements": [
+      {
+       "id": "st1",
+       "text": "The big Transformer set a new English-to-German state of the art of 28.4 BLEU, beating the previous best (including ensembles) by more than 2 BLEU.",
+       "flawed": false,
+       "why": "The results section reports exactly this score and margin.",
+       "sourceRefs": [
+        {
+         "chunkId": "c24",
+         "quote": "the big transformer model (Transformer (big) in Table 2) outperforms the best previously reported models (including ensembles) by more than 2.0 BLEU, establishing a new state-of-the-art BLEU score of 28.4."
+        }
+       ]
+      },
+      {
+       "id": "st2",
+       "text": "The Transformer generalized well to English constituency parsing, even with only the small WSJ training set.",
+       "flawed": false,
+       "why": "This matches the paper's reported parsing results on limited data.",
+       "sourceRefs": [
+        {
+         "chunkId": "c30",
+         "quote": "even when training only on the WSJ training set of 40K sentences."
+        }
+       ]
+      },
+      {
+       "id": "st3",
+       "text": "The paper only tentatively suggests self-attention could yield more interpretable models, based on discussing a few example attention patterns.",
+       "flawed": false,
+       "why": "The text hedges with 'could yield' and points to examples in the appendix, not a full proof.",
+       "sourceRefs": [
+        {
+         "chunkId": "c21",
+         "quote": "As side benefit, self-attention could yield more interpretable models."
+        },
+        {
+         "chunkId": "c21",
+         "quote": "We inspect attention distributions from our models and present and discuss examples in the appendix."
+        }
+       ]
+      },
+      {
+       "id": "st4",
+       "text": "The Transformer beat every previously reported parser, proving self-attention is best for all structured tasks.",
+       "flawed": true,
+       "why": "The paper explicitly reports one exception — the Recurrent Neural Network Grammar still scored higher — and never claims superiority for all structured tasks.",
+       "sourceRefs": [
+        {
+         "chunkId": "c29",
+         "quote": "yielding better results than all previously reported models with the exception of the Recurrent Neural Network Grammar"
+        }
+       ]
+      }
+     ]
+    },
+    "hints": [
+     "Check the parsing table — did the Transformer really beat every single prior model, with no exceptions?"
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "mira",
+     "text": "The BLEU numbers and the parsing generalization check out. But 'beat every parser, proving it's best for all structured tasks' falls apart — one model still scored higher, and the paper never claims universal superiority.",
+     "sourceRefs": []
+    }
+   ]
+  }
+ ],
+ "board": {
+  "nodes": [
+   {
+    "id": "n1",
+    "label": "Attention-only architecture",
+    "unitId": "L1U1"
+   },
+   {
+    "id": "n2",
+    "label": "Encoder-decoder stack structure",
+    "unitId": "L1U2"
+   },
+   {
+    "id": "n3",
+    "label": "Sequential operations complexity",
+    "unitId": "L1U3"
+   },
+   {
+    "id": "n4",
+    "label": "Choosing attention over recurrence",
+    "unitId": "L1U4"
+   },
+   {
+    "id": "n5",
+    "label": "Query-Key-Value roles",
+    "unitId": "L2U1"
+   },
+   {
+    "id": "n6",
+    "label": "Scaled dot-product steps",
+    "unitId": "L2U2"
+   },
+   {
+    "id": "n7",
+    "label": "Three uses of multi-head attention",
+    "unitId": "L2U3"
+   },
+   {
+    "id": "n8",
+    "label": "Dot-product vs additive attention",
+    "unitId": "L2U4"
+   },
+   {
+    "id": "n9",
+    "label": "BLEU state-of-the-art results",
+    "unitId": "L3U1"
+   },
+   {
+    "id": "n10",
+    "label": "Hyperparameter ablations",
+    "unitId": "L3U2"
+   },
+   {
+    "id": "n11",
+    "label": "Generalization to parsing",
+    "unitId": "L3U3"
+   },
+   {
+    "id": "n12",
+    "label": "Interpretability claim",
+    "unitId": "L3U4"
+   }
+  ],
+  "edges": [
+   {
+    "from": "n1",
+    "to": "n2",
+    "label": "leads to"
+   },
+   {
+    "from": "n2",
+    "to": "n5",
+    "label": "supports"
+   },
+   {
+    "from": "n5",
+    "to": "n6",
+    "label": "explains"
+   },
+   {
+    "from": "n6",
+    "to": "n7",
+    "label": "supports"
+   },
+   {
+    "from": "n3",
+    "to": "n4",
+    "label": "supports"
+   },
+   {
+    "from": "n4",
+    "to": "n1",
+    "label": "supports"
+   },
+   {
+    "from": "n8",
+    "to": "n6",
+    "label": "explains"
+   },
+   {
+    "from": "n7",
+    "to": "n9",
+    "label": "leads to"
+   },
+   {
+    "from": "n9",
+    "to": "n10",
+    "label": "supports"
+   },
+   {
+    "from": "n10",
+    "to": "n11",
+    "label": "supports"
+   },
+   {
+    "from": "n11",
+    "to": "n12",
+    "label": "leads to"
+   },
+   {
+    "from": "n3",
+    "to": "n9",
+    "label": "supports"
+   }
+  ]
+ }
+}

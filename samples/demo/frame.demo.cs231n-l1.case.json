@@ -1,0 +1,290 @@
+{
+ "schema": "a2g.frame/v1",
+ "frameId": "case",
+ "packageId": "demo_cs231n_l1",
+ "contentVersion": "1",
+ "generation": {
+  "mode": "pre-generated",
+  "model": "us.anthropic.claude-sonnet-5",
+  "promptVersion": "frame-case.v1",
+  "review": "auto-validated"
+ },
+ "cast": [
+  {
+   "id": "mira",
+   "name": "Mira",
+   "role": "partner"
+  },
+  {
+   "id": "summary",
+   "name": "The Summary",
+   "role": "suspect"
+  }
+ ],
+ "levels": [
+  {
+   "levelId": "L1",
+   "intro": [
+    {
+     "speaker": "mira",
+     "text": "This case goes back decades — cat brains, block worlds, and a face detector that changed everything.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "summary",
+     "text": "Old news. I skimmed the timeline, I know how it ends: CNNs, boom, done.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "mira",
+     "text": "Skimming isn't knowing. Let's see what the slides actually say.",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {},
+   "rooms": [],
+   "boss": {
+    "unitId": "L1BOSS",
+    "knowledgeType": "claim",
+    "mechanic": "crossexam",
+    "mechanicReason": "Frame boss: catch the claim that overclaims how computer vision's history unfolded.",
+    "item": {
+     "type": "crossexam",
+     "speaker": "summary",
+     "prompt": "The Summary's version of computer vision's history. One claim overclaims the evidence — find the passage that proves it.",
+     "statements": [
+      {
+       "id": "st1",
+       "text": "Hubel and Wiesel's 1959 study found that simple, complex, and hypercomplex cells respond differently to light orientation and movement.",
+       "flawed": false,
+       "why": "This matches the lecture's description of the 1959 study directly.",
+       "sourceRefs": [
+        {
+         "chunkId": "c9",
+         "quote": "Hubel & Wiesel, 1959"
+        }
+       ]
+      },
+      {
+       "id": "st2",
+       "text": "ImageNet organized millions of images into semantic categories like animals, plants, and artifacts.",
+       "flawed": false,
+       "why": "The ImageNet slide lists exactly these category groupings.",
+       "sourceRefs": [
+        {
+         "chunkId": "c22",
+         "quote": "22K categories and 14M images"
+        }
+       ]
+      },
+      {
+       "id": "st3",
+       "text": "CNNs have become an important tool for object recognition.",
+       "flawed": false,
+       "why": "The lecture states this directly about CNNs.",
+       "sourceRefs": [
+        {
+         "chunkId": "c30",
+         "quote": "Convolutional Neural Networks (CNN) have become an important tool for object recognition"
+        }
+       ]
+      },
+      {
+       "id": "st4",
+       "text": "CNNs appeared overnight as a single sudden breakthrough with no earlier groundwork.",
+       "flawed": true,
+       "why": "The lecture explicitly denies that CNNs were invented overnight, pointing instead to decades of incremental work.",
+       "sourceRefs": [
+        {
+         "chunkId": "c32",
+         "quote": "were not invented overnight"
+        }
+       ]
+      }
+     ]
+    },
+    "hints": [
+     "Which claim about CNNs contradicts the slide that talks about how they actually came to be?"
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "mira",
+     "text": "Case closed. The Summary got the facts right until it tried to skip the decades of groundwork.",
+     "sourceRefs": []
+    }
+   ]
+  },
+  {
+   "levelId": "L2",
+   "intro": [
+    {
+     "speaker": "mira",
+     "text": "New case: what exactly does CS231n cover, and how does it grade you for it?",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "summary",
+     "text": "Syllabi are boring. I already know it's just 'classify the image,' end of story.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "mira",
+     "text": "That 'end of story' is exactly what we're here to check.",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {},
+   "rooms": [],
+   "boss": {
+    "unitId": "L2BOSS",
+    "knowledgeType": "claim",
+    "mechanic": "crossexam",
+    "mechanicReason": "Frame boss: catch the claim that overclaims the course's scope.",
+    "item": {
+     "type": "crossexam",
+     "speaker": "summary",
+     "prompt": "The Summary's take on what CS231n is really about. One claim overclaims — present the passage that limits it.",
+     "statements": [
+      {
+       "id": "st1",
+       "text": "CS231n focuses on image classification as one of the most important problems of visual recognition.",
+       "flawed": false,
+       "why": "The lecture states this directly as the course's central focus.",
+       "sourceRefs": [
+        {
+         "chunkId": "c26",
+         "quote": "CS231n focuses on one of the most important problems of visual recognition"
+        }
+       ]
+      },
+      {
+       "id": "st2",
+       "text": "Object detection and image captioning are named as related visual recognition problems.",
+       "flawed": false,
+       "why": "The lecture lists these two tasks together as related problems.",
+       "sourceRefs": [
+        {
+         "chunkId": "c28",
+         "quote": "object detection, image captioning"
+        }
+       ]
+      },
+      {
+       "id": "st3",
+       "text": "Action classification is added to the expanded list of visual recognition tasks.",
+       "flawed": false,
+       "why": "The expanded bullet list names action classification alongside the other tasks.",
+       "sourceRefs": [
+        {
+         "chunkId": "c29",
+         "quote": "Action classification"
+        }
+       ]
+      },
+      {
+       "id": "st4",
+       "text": "Solving image classification alone is enough to achieve full visual intelligence.",
+       "flawed": true,
+       "why": "The lecture explicitly says the quest for visual intelligence goes far beyond object recognition, so classification alone isn't the whole goal.",
+       "sourceRefs": [
+        {
+         "chunkId": "c34",
+         "quote": "goes far beyond object recognition"
+        }
+       ]
+      }
+     ]
+    },
+    "hints": [
+     "Which claim mistakes the course's main focus for the entire goal of visual intelligence?"
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "mira",
+     "text": "Case closed. Classification is the course's anchor, but The Summary tried to pass it off as the whole ocean.",
+     "sourceRefs": []
+    }
+   ]
+  }
+ ],
+ "board": {
+  "nodes": [
+   {
+    "id": "n1",
+    "label": "Historical CV milestones",
+    "unitId": "L1U1"
+   },
+   {
+    "id": "n2",
+    "label": "Marr's stages of vision",
+    "unitId": "L1U2"
+   },
+   {
+    "id": "n3",
+    "label": "ImageNet categories",
+    "unitId": "L1U3"
+   },
+   {
+    "id": "n4",
+    "label": "CNNs as object recognition tool",
+    "unitId": "L1U4"
+   },
+   {
+    "id": "n5",
+    "label": "Related visual recognition tasks",
+    "unitId": "L2U1"
+   },
+   {
+    "id": "n6",
+    "label": "Course focus vs. visual intelligence goal",
+    "unitId": "L2U2"
+   },
+   {
+    "id": "n7",
+    "label": "Grading weights",
+    "unitId": "L2U3"
+   },
+   {
+    "id": "n8",
+    "label": "Late policy deduction",
+    "unitId": "L2U4"
+   }
+  ],
+  "edges": [
+   {
+    "from": "n1",
+    "to": "n4",
+    "label": "leads to"
+   },
+   {
+    "from": "n2",
+    "to": "n4",
+    "label": "explains"
+   },
+   {
+    "from": "n3",
+    "to": "n4",
+    "label": "supports"
+   },
+   {
+    "from": "n4",
+    "to": "n6",
+    "label": "leads to"
+   },
+   {
+    "from": "n5",
+    "to": "n6",
+    "label": "supports"
+   },
+   {
+    "from": "n7",
+    "to": "n8",
+    "label": "explains"
+   }
+  ]
+ }
+}

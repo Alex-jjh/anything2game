@@ -1,0 +1,257 @@
+{
+ "schema": "a2g.frame/v1",
+ "frameId": "rookie",
+ "packageId": "demo_cs231n_l1",
+ "contentVersion": "1",
+ "generation": {
+  "mode": "pre-generated",
+  "model": "us.anthropic.claude-sonnet-5",
+  "promptVersion": "frame-rookie.v1",
+  "review": "auto-validated"
+ },
+ "cast": [
+  {
+   "id": "sam",
+   "name": "Sam",
+   "role": "rookie"
+  }
+ ],
+ "levels": [
+  {
+   "levelId": "L1",
+   "intro": [
+    {
+     "speaker": "sam",
+     "text": "Hi! I just read through this whole history-of-computer-vision section and my notes are kind of a mess.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "sam",
+     "text": "Can we go through it together and make sure I got the milestones and theories straight?",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {
+    "L1U1": [
+     {
+      "speaker": "sam",
+      "text": "Wait, I think the cat-brain studies came AFTER the face detection algorithm, right? That's the order I wrote down.",
+      "sourceRefs": []
+     }
+    ],
+    "L1U2": [
+     {
+      "speaker": "sam",
+      "text": "I think the 2 ½-D sketch is actually the very first stage, before even the input image. Is that backwards?",
+      "sourceRefs": []
+     }
+    ],
+    "L1U3": [
+     {
+      "speaker": "sam",
+      "text": "I filed 'Tools' under 'Animals' in my notes... that doesn't sound right now that I say it out loud.",
+      "sourceRefs": []
+     }
+    ],
+    "L1U4": [
+     {
+      "speaker": "sam",
+      "text": "So CNNs just showed up overnight as one big breakthrough, right? That's what I scribbled down.",
+      "sourceRefs": []
+     }
+    ]
+   },
+   "rooms": [],
+   "boss": {
+    "unitId": "L1NOTES",
+    "knowledgeType": "claim",
+    "mechanic": "crossexam",
+    "mechanicReason": "Frame boss: spot the wrong note by showing the passage that disproves it.",
+    "item": {
+     "type": "crossexam",
+     "speaker": "sam",
+     "prompt": "Sam's notes on the history of computer vision. One line is wrong - show Sam the passage that proves it.",
+     "statements": [
+      {
+       "id": "n1",
+       "text": "Hubel & Wiesel's study showed that simple and complex cells respond to light orientation and movement.",
+       "flawed": false,
+       "why": "Correct, this is exactly what the passage describes about simple and complex cells.",
+       "sourceRefs": [
+        {
+         "chunkId": "c9",
+         "quote": "Complex cells: Response to light orientation and movement"
+        }
+       ]
+      },
+      {
+       "id": "n2",
+       "text": "Marr's theory describes vision moving from raw perceived intensities toward a full 3-D model.",
+       "flawed": false,
+       "why": "Correct, the passage lists the input image's perceived intensities as the starting representation.",
+       "sourceRefs": [
+        {
+         "chunkId": "c13",
+         "quote": "Input Image Perceived intensities"
+        }
+       ]
+      },
+      {
+       "id": "n3",
+       "text": "Viola & Jones studied simple, complex, and hypercomplex brain cells to build their face detection algorithm.",
+       "flawed": true,
+       "why": "This mixes up two different milestones: the brain-cell study was done by Hubel & Wiesel, not Viola & Jones, who are credited with face detection instead.",
+       "sourceRefs": [
+        {
+         "chunkId": "c9",
+         "quote": "Hubel & Wiesel, 1959"
+        }
+       ]
+      },
+      {
+       "id": "n4",
+       "text": "CNNs were not invented overnight; they came out of decades of incremental research.",
+       "flawed": false,
+       "why": "Correct, the passage explicitly states CNNs were not invented overnight.",
+       "sourceRefs": [
+        {
+         "chunkId": "c32",
+         "quote": "were not invented overnight"
+        }
+       ]
+      }
+     ]
+    },
+    "hints": [
+     "One note mixes up the brain-cell researchers with the face-detection researchers — which passage names who actually did what?"
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "sam",
+     "text": "Thanks for catching that! I'd have handed in notes that swapped two completely different researchers.",
+     "sourceRefs": []
+    }
+   ]
+  },
+  {
+   "levelId": "L2",
+   "intro": [
+    {
+     "speaker": "sam",
+     "text": "Okay, I tried to summarize the course overview slides, but I think I garbled a few details.",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "sam",
+     "text": "Mind double-checking my notes with me before I trust them?",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {
+    "L2U1": [
+     {
+      "speaker": "sam",
+      "text": "I think action classification was the very first related task mentioned, even before object detection or captioning.",
+      "sourceRefs": []
+     }
+    ],
+    "L2U2": [
+     {
+      "speaker": "sam",
+      "text": "Isn't visual intelligence basically just object recognition? That's what I assumed when I skimmed the slides.",
+      "sourceRefs": []
+     }
+    ],
+    "L2U3": [
+     {
+      "speaker": "sam",
+      "text": "I think the midterm is worth the most, like 40%, since it's a big exam. Is that right?",
+      "sourceRefs": []
+     }
+    ],
+    "L2U4": [
+     {
+      "speaker": "sam",
+      "text": "I figured the late-days policy covers everything in the grading section, even the final project, since it's all listed together.",
+      "sourceRefs": []
+     }
+    ]
+   },
+   "rooms": [],
+   "boss": {
+    "unitId": "L2NOTES",
+    "knowledgeType": "claim",
+    "mechanic": "crossexam",
+    "mechanicReason": "Frame boss: spot the wrong note by showing the passage that disproves it.",
+    "item": {
+     "type": "crossexam",
+     "speaker": "sam",
+     "prompt": "Sam's notes on the course overview. One line is wrong - show Sam the passage that proves it.",
+     "statements": [
+      {
+       "id": "m1",
+       "text": "CS231n focuses on image classification as one of the most important problems of visual recognition.",
+       "flawed": false,
+       "why": "Correct, this is stated directly as the course's central focus.",
+       "sourceRefs": [
+        {
+         "chunkId": "c26",
+         "quote": "CS231n focuses on one of the most important problems of visual recognition"
+        }
+       ]
+      },
+      {
+       "id": "m2",
+       "text": "The Final Course Project is worth 40% of the grade.",
+       "flawed": false,
+       "why": "Correct, this matches the grading policy exactly.",
+       "sourceRefs": [
+        {
+         "chunkId": "c44",
+         "quote": "Final Course Project: 40%"
+        }
+       ]
+      },
+      {
+       "id": "m3",
+       "text": "Students can use their free late days on the Final Course Project if they run out of days for problem sets.",
+       "flawed": true,
+       "why": "This confuses the late-day allowance (which applies to problem sets) with the Final Course Project, which the policy explicitly excludes.",
+       "sourceRefs": [
+        {
+         "chunkId": "c44",
+         "quote": "Does not apply to Final Course Project"
+        }
+       ]
+      },
+      {
+       "id": "m4",
+       "text": "The quest for visual intelligence goes far beyond object recognition.",
+       "flawed": false,
+       "why": "Correct, this is stated directly in the lecture.",
+       "sourceRefs": [
+        {
+         "chunkId": "c34",
+         "quote": "goes far beyond object recognition"
+        }
+       ]
+      }
+     ]
+    },
+    "hints": [
+     "One note applies a rule from one part of the grading policy to a part it explicitly does not cover — find the line that says so."
+    ],
+    "variants": []
+   },
+   "outro": [
+    {
+     "speaker": "sam",
+     "text": "Phew, good thing we caught that - I almost assumed the late days covered the final project too!",
+     "sourceRefs": []
+    }
+   ]
+  }
+ ]
+}

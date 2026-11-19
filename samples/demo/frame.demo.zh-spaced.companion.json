@@ -1,0 +1,94 @@
+{
+ "schema": "a2g.frame/v1",
+ "frameId": "companion",
+ "packageId": "demo_zh_spaced",
+ "contentVersion": "1",
+ "generation": {
+  "mode": "pre-generated",
+  "model": "us.anthropic.claude-sonnet-5",
+  "promptVersion": "frame-companion.v1",
+  "review": "auto-validated"
+ },
+ "cast": [
+  {
+   "id": "aya",
+   "name": "Aya",
+   "role": "companion"
+  }
+ ],
+ "levels": [
+  {
+   "levelId": "L1",
+   "intro": [
+    {
+     "speaker": "aya",
+     "text": "这节课我们聊聊“间隔重复”——一种靠拉长复习间隔来提升记忆效率的学习技巧。",
+     "sourceRefs": []
+    },
+    {
+     "speaker": "aya",
+     "text": "我们会看看它适合什么场景，走过怎样的历史，再弄懂软件是怎么自动调整复习节奏的。",
+     "sourceRefs": []
+    }
+   ],
+   "leadIns": {
+    "L1U1": [
+     {
+      "speaker": "aya",
+      "text": "先想想：间隔重复是只对背单词有用，还是能用在更多地方？",
+      "sourceRefs": [
+       {
+        "chunkId": "c1",
+        "quote": "间隔重复适用于诸多学习情境，特别是学习者需要牢固记忆大量知识的情形，比如外语词汇的学习"
+       }
+      ]
+     }
+    ],
+    "L1U2": [
+     {
+      "speaker": "aya",
+      "text": "从1932年的一本书开始，这个想法走过了实验验证、学界重新关注，一直到软件普及，试试把这些事件排好顺序。",
+      "sourceRefs": [
+       {
+        "chunkId": "c1",
+        "quote": "将间隔重复应用到学习上的观点最初见于塞西尔·阿莱克·梅斯1932的著作《学习心理学》中"
+       }
+      ]
+     }
+    ],
+    "L1U3": [
+     {
+      "speaker": "aya",
+      "text": "有人提出理论，有人做实验验证，有人造工具，还有人把它用到语言教学里——看看谁该归到哪一类。",
+      "sourceRefs": [
+       {
+        "chunkId": "c1",
+        "quote": "1973年，瑟巴斯坦·莱特纳发明了他的“莱特纳系统”——一种基于抽认卡的全功能间隔重复学习系统"
+       }
+      ]
+     }
+    ],
+    "L1U4": [
+     {
+      "speaker": "aya",
+      "text": "如果一个单词总是记错，软件会怎么调整它出现的频率？想想正确率和出现次数之间的关系。",
+      "sourceRefs": [
+       {
+        "chunkId": "c1",
+        "quote": "难以辨认的词汇经常出现，并且简单词汇出现频率较低，其词汇难度由软件根据用户的辨认正确率确定"
+       }
+      ]
+     }
+    ]
+   },
+   "rooms": [],
+   "outro": [
+    {
+     "speaker": "aya",
+     "text": "从适用场景，到梅斯、Spitzer、莱特纳、皮姆斯勒的接力，再到软件如何根据正确率调节难词和简单词——这条线我们一起理清楚了。",
+     "sourceRefs": []
+    }
+   ]
+  }
+ ]
+}
