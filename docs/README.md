@@ -10,7 +10,8 @@ One kind of document lives in one place. Every document opens with a **Scope** l
 | `product/` | Mobile-native features and game mechanics, ranked; architecture rules | [mobile-native.md](product/mobile-native.md) | 2026-11-18 |
 | `product/` | Every question the owner raised → answer → where it is decided | [question-log.md](product/question-log.md) | living |
 | `product/` | PM + game design: what you play, how it adapts | [game-design.md](product/game-design.md) | draft |
-| `design/` | Visual / interaction: palette, type, components, screens per mechanic | (visual team creates) | empty |
+| `design/` | Design review: principles from research, audit with real content, 3 visual directions, action list | [design-review-2026-11-19.md](design/design-review-2026-11-19.md) | for team decision |
+| `design/research/` | Research: mobile game feel, learning & narrative games, visual identity & a11y | [research/](design/research/) | 2026-11-19 |
 | `architecture/` | Solution architecture: components, contract, state machines, generation pipeline | [ARCHITECTURE.md](architecture/ARCHITECTURE.md) | draft |
 | `architecture/` | Decoupling + multi-cloud audit, fix plan, IaC choice | [portability-audit.md](architecture/portability-audit.md) | 2026-11-18 |
 | `architecture/` | Layered generation (source → claims → game → frame), hallucination analysis, A/B plan | [layered-generation.md](architecture/layered-generation.md) | proposed |
