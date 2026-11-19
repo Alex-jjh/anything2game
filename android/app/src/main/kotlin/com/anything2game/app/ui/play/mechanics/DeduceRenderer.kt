@@ -27,7 +27,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.anything2game.app.R
+import com.anything2game.app.ui.play.CastPortrait
 import com.anything2game.app.ui.theme.A2g
+import com.anything2game.app.ui.theme.castColor
 import com.anything2game.contract.DeduceItem
 import com.anything2game.contract.Item
 import com.anything2game.contract.Mechanic
@@ -47,9 +49,7 @@ object DeduceRenderer : MechanicRenderer {
         var choice by rememberSaveable(key) { mutableStateOf<String?>(null) }
         Column(Modifier.fillMaxSize()) {
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = skin.paper), border = BorderStroke(1.dp, skin.outline)) {
-                Text(deduce.scenario, Modifier.padding(16.dp), style = MaterialTheme.typography.bodyLarge, color = skin.ink)
-            }
+            Scenario(deduce.scenario, ctx)
             Text(deduce.prompt, style = MaterialTheme.typography.titleLarge, color = skin.ink)
             deduce.options.forEach { option ->
                 val selected = choice == option.id
@@ -79,10 +79,28 @@ object DeduceRenderer : MechanicRenderer {
         val deduce = item as DeduceItem
         val chosen = (answer as DeduceAnswer).optionId
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (ctx.scenarioSpeaker != null) Scenario(deduce.scenario, ctx)
             Text(deduce.prompt, style = MaterialTheme.typography.titleMedium, color = A2g.skin.ink)
             // Show the player's choice and the right one; other options stay out of the way.
             deduce.options.filter { it.id == chosen || it.correct }.forEach { option ->
                 ReviewRow(correct = option.correct, title = option.text, detail = null, explanation = option.feedback)
+            }
+        }
+    }
+
+    /** The situation card; when a character speaks it (the rookie in a teach-back) it sits beside their portrait, as a line of dialogue. */
+    @Composable
+    private fun Scenario(text: String, ctx: RenderContext) {
+        val skin = A2g.skin
+        val speaker = ctx.scenarioSpeaker
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (speaker != null) CastPortrait(speaker, size = 64.dp, dim = false)
+            Card(
+                Modifier.weight(1f),
+                colors = CardDefaults.cardColors(containerColor = skin.paper),
+                border = BorderStroke(if (speaker != null) 1.5.dp else 1.dp, speaker?.let { skin.castColor(it.role) } ?: skin.outline),
+            ) {
+                Text(text, Modifier.padding(16.dp), style = MaterialTheme.typography.bodyLarge, color = skin.ink)
             }
         }
     }

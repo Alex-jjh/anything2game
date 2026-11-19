@@ -18,6 +18,7 @@ import com.anything2game.engine.session.Effect
 import com.anything2game.engine.session.LevelSession
 import com.anything2game.engine.session.RecapSummary
 import com.anything2game.engine.session.SessionState
+import com.anything2game.engine.session.SlotKind
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,7 +39,9 @@ sealed interface PlayUiState {
         val room: Room?,
         /** Units solved now or in earlier sessions — pins on the evidence board. */
         val solvedUnitIds: Set<String>,
+        /** The package unit (or frame boss) behind the slot; null for scenes and derived slots, which have no unit of their own (no hints). */
         val unit: LearningUnit?,
+        /** The item to render: the unit's, or one derived from the level's units (teach-back, room lock). */
         val item: Item?,
         val recap: RecapSummary?,
         val context: ContextDecision,
@@ -149,7 +152,7 @@ class PlayViewModel(
             item = e.item(s),
             recap = if (s.isFinished) e.recap(s) else null,
             context = context,
-            retryQueued = slot != null && s.queue.drop(s.position + 1).any { it.unitId == slot.unitId && it.retry },
+            retryQueued = slot != null && slot.kind == SlotKind.UNIT && s.queue.drop(s.position + 1).any { it.unitId == slot.unitId && it.retry },
         )
     }
 }

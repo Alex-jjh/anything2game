@@ -1,5 +1,6 @@
 package com.anything2game.engine.session
 
+import com.anything2game.contract.CastRole
 import com.anything2game.contract.FrameOverlay
 import com.anything2game.contract.Item
 import com.anything2game.contract.LearningPackage
@@ -8,12 +9,14 @@ import com.anything2game.contract.Level
 import com.anything2game.contract.LevelOverlay
 import com.anything2game.contract.Line
 import com.anything2game.contract.Room
+import com.anything2game.engine.frames.DerivedChallenges
 import com.anything2game.engine.frames.Frames
 import com.anything2game.engine.frames.GameFrame
 import com.anything2game.engine.grading.Grading
 import com.anything2game.engine.mastery.MasteryPolicy
 import com.anything2game.engine.mastery.MasteryRecord
 import com.anything2game.engine.mastery.Outcome
+import com.anything2game.engine.frames.roomUnits
 import com.anything2game.engine.ports.Clock
 
 /** Side effects the caller must persist. The engine itself performs no I/O. */
@@ -74,13 +77,40 @@ class LevelSession(
     fun level(state: SessionState): Level = requireNotNull(pkg.level(state.levelId))
     fun levelOverlay(levelId: String): LevelOverlay? = overlay?.level(levelId)
 
-    /** The unit behind the current slot (package unit or frame boss); null for scenes. */
+    /** The unit behind the current slot (package unit or frame boss); null for scenes and for derived slots (they have no unit of their own: no hints, no mastery). */
     fun unit(state: SessionState): LearningUnit? = state.currentSlot?.let { unitFor(state.levelId, it) }
 
-    /** The item to show for the current slot; null for scenes. */
+    /** The item to show for the current slot; null for scenes. Derived slots build theirs from the level's items. */
     fun item(state: SessionState): Item? {
         val slot = state.currentSlot ?: return null
-        val unit = unitFor(state.levelId, slot) ?: return null
+        return itemFor(state.levelId, slot)
+    }
+
+    /** The rookie's name as the player sees it: the overlay's ROOKIE cast member. */
+    fun rookieName(): String? = overlay?.cast?.firstOrNull { it.role == CastRole.ROOKIE }?.name
+
+    private fun itemFor(levelId: String, slot: Slot): Item? {
+        val level = pkg.level(levelId)
+        when (slot.kind) {
+            SlotKind.TEACH_BACK -> {
+                level ?: return null
+                val unit = level.units.firstOrNull { it.unitId == slot.unitId } ?: return null
+                // Same level first (most confusable), then the rest of the package, each rotated by a stable hash.
+                fun rotated(us: List<LearningUnit>) =
+                    us.sortedBy { DerivedChallenges.stableHash("${unit.unitId}>${it.unitId}") }
+                val others = rotated(level.units.filter { it.unitId != unit.unitId }) +
+                    rotated(pkg.levels.filter { it.levelId != levelId }.flatMap { it.units })
+                val name = rookieName() ?: if (pkg.language.startsWith("zh")) "新人" else "The rookie"
+                return DerivedChallenges.teachBack(unit, others, name, pkg.language)
+            }
+            SlotKind.ROOM_CHECK -> {
+                level ?: return null
+                val room = levelOverlay(levelId)?.rooms?.firstOrNull { it.id == slot.roomId } ?: return null
+                return DerivedChallenges.roomCheck(roomUnits(level, room), pkg.language)
+            }
+            else -> Unit
+        }
+        val unit = unitFor(levelId, slot) ?: return null
         return if (slot.variant == Slot.MAIN) unit.item else unit.variants[slot.variant]
     }
 
@@ -201,11 +231,12 @@ class LevelSession(
     private fun unitFor(levelId: String, slot: Slot): LearningUnit? = when (slot.kind) {
         SlotKind.UNIT -> pkg.level(levelId)?.units?.firstOrNull { it.unitId == slot.unitId }
         SlotKind.BOSS -> levelOverlay(levelId)?.boss?.takeIf { it.unitId == slot.unitId }
-        SlotKind.SCENE -> null
+        SlotKind.SCENE, SlotKind.TEACH_BACK, SlotKind.ROOM_CHECK -> null
     }
 
     private fun resolves(levelId: String, slot: Slot): Boolean = when (slot.kind) {
         SlotKind.SCENE -> true
+        SlotKind.TEACH_BACK, SlotKind.ROOM_CHECK -> itemFor(levelId, slot) != null
         else -> unitFor(levelId, slot)?.let { slot.variant < it.variants.size } == true
     }
 }

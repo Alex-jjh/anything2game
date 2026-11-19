@@ -104,6 +104,9 @@
     <string name="boss_case">Cross-examination</string>
     <string name="boss_escape">The final lock</string>
     <string name="boss_rookie">Fix the notes</string>
+    <string name="badge_teach_back">Teach %1$s</string>
+    <string name="badge_room_lock">Door lock</string>
+    <string name="rookie_default_name">the rookie</string>
     <string name="recap_title_classic">Level complete</string>
     <string name="recap_title_escape">You escaped</string>
     <string name="recap_title_rookie">Notes fixed</string>

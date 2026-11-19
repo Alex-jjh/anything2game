@@ -15,3 +15,4 @@ dependencies {
 }
 
 tasks.test { systemProperty("contract.examples", rootProject.layout.projectDirectory.dir("contract/examples").asFile.absolutePath) }
+tasks.test { systemProperty("contract.samples", rootProject.layout.projectDirectory.dir("samples/demo").asFile.absolutePath) }

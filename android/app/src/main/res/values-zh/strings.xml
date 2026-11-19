@@ -104,6 +104,9 @@
     <string name="boss_case">对质</string>
     <string name="boss_escape">最后一道锁</string>
     <string name="boss_rookie">改笔记</string>
+    <string name="badge_teach_back">教%1$s</string>
+    <string name="badge_room_lock">门锁</string>
+    <string name="rookie_default_name">新人</string>
     <string name="recap_title_classic">本关完成</string>
     <string name="recap_title_escape">成功逃脱</string>
     <string name="recap_title_rookie">笔记改好了</string>

@@ -33,6 +33,8 @@ data class RenderContext(
     val cast: List<CastMember> = emptyList(),
     /** Passages the player may present as evidence (cross-exam): what this level's clues cite. */
     val evidenceChunks: List<SourceChunk> = chunks,
+    /** Who says the scenario (a Rookie teach-back): the scenario is drawn as this character's line, with portrait and name. */
+    val scenarioSpeaker: CastMember? = null,
 )
 
 object MechanicRenderers {
