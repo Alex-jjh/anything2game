@@ -4,7 +4,7 @@
  "contentVersion": "1",
  "documentId": "doc_demo_mapreduce",
  "documentVersion": "sha256:851436e9b1e16a9aa3c1b3b6a71e325281c5365fe60d1228013a563e16339b3c",
- "title": "mapreduce",
+ "title": "MapReduce: data processing on large clusters",
  "language": "en",
  "generation": {
   "mode": "pre-generated",

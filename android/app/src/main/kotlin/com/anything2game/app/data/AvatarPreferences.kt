@@ -8,8 +8,8 @@ interface AvatarPreferences {
     fun set(avatarId: String)
 }
 
-class SharedPrefsAvatarPreferences(context: Context) : AvatarPreferences {
-    private val prefs = context.applicationContext.getSharedPreferences("avatar", Context.MODE_PRIVATE)
+class SharedPrefsAvatarPreferences(context: Context, name: String = "avatar") : AvatarPreferences {
+    private val prefs = context.applicationContext.getSharedPreferences(name, Context.MODE_PRIVATE)
     override fun get(): String? = prefs.getString("id", null)
     override fun set(avatarId: String) { prefs.edit().putString("id", avatarId).apply() }
 }

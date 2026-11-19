@@ -68,6 +68,10 @@ def passed(label):
 
 def launch():
     shell('am', 'start', '-W', '-a', 'android.intent.action.MAIN', '-c', 'android.intent.category.LAUNCHER', '-f', '0x10200000', '-n', PKG+'/.MainActivity')
+    # A fresh install asks who is playing first; this smoke runs as the guest (legacy storage names, e.g. avatar.xml).
+    time.sleep(1)
+    if any(n.get('text') == '以访客开始' for n in nodes()):
+        tap('以访客开始')
 
 def set_nickname(value, commit):
     tap('编辑昵称')

@@ -4,8 +4,8 @@ import android.content.Context
 import androidx.core.content.edit
 
 /** Device-only profile and reading preparation. No account or inferred knowledge score. */
-class HomePreferences(context: Context) {
-    private val prefs = context.applicationContext.getSharedPreferences("home", Context.MODE_PRIVATE)
+class HomePreferences(context: Context, name: String = "home") {
+    private val prefs = context.applicationContext.getSharedPreferences(name, Context.MODE_PRIVATE)
     var nickname: String
         get() = prefs.getString("nickname", "").orEmpty()
         set(value) { prefs.edit { putString("nickname", value.trim().take(24)) } }

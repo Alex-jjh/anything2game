@@ -15,8 +15,9 @@ import java.util.UUID
 class TutorApiException(val code: String, val retryable: Boolean) : Exception(code)
 
 /** No AI SDK/keys: this adapter talks only to our own API. Debug defaults to an adb-reversed loopback server. */
-class TutorHttpClient(private val context: Context, private val baseUrl: String = BuildConfig.TUTOR_API) {
-    private val auth = context.getSharedPreferences("tutor_connection", Context.MODE_PRIVATE)
+class TutorHttpClient(private val context: Context, private val baseUrl: String = BuildConfig.TUTOR_API, prefsName: String = "tutor_connection") {
+    // One install token per local profile: the server sees each profile as a separate owner.
+    private val auth = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
     private val tokenMutex = Mutex()
     val configured: Boolean get() = baseUrl.isNotBlank()
     val local: Boolean get() = configured && URI(baseUrl).host in setOf("127.0.0.1", "localhost")

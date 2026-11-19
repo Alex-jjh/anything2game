@@ -4,7 +4,7 @@
  "contentVersion": "1",
  "documentId": "doc_demo_attention",
  "documentVersion": "sha256:1d8aec05ae4b4f276b808a8e1a627ca25828d73385e7d00bf10a3184e817b817",
- "title": "attention",
+ "title": "Attention Is All You Need (Transformer)",
  "language": "en",
  "generation": {
   "mode": "pre-generated",

@@ -28,7 +28,7 @@ import com.anything2game.contract.tutor.*
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ReadingContent(deps: AppDependencies, packageId: String, onBack: () -> Unit) {
-    val vm = viewModel(key = "tutor:$packageId") { TutorViewModel(deps.tutors, packageId) }
+    val vm = viewModel(key = "tutor:${deps.profiles.active.value?.id}:$packageId") { TutorViewModel(deps.tutors, packageId) }
     val state by vm.state.collectAsStateWithLifecycle()
     androidx.activity.compose.BackHandler { if (state.busy) vm.cancelPending(); onBack() }
     val c = state.cache

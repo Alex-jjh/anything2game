@@ -37,12 +37,22 @@ import com.anything2game.app.ui.play.PlayContent
 import com.anything2game.app.ui.play.PlayUiState
 import com.anything2game.app.ui.play.PlayViewModel
 import com.anything2game.app.ui.theme.A2g
+import com.anything2game.app.ui.home.WelcomeScreen
+import kotlinx.coroutines.launch
 
 @Composable
 fun AppRoot(deps: AppDependencies, navigator: Navigator, onPickPdf: () -> Unit) {
     val route by navigator.route.collectAsStateWithLifecycle()
     val tab by navigator.tab.collectAsStateWithLifecycle()
     val simulator = simulatorFor(deps)
+    // Who is playing: until a profile is chosen, the welcome screen shows. Every per-user store follows the profile.
+    val profile by deps.profiles.active.collectAsStateWithLifecycle()
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val current = profile ?: run {
+        WelcomeScreen(onChoose = { p -> scope.launch { deps.profiles.choose(p) } })
+        return
+    }
+    androidx.compose.runtime.key(current.id) {
     var avatarId by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(deps.avatarPreferences.get() ?: Avatars.default.id) }
     var nickname by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(deps.homePreferences.nickname) }
     val tabsState = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
@@ -51,7 +61,7 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator, onPickPdf: () -> Unit) 
     androidx.compose.runtime.CompositionLocalProvider(LocalAvatar provides Avatars.of(avatarId)) {
     when (val r = route) {
         Route.Home -> {
-            val vm = viewModel { LibraryViewModel(deps) }
+            val vm = viewModel(key = "library:${current.id}") { LibraryViewModel(deps) }
             LaunchedEffect(Unit) { vm.refresh() }
             val state by vm.state.collectAsStateWithLifecycle()
             BackHandler(enabled = tab != HomeTab.LEARN) { selectTab(HomeTab.LEARN) }
@@ -61,7 +71,8 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator, onPickPdf: () -> Unit) 
                         onSelectAvatar = { avatarId = it; deps.avatarPreferences.set(it) },
                         onRename = { nickname = it; deps.homePreferences.nickname = it },
                         onPickPdf = onPickPdf, onRead = navigator::openRead, onPlay = navigator::openPlay,
-                        onSelectTab = selectTab, onRetry = { vm.refresh() }, padding = padding, simulator = simulator, onPreparePractice = vm::preparePractice)
+                        onSelectTab = selectTab, onRetry = { vm.refresh() }, padding = padding, simulator = simulator, onPreparePractice = vm::preparePractice,
+                        onSwitchProfile = { navigator.toHome(); deps.profiles.leave() })
                 }
             }
         }
@@ -69,7 +80,7 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator, onPickPdf: () -> Unit) 
             ReadingContent(deps, r.packageId, onBack = navigator::toHome)
         }
         is Route.Play -> {
-            val vm = viewModel(key = "play:${r.packageId}:${r.levelId}:${r.frameId}") { PlayViewModel(deps, r.packageId, r.levelId, r.frameId) }
+            val vm = viewModel(key = "play:${current.id}:${r.packageId}:${r.levelId}:${r.frameId}") { PlayViewModel(deps, r.packageId, r.levelId, r.frameId) }
             val state by vm.state.collectAsStateWithLifecycle()
             when (val s = state) {
                 PlayUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
@@ -81,7 +92,7 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator, onPickPdf: () -> Unit) 
             }
         }
         is Route.Import -> {
-            val vm: ImportViewModel = viewModel(key = "import:" + java.security.MessageDigest.getInstance("SHA-256").digest(r.request.toString().toByteArray()).joinToString("") { "%02x".format(it) }, factory = viewModelFactory {
+            val vm: ImportViewModel = viewModel(key = "import:${current.id}:" + java.security.MessageDigest.getInstance("SHA-256").digest(r.request.toString().toByteArray()).joinToString("") { "%02x".format(it) }, factory = viewModelFactory {
                 initializer { ImportViewModel(deps.tutors, r.request, createSavedStateHandle()) }
             })
             val state by vm.state.collectAsStateWithLifecycle()
@@ -93,6 +104,7 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator, onPickPdf: () -> Unit) 
                     state = state, onStart = vm::start, onDemo = { vm.cancel(); navigator.openRead(com.anything2game.app.data.tutor.FIXED_TUTOR_PACKAGE) })
             }
         }
+    }
     }
     }
 }

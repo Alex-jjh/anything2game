@@ -69,6 +69,7 @@ fun HomeContent(
     onPickPdf: () -> Unit, onRead: (String) -> Unit,
     onPlay: (String, String, FrameId) -> Unit, onSelectTab: (HomeTab) -> Unit, onRetry: () -> Unit,
     padding: PaddingValues = PaddingValues(), simulator: (@Composable () -> Unit)? = null, onPreparePractice: (String) -> Unit = {},
+    onSwitchProfile: (() -> Unit)? = null,
 ) {
     val skin = A2g.skin
     LazyColumn(
@@ -189,6 +190,10 @@ fun HomeContent(
                         Icon(Icons.Outlined.PhonelinkLock, null, tint = skin.action)
                         Text(stringResource(R.string.home_account_title), style = MaterialTheme.typography.titleMedium, color = skin.ink)
                         Text(stringResource(R.string.home_account_body), style = MaterialTheme.typography.bodyMedium, color = skin.inkMuted)
+                        // Guest ↔ sample student; nothing is deleted when switching.
+                        if (onSwitchProfile != null) OutlinedButton(onClick = onSwitchProfile, modifier = Modifier.fillMaxWidth()) {
+                            Text(stringResource(R.string.profile_switch))
+                        }
                     }
                 }
                 if (simulator != null) item {

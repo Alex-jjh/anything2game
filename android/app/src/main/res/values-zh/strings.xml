@@ -161,4 +161,14 @@
     <string-array name="avatar_kumo_object"><item>异议～！哼！</item><item>太飘了吧！</item></string-array>
     <string-array name="avatar_kumo_celebrate"><item>结案啦！云朵派对！</item><item>我们做到啦～</item></string-array>
     <string-array name="avatar_kumo_sleepy"><item>Zzz……走路小心……</item><item>等你坐下我再醒。</item></string-array>
+    <!-- Local profiles: sample student / guest -->
+    <string name="sample_profile_name">林同学</string>
+    <string name="profile_sample_title">用示例同学的身份体验</string>
+    <string name="profile_sample_body">林同学已经用了几天：玩过三门课，今天有一条线索要复习，还有一个案子查到一半。</string>
+    <string name="profile_sample_action">以林同学继续</string>
+    <string name="profile_guest_title">以访客身份继续</string>
+    <string name="profile_guest_body">从头开始，直接玩预设课程。</string>
+    <string name="profile_guest_action">以访客开始</string>
+    <string name="profile_local_note">不需要账号。每个身份的进度都单独保存在这台手机上，切换不会删除任何内容。</string>
+    <string name="profile_switch">切换身份</string>
 </resources>

@@ -4,7 +4,7 @@
  "contentVersion": "1",
  "documentId": "doc_demo_resnet",
  "documentVersion": "sha256:c420497b5df5220f36e158af5f75576514afdc6e14afecfc494d53d4517764e3",
- "title": "resnet",
+ "title": "Deep Residual Learning (ResNet)",
  "language": "en",
  "generation": {
   "mode": "pre-generated",

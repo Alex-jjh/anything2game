@@ -38,10 +38,16 @@ interface TutorRepository {
     }
 }
 
-class AndroidTutorRepository(context: Context, private val packages: PackageRepository, private val installPackage: suspend (LearningPackage) -> Unit) : TutorRepository {
+class AndroidTutorRepository(
+    context: Context,
+    private val packages: PackageRepository,
+    private val installPackage: suspend (LearningPackage) -> Unit,
+    sessionsDir: File = File(context.applicationContext.filesDir, "tutor-sessions"),
+    connectionPrefs: String = "tutor_connection",
+) : TutorRepository {
     private val app = context.applicationContext
-    private val files = TutorCacheStore(File(app.filesDir, "tutor-sessions"))
-    private val http = TutorHttpClient(app)
+    private val files = TutorCacheStore(sessionsDir)
+    private val http = TutorHttpClient(app, prefsName = connectionPrefs)
     private val json = ContractJson.json
     override val endpoint get() = http.endpoint
     override val localServer get() = http.local

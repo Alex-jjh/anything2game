@@ -161,4 +161,14 @@
     <string-array name="avatar_kumo_object"><item>Objection~! Hmph!</item><item>Way too fluffy!</item></string-array>
     <string-array name="avatar_kumo_celebrate"><item>Case closed! Cloud party!</item><item>We did it~</item></string-array>
     <string-array name="avatar_kumo_sleepy"><item>Zzz… walk safe…</item><item>Napping till you sit.</item></string-array>
+    <!-- Local profiles: sample student / guest -->
+    <string name="sample_profile_name">Lin</string>
+    <string name="profile_sample_title">Explore as a sample student</string>
+    <string name="profile_sample_body">Lin has been using the app for a few days: three courses played, one clue to review today, one case left half-way.</string>
+    <string name="profile_sample_action">Continue as Lin</string>
+    <string name="profile_guest_title">Continue as guest</string>
+    <string name="profile_guest_body">Start fresh with the preset courses.</string>
+    <string name="profile_guest_action">Start as guest</string>
+    <string name="profile_local_note">No account needed. Each profile keeps its own progress on this phone; switching deletes nothing.</string>
+    <string name="profile_switch">Switch profile</string>
 </resources>

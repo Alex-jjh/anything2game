@@ -9,8 +9,8 @@ interface FramePreferences {
     fun set(packageId: String, frameId: FrameId)
 }
 
-class SharedPrefsFramePreferences(context: Context) : FramePreferences {
-    private val prefs = context.applicationContext.getSharedPreferences("frames", Context.MODE_PRIVATE)
+class SharedPrefsFramePreferences(context: Context, name: String = "frames") : FramePreferences {
+    private val prefs = context.applicationContext.getSharedPreferences(name, Context.MODE_PRIVATE)
     override fun get(packageId: String): FrameId? = prefs.getString(packageId, null)?.let { v -> FrameId.entries.firstOrNull { it.name == v } }
     override fun set(packageId: String, frameId: FrameId) { prefs.edit().putString(packageId, frameId.name).apply() }
 }
