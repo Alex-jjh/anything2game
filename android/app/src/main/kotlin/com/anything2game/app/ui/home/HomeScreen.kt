@@ -17,10 +17,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.anything2game.app.R
+import com.anything2game.app.data.tutor.TutorProgress
 import com.anything2game.app.ui.character.Avatars
 import com.anything2game.app.ui.character.Mood
 import com.anything2game.app.ui.common.Badge
@@ -121,23 +121,13 @@ fun HomeContent(
                     if (entry.summary.preGenerated) Badge(stringResource(R.string.badge_pre_generated), skin.evidence, skin.evidenceSoft)
                     Text(entry.summary.title, style = MaterialTheme.typography.titleLarge, color = skin.ink)
                     Text(stringResource(R.string.tutor_course_body), color = skin.inkMuted)
-                    OutlinedButton(onClick = { onRead(entry.summary.packageId) }, modifier = Modifier.fillMaxWidth().testTag("start_explanation_${entry.summary.packageId}")) { Text(stringResource(R.string.tutor_start_explanation)) }
+                    OutlinedButton(onClick = { onRead(entry.summary.packageId) }, modifier = Modifier.fillMaxWidth().testTag("start_explanation_${entry.summary.packageId}")) { Text(learnActionLabel(entry.tutorProgress)) }
                 } }
                 items(state.tutorials, key = { "tutor:${it.sessionId}" }) { tutorial -> PaperCard {
                     Text(tutorial.title, style = MaterialTheme.typography.titleLarge, color = skin.ink)
                     Badge(stringResource(if (tutorial.mode == "model") R.string.tutor_model_badge else R.string.tutor_server_mock_badge), skin.action, skin.evidenceSoft)
                     OutlinedButton(onClick = { onRead(tutorial.sessionId) }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.tutor_resume)) }
                 } }
-                item { Text(stringResource(R.string.home_library), style = MaterialTheme.typography.titleLarge, color = skin.ink) }
-                items(state.entries, key = { it.summary.packageId }) { entry ->
-                    PaperCard {
-                        PackageHeading(entry)
-                        Text(pluralStringResource(R.plurals.home_chapters, entry.levels.size, entry.levels.size), color = skin.inkMuted)
-                        OutlinedButton(onClick = { onRead(entry.summary.packageId) }, modifier = Modifier.fillMaxWidth()) {
-                            Text(stringResource(R.string.home_start_reading))
-                        }
-                    }
-                }
             }
             HomeTab.PRACTICE -> {
                 item { Badge(stringResource(R.string.home_classic), skin.action, skin.evidenceSoft) }
@@ -221,13 +211,23 @@ fun HomeContent(
                 }
             }
         }
-        if (!state.loading && !state.hasError && state.entries.isEmpty() && tab != HomeTab.PROFILE) item {
+        val nothingToShow = if (tab == HomeTab.LEARN) state.entries.none { it.hasTutor } && state.tutorials.isEmpty() else state.entries.isEmpty()
+        if (!state.loading && !state.hasError && nothingToShow && tab != HomeTab.PROFILE) item {
             PaperCard {
                 Text(stringResource(R.string.empty_library), color = skin.inkMuted)
                 TextButton(onClick = onPickPdf) { Text(stringResource(R.string.import_pick_pdf)) }
             }
         }
     }
+}
+
+/** What the Learn card's button says: start, or where the student left off. */
+@Composable
+private fun learnActionLabel(progress: TutorProgress?): String = when {
+    progress == null -> stringResource(R.string.tutor_start_explanation)
+    progress.finished -> stringResource(R.string.tutor_card_explained)
+    progress.explaining -> stringResource(R.string.tutor_card_continue_concept, progress.position + 1, progress.total)
+    else -> stringResource(R.string.tutor_card_continue)
 }
 
 @Composable

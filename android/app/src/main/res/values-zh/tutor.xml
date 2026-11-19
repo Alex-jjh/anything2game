@@ -3,11 +3,11 @@
     <string name="tutor_diagnostic_title">先认识这篇文档</string>
     <string name="tutor_assessment_title">从你的理解开始</string>
     <string name="tutor_chat_title">一起读懂这篇文档</string>
-    <string name="tutor_server_mock_badge">文档已解析 · AI mock</string>
+    <string name="tutor_server_mock_badge">练习用服务器 · 没有真正的 AI</string>
     <string name="tutor_model_badge">文档对话讲解 · AI</string>
     <string name="tutor_coverage_note">基础摸底仅覆盖选取的文档片段，不代表整篇文章或你的整体能力。来源可追溯不等于内容已验证。</string>
     <string name="tutor_question_count">基础摸底 %1$d / %2$d</string>
-    <string name="tutor_diagnostic_note">按你现在的理解回答即可，也可以选不知道。这里只用来找到讲解起点，不计入巩固成绩。</string>
+    <string name="tutor_diagnostic_note">按你现在的理解回答即可，也可以选不知道。点一个答案就会进入下一题。这里只用来找到讲解起点，不计入巩固成绩。</string>
     <string name="tutor_unknown">不知道</string>
     <string name="tutor_previous">上一题</string>
     <string name="tutor_next">下一题</string>
@@ -37,7 +37,7 @@
     <string name="tutor_offline">当前离线：正在展示已保存的回答和对话。新的服务端回复需要恢复连接。</string>
     <string name="tutor_unavailable">这个预生成资料暂时没有专用摸底题，下面保留其原文。可选择已有讲解的课程，或导入文档体验对话流程。</string>
     <string name="tutor_limit">本次会话已到 40 轮上限，现有对话仍保留。</string>
-    <string name="tutor_upload_consent">确认后，文档将发送到下方服务器，提取文字并准备基础摸底题。本机验收服务使用 AI mock，不调用付费模型；另行配置的服务可能使用 AI。</string>
+    <string name="tutor_upload_consent">确认后，文档将发送到下方服务器，由它读取文字并准备几道起点题。这是练习用服务器，没有真正的 AI，题目只是简单的占位；换用其他服务器时可能会用到真正的 AI。</string>
     <string name="tutor_no_endpoint">此构建尚未配置服务器，可体验离线固定示例。</string>
     <string name="tutor_uploaded">文档已上传并提取文字。</string>
     <string name="tutor_uploading">正在上传并读取文档…</string>
@@ -65,4 +65,7 @@
     <string name="focus_continue">继续</string>
     <string name="focus_summary">你的关注点：%1$s</string>
     <string name="focus_summary_note">你的备注：“%1$s”（只保存在本机；当前讲解者读不到）</string>
+    <string name="tutor_card_continue">继续</string>
+    <string name="tutor_card_continue_concept">继续 · 第 %1$d/%2$d 个概念</string>
+    <string name="tutor_card_explained">已讲完</string>
 </resources>

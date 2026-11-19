@@ -33,11 +33,17 @@ class TutorViewModel(private val repository: TutorRepository, private val id: St
             catch (e: Exception) { if (epoch == generation) mutable.value = mutable.value.copy(busy = false, problem = code(e), unsupported = e is TutorUnavailable) }
         }
     }
+    /** Picking an answer is the whole step: the next question follows, and the last answer opens the starting-point screen. */
     fun choose(option: String) {
         val c = mutable.value.cache ?: return
         val q = c.session.questions[c.questionIndex]
         if (c.session.assessment.isNotEmpty() || (option != UNKNOWN_ANSWER && q.options.none { it.id == option })) return
-        execute { old, _ -> old.copy(draftAnswers = old.draftAnswers + (q.id to option)) }
+        val last = c.questionIndex == c.session.questions.lastIndex
+        execute { old, requestId ->
+            val answered = old.copy(draftAnswers = old.draftAnswers + (q.id to option))
+            if (!last) answered.copy(questionIndex = answered.questionIndex + 1)
+            else answered.copy(session = repository.assess(answered, requestId))
+        }
     }
     /** What the reader wants out of this reading; empty facets and a blank note = let the explainer decide. */
     fun setFocus(facets: List<Facet>, note: String) {

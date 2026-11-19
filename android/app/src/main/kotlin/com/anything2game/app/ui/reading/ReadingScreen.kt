@@ -29,6 +29,9 @@ import com.anything2game.app.ui.theme.A2g
 import com.anything2game.contract.*
 import com.anything2game.contract.tutor.*
 
+/** From this system font scale up, the diagnostic's header collapses to one line (see [ReadingContent]). */
+internal const val COMPACT_FONT_SCALE = 1.3f
+
 /** Middle-tab teaching surface. Practice has its own tab and never launches from this flow. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -52,6 +55,8 @@ fun ReadingContent(deps: AppDependencies, packageId: String, onBack: () -> Unit)
     LaunchedEffect(state.unsupported) {
         if (state.unsupported) unsupported = deps.packages.load(packageId).getOrNull()
     }
+    // Large system text: the explainer standee, badge and notes would push the first question off the screen.
+    val compact = androidx.compose.ui.platform.LocalDensity.current.fontScale >= COMPACT_FONT_SCALE
     val phase = when { s == null -> 0; s.assessment.isEmpty() -> 1; s.messages.isEmpty() -> 2; else -> 3 }
     LaunchedEffect(phase, c?.questionIndex) { list.scrollToItem(0) }
     Scaffold(containerColor = skin.paper) { padding ->
@@ -69,8 +74,11 @@ fun ReadingContent(deps: AppDependencies, packageId: String, onBack: () -> Unit)
                     Text(stringResource(if (phase == 2) R.string.tutor_assessment_title else R.string.tutor_diagnostic_title), style = MaterialTheme.typography.titleLarge, color = skin.ink)
                 }
             }
-            if (s != null && phase in 1..2) item { ExplainerHeader(theme, when { phase == 2 -> stringResource(R.string.explainer_assess_line); focusDue(c) -> stringResource(R.string.explainer_focus_line); else -> stringResource(R.string.explainer_diag_line, s.questions.size) }, state.busy) }
-            if (s != null) item {
+            if (s != null && phase in 1..2 && !compact) item { ExplainerHeader(theme, when { phase == 2 -> stringResource(R.string.explainer_assess_line); focusDue(c) -> stringResource(R.string.explainer_focus_line); else -> stringResource(R.string.explainer_diag_line, s.questions.size) }, state.busy) }
+            if (s != null && compact) item {
+                val badge = stringResource(when (s.mode) { "local-mock" -> R.string.badge_pre_generated; "mock" -> R.string.tutor_server_mock_badge; else -> R.string.tutor_model_badge })
+                Text("$badge · ${s.title}", style = MaterialTheme.typography.labelLarge, color = skin.inkMuted, modifier = Modifier.testTag("compact_header"))
+            } else if (s != null) item {
                 Text(s.title, style = MaterialTheme.typography.titleMedium, color = skin.inkMuted)
                 Badge(stringResource(when (s.mode) { "local-mock" -> R.string.badge_pre_generated; "mock" -> R.string.tutor_server_mock_badge; else -> R.string.tutor_model_badge }), skin.evidence, skin.evidenceSoft)
                 Text(stringResource(if (s.mode == "local-mock") R.string.tutor_scripted_note else R.string.tutor_coverage_note), style = MaterialTheme.typography.bodySmall, color = skin.inkMuted)
@@ -91,21 +99,21 @@ fun ReadingContent(deps: AppDependencies, packageId: String, onBack: () -> Unit)
                 items(unsupported?.sources.orEmpty()) { chunk -> PaperCard { Text("${chunk.pageLabel ?: (chunk.pageIndex + 1)} · ${chunk.chunkId}", color = skin.evidence); Text(chunk.text, color = skin.ink) } }
             }
             val enabled = !state.busy && state.problem == null
-            val askingFocus = focusItems(c, enabled, vm::setFocus)
+            val askingFocus = focusItems(c, enabled, allowNote = s?.mode == "model", onSet = vm::setFocus)
             if (s != null && !askingFocus) when (phase) {
                 1 -> {
                     val q = s.questions[c.questionIndex]
                     item {
                         Text(stringResource(R.string.tutor_question_count, c.questionIndex + 1, s.questions.size), style = MaterialTheme.typography.labelLarge, color = skin.action)
                         LinearProgressIndicator(progress = { (c.questionIndex + 1f) / s.questions.size }, modifier = Modifier.fillMaxWidth())
-                        Text(stringResource(R.string.tutor_diagnostic_note), color = skin.inkMuted, style = MaterialTheme.typography.bodySmall)
+                        if (!compact) Text(stringResource(R.string.tutor_diagnostic_note), color = skin.inkMuted, style = MaterialTheme.typography.bodySmall)
                     }
                     item { PaperCard {
                         Text(q.concept, color = skin.action, style = MaterialTheme.typography.labelLarge)
                         Text(q.prompt, color = skin.ink, style = MaterialTheme.typography.titleLarge)
                         (q.options + TutorOption(UNKNOWN_ANSWER, stringResource(R.string.tutor_unknown))).forEach { option ->
                             val selected = c.draftAnswers[q.id] == option.id
-                            OutlinedButton(onClick = { vm.choose(option.id) }, enabled = enabled,
+                            OutlinedButton(onClick = { vm.choose(option.id) }, enabled = enabled, shape = RoundedCornerShape(16.dp), // a pill turns into a circle that clips the text when large text wraps
                                 modifier = Modifier.fillMaxWidth().testTag(if (option.id == UNKNOWN_ANSWER) "answer_unknown" else "answer_choice_${option.id}")
                                 .semantics { this.selected = selected }, // the radio dot alone says nothing to a screen reader
                                 colors = ButtonDefaults.outlinedButtonColors(containerColor = if (selected) skin.evidenceSoft else skin.card)) {
@@ -116,9 +124,10 @@ fun ReadingContent(deps: AppDependencies, packageId: String, onBack: () -> Unit)
                             }
                         }
                     } }
-                    item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        if (c.questionIndex > 0) OutlinedButton(onClick = vm::previous, enabled = enabled) { Text(stringResource(R.string.tutor_previous)) }
-                        Button(onClick = vm::next, enabled = enabled && q.id in c.draftAnswers,
+                    // Choosing an answer moves on by itself; these two are for a question that was already answered (after "Previous").
+                    if (c.questionIndex > 0 || q.id in c.draftAnswers) item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (c.questionIndex > 0) OutlinedButton(onClick = vm::previous, enabled = enabled, modifier = Modifier.testTag("diagnostic_previous")) { Text(stringResource(R.string.tutor_previous)) }
+                        if (q.id in c.draftAnswers) Button(onClick = vm::next, enabled = enabled,
                             modifier = Modifier.weight(1f).testTag("diagnostic_next")) { Text(stringResource(if (c.questionIndex == s.questions.lastIndex) R.string.tutor_evaluate else R.string.tutor_next)) }
                     } }
                 }

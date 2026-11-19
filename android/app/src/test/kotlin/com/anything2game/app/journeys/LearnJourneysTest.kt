@@ -17,19 +17,21 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipe
 import com.anything2game.app.R
 import com.anything2game.app.platform.SimulatedContextSource
 import com.anything2game.contract.FrameId
 import com.anything2game.contract.tutor.Facet
+import com.anything2game.app.ui.reading.DialoguePaging
 import com.anything2game.contract.tutor.TutorIntent
+import com.anything2game.contract.tutor.TutorRules
 import com.anything2game.contract.tutor.UNKNOWN_ANSWER
 import com.anything2game.contract.tutor.Understanding
 import com.anything2game.engine.context.ContextSignals
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
-import org.junit.Ignore
 import org.junit.Test
 import org.robolectric.RuntimeEnvironment
 
@@ -64,21 +66,19 @@ class LearnJourneysTest : LearnJourneyBase() {
         }
     }
 
-    @Test fun courses_without_an_explanation_have_no_card_but_the_library_below_still_opens_a_dead_end_for_them() {
+    @Test fun learn_lists_only_courses_with_an_explanation_and_has_no_dead_end_list_of_other_materials() {
         launch(); chooseGuest(); waitForTag("home_LEARN")
         waitFor("the library to load") { has("start_explanation_$attention") }
         // cs231n and mapreduce ship without a tutor script: no explanation card for them ...
-        for (id in listOf("demo_cs231n_l1", "demo_mapreduce")) assertFalse("$id has an explanation card", exists(hasTestTag("start_explanation_$id")))
-        // ... but "Other local materials" lists every course (the explained ones a second time) with "View material".
-        val cs231n = title("demo_cs231n_l1")
-        rule.onNodeWithTag("home_LEARN").performScrollToNode(hasText(cs231n)); rule.waitForIdle()
-        val top = rule.onNode(hasText(cs231n)).fetchSemanticsNode().boundsInRoot.top
-        val buttons = rule.onAllNodes(hasText(str(R.string.home_start_reading)) and hasClickAction())
-        val idx = buttons.fetchSemanticsNodes().withIndex().filter { it.value.boundsInRoot.top > top }.minByOrNull { it.value.boundsInRoot.top }!!.index
-        tap(buttons[idx])
-        waitForText(str(R.string.tutor_unavailable))                     // the student lands on a screen that says "no explanation"
-        assertFalse("no way to start anything from there", has("focus_continue") || has("answer_unknown"))
-        systemBack(); waitForTag("home_LEARN")
+        val others = listOf("demo_cs231n_l1", "demo_mapreduce")
+        for (id in others) assertFalse("$id has an explanation card", exists(hasTestTag("start_explanation_$id")))
+        // ... and no second list of materials either: every card of Learn is an explanation, and the other courses' titles are nowhere in it.
+        for (id in listOf(attention, resnet, zhSpaced, retrieval)) scrollLearnTo("start_explanation_$id")
+        for (id in others) assertFalse("$id is listed in Learn although it has no explanation", exists(hasText(title(id))))
+        assertFalse("a 'View material' button leads to a screen that says there is no explanation", exists(hasText("View material")))
+        // Those courses live in Practice.
+        openPractice()
+        for (id in others) assertTrue("${title(id)} is in Practice", run { scrollPracticeTo(title(id)); textShown(title(id)) })
     }
 
     // ---- journey 1 --------------------------------------------------------------------------------------
@@ -90,7 +90,7 @@ class LearnJourneysTest : LearnJourneyBase() {
         // The focus step comes first: four facets, free text, "let the explainer decide" is the default.
         waitForText(str(R.string.focus_title))
         listOf(R.string.focus_background, R.string.focus_method, R.string.focus_result, R.string.focus_limitation, R.string.focus_decide).forEach { assertTrue("chip ${str(it)}", textShown(str(it))) }
-        assertTrue(has("focus_note"))
+        assertFalse("a pre-written course has nothing to read a free-text note with", has("focus_note"))
         assertTrue("explainer decides by default", rule.onNodeWithTag("focus_decide").fetchSemanticsNode().config.getOrNull(SemanticsProperties.Selected) == true)
         chooseFocus("focus_result")
         assertEquals("the choice is remembered", listOf(Facet.RESULT), cache(attention).session.focus)
@@ -124,13 +124,12 @@ class LearnJourneysTest : LearnJourneyBase() {
         }
         startConversation()
 
-        // The explainer begins with the first concept of the teaching order. NOTE (finding): focus beats the diagnostic, so with
-        // Results chosen and answered right, the first thing explained is the concept the student just proved they know.
+        // The explainer begins with what is still open: the concept the student just proved they know (Results, chosen) comes after it.
         val teaching = conceptsInTeachingOrder(attention)
-        assertEquals("q3", teaching.first().id)
+        assertEquals("q1", teaching.first().id)
         assertEquals(str(R.string.explainer_name), textOf("dialogue_speaker"))
         assertTrue(has("player_avatar"))
-        assertEquals(listOf("q3", "q1", "q2", "q4"), teaching.map { it.id })
+        assertEquals(listOf("q1", "q2", "q4", "q3"), teaching.map { it.id })
 
         teaching.forEachIndexed { i, q ->
             assertEquals(conceptLine(i + 1, 4), textOf("concept_count"))
@@ -139,6 +138,10 @@ class LearnJourneysTest : LearnJourneyBase() {
             val msg = lastTutorMessage(attention)
             assertPagesCoverMessage(q.concept, pages, msg.text)
             assertTrue("starts with the concept name", msg.text.startsWith(q.concept))
+            // The concept name is the box's title and the lead-in a muted line under it; the first page is the real explanation.
+            val first = pages.first()
+            assertEquals(q.concept, textOf("dialogue_title").takeIf { has("dialogue_title") })
+            assertFalse("the first page repeats the concept name or the lead-in: $first", first.startsWith(q.concept) || first.contains("You chose") || first.contains("Let us clarify") || first.contains("You answered"))
             assertTrue("body is the script's explanation", norm(msg.text).contains(norm(c.explanation)))
             val prefix = when (understanding(attention, q)) { Understanding.DEMONSTRATED -> "You answered this item correctly"; Understanding.NEEDS_CLARIFICATION -> "Let us clarify"; else -> "You chose not sure" }
             assertTrue("prefix for ${q.id}: $prefix", msg.text.contains(prefix))
@@ -169,6 +172,7 @@ class LearnJourneysTest : LearnJourneyBase() {
         }
         tap(rule.onNodeWithTag("tutor_finish"))
         waitForTag("home_LEARN")
+        assertLearnCard(attention, str(R.string.tutor_card_explained))     // the walk reached its last concept: the card says so
         // The saved explanation is still there: opening the card again lands on the last concept, not a restart.
         startExplanation(attention)
         waitFor("the scene again") { has("dialogue_text") }
@@ -193,7 +197,6 @@ class LearnJourneysTest : LearnJourneyBase() {
         assertTrue(textOf("dialogue_text").isNotBlank())
     }
 
-    @Ignore("BUG: Learn card says \"Start explanation\" even after the walk was finished or left half way; no way to see it is continuable")
     @Test fun back_to_shelf_on_the_last_concept_leaves_learn_showing_the_course_as_continuable() {
         seedUntilLastConcept(attention)
         launch(); chooseGuest(); waitForTag("home_LEARN")
@@ -202,26 +205,24 @@ class LearnJourneysTest : LearnJourneyBase() {
         readPages("last concept")
         tap(rule.onNodeWithTag("tutor_finish"))
         waitForTag("home_LEARN")
-        val action = learnCardAction(attention)
-        assertNotEquals("BUG: after the walk the shelf still says \"${str(R.string.tutor_start_explanation)}\" as if nothing had happened", str(R.string.tutor_start_explanation), action)
+        assertLearnCard(attention, str(R.string.tutor_card_explained))
     }
 
-    @Test fun focus_accepts_several_facets_and_a_free_text_note_and_orders_the_questions_by_them() {
+    @Test fun focus_accepts_several_facets_orders_the_questions_by_them_and_offers_no_free_text_for_a_scripted_course() {
         launch(); chooseGuest(); waitForTag("home_LEARN")
         startExplanation(attention)
         waitForTag("focus_continue")
         tapTutor("focus_limitation"); tapTutor("focus_method")
         assertFalse("picking facets leaves 'let the explainer decide' off", rule.onNodeWithTag("focus_decide").fetchSemanticsNode().config.getOrNull(SemanticsProperties.Selected) == true)
-        scrollTutorToText(str(R.string.focus_other)); rule.onNodeWithTag("focus_note").performTextInput("the math behind the heads, please")
+        assertFalse("no free-text field where nothing can read it", has("focus_note") || textShown(str(R.string.focus_other)))
         tapTutor("focus_continue")
         waitForText(str(R.string.tutor_question_count, 1, 4))
         val c = cache(attention).session
         assertEquals(listOf(Facet.METHOD, Facet.LIMITATION), c.focus)
         assertEquals("the chosen facets first, nothing dropped, the rest in the script's order", listOf("q2", "q4", "q1", "q3"), c.questions.map { it.id })
-        assertEquals("the math behind the heads, please", c.focusNote)
+        assertEquals("", c.focusNote)
         waitForText(str(R.string.focus_summary, listOf(R.string.focus_method, R.string.focus_limitation).joinToString(" · ") { str(it) }))
-        // The note is not pretended to be read: the screen says plainly that it only steers an AI explainer.
-        assertTrue(textShown(str(R.string.focus_summary_note, "the math behind the heads, please")))
+        assertFalse(has("focus_summary_note"))
         waitForText("Multi-head attention")
     }
 
@@ -233,16 +234,56 @@ class LearnJourneysTest : LearnJourneyBase() {
         assertTrue("the first course's Start button at $b is below the bottom bar (top $nav): the student has to scroll past the upload card", b.bottom <= nav && b.top >= 0f)
     }
 
-    @Ignore("BUG: the first page of a concept is often only its heading and a lead-in (\"You chose not sure.\" / \"...from this concept:\"), so the student taps once for no content")
     @Test fun no_concept_opens_with_a_page_that_is_only_a_heading_and_a_lead_in() {
-        val lead = mapOf("en" to listOf("You answered this item correctly. Here is the connection to the document:", "Let us clarify this distinction first:", "You chose not sure. Let us start with this concept:"),
-            "zh" to listOf("你在这道基础题上答对了。我们简要连接到文章：", "这道题提示我们先澄清一个区别：", "你选了不知道，我们从这个概念开始："))
+        // The title and lead-in sit above the text; the pages are the explanation, and the first one is real content.
         val bad = mutableListOf<String>()
-        for ((pkg, lang) in listOf(attention to "en", resnet to "en", zhSpaced to "zh")) for (c in script(pkg).blueprint.concepts) for (l in lead.getValue(lang)) {
-            val first = com.anything2game.app.ui.reading.DialoguePaging.pages("${c.question.concept}\n$l\n${c.explanation}").first()
-            if (first.trimEnd().let { it.endsWith(":") || it.endsWith("：") } || first.length < 90) bad += "$pkg ${c.question.id} [${first.length}] ${first.replace("\n", " / ").take(70)}"
+        for ((pkg, lang) in listOf(attention to "en", resnet to "en", zhSpaced to "zh")) for (c in script(pkg).blueprint.concepts) {
+            val message = "${c.question.concept}\n${TutorRules.leadIn(Understanding.NOT_YET_ASSESSED, lang == "zh")}\n${c.explanation}"
+            val parts = TutorRules.splitScripted(message, listOf(c.question.concept))
+            if (parts == null) { bad += "$pkg ${c.question.id}: not split"; continue }
+            val first = DialoguePaging.pages(parts, DialoguePaging.LATIN_BUDGET, DialoguePaging.CJK_BUDGET).first()
+            // Real content: at least a whole sentence of the explanation, never a heading or a line that ends in a colon.
+            if (first.trimEnd().let { it.endsWith(":") || it.endsWith("：") } || first.length < 20 || first.startsWith(c.question.concept) || !c.explanation.startsWith(first.take(20))) bad += "$pkg ${c.question.id} [${first.length}] ${first.replace("\n", " / ").take(70)}"
         }
-        assertEquals("pages that open with nothing but a heading and a lead-in", emptyList<String>(), bad)
+        assertEquals("pages that open without real content", emptyList<String>(), bad)
+    }
+
+    @Test fun the_dialogue_box_shows_the_concept_as_its_title_and_the_lead_in_only_on_the_first_page() {
+        reachScene(attention, listOf("focus_result"), right(attention))
+        val q = conceptsInTeachingOrder(attention).first()
+        sceneReady()
+        assertEquals(q.concept, textOf("dialogue_title"))
+        assertEquals(TutorRules.leadIn(understanding(attention, q), false), textOf("dialogue_lead_in"))
+        assertEquals(str(R.string.explainer_name), textOf("dialogue_speaker"))
+        assertTrue("the first page is explanation", norm(lastTutorMessage(attention).text).contains(norm(textOf("dialogue_text"))))
+        if (!has("tutor_rephrase")) {
+            rule.onNodeWithTag("dialogue_box").performClick(); rule.waitForIdle()
+            assertEquals("the title stays", q.concept, textOf("dialogue_title"))
+            assertFalse("the lead-in is said once", has("dialogue_lead_in"))
+        }
+        // A typed question has no such structure: the player's line and the reply show as they are.
+        readPages("c1")
+        askQuestion("Does this hold for every task?")
+        assertFalse(has("dialogue_title") || has("dialogue_lead_in"))
+        rule.onNodeWithTag("dialogue_box").performClick(); rule.waitForIdle()
+        assertFalse(has("dialogue_title") || has("dialogue_lead_in"))
+    }
+
+    @Test fun poking_the_players_sidekick_does_not_turn_the_page_but_tapping_the_stage_does() {
+        reachScene(attention, listOf("focus_result"), right(attention))
+        sceneReady()
+        assertTrue("the first message has more than one page", has("dialogue_skip"))
+        val first = textOf("dialogue_text")
+        rule.onNodeWithTag("explainer_stage").performTouchInput { click(androidx.compose.ui.geometry.Offset(width * 0.92f, height * 0.04f)) }   // the bare backdrop: Aya herself is pokeable too
+        rule.waitForIdle()
+        val page = textOf("dialogue_text")
+        assertNotEquals("a tap on the stage backdrop turns the page", first, page)
+        if (has("dialogue_skip")) {
+            rule.onNodeWithTag("player_avatar").performClick(); rule.waitForIdle()
+            rule.onNodeWithTag("player_avatar").performClick(); rule.waitForIdle()
+            assertEquals("a poke is not a page turn", page, textOf("dialogue_text"))
+        }
+        assertEquals(conceptLine(1, 4), textOf("concept_count"))
     }
 
     // ---- journey 2 --------------------------------------------------------------------------------------
@@ -268,6 +309,7 @@ class LearnJourneysTest : LearnJourneyBase() {
         assertEquals(second, textOf("dialogue_text"))
 
         systemBack(); waitForTag("home_LEARN")
+        assertLearnCard(attention, str(R.string.tutor_card_continue_concept, 2, 4))     // the card says where the student is
         startExplanation(attention)
         waitFor("scene after coming back") { has("dialogue_text") && !has("typing_indicator") }
         assertEquals("same concept", conceptLine(2, 4), textOf("concept_count"))
@@ -286,24 +328,42 @@ class LearnJourneysTest : LearnJourneyBase() {
         assertTrue(has("tutor_continue"))
     }
 
-    @Test fun leaving_mid_diagnostic_keeps_the_question_and_the_selected_answer() {
+    @Test fun choosing_an_answer_moves_on_by_itself_and_previous_goes_back_to_change_it() {
         launch(); chooseGuest(); waitForTag("home_LEARN")
         startExplanation(attention); chooseFocus()
         val qs = cache(attention).session.questions
         waitForText(str(R.string.tutor_question_count, 1, 4))
-        answerCurrent(qs[0], concept(attention, qs[0].id).correctOptionId)
+        assertFalse("nothing to press before an answer is chosen", has("diagnostic_next") || has("diagnostic_previous"))
+        answerCurrent(qs[0], concept(attention, qs[0].id).correctOptionId)         // one tap, no "Next"
         waitForText(str(R.string.tutor_question_count, 2, 4))
-        tapTutor("answer_choice_${qs[1].options.first().id}")          // chosen, "Next" not pressed
-        waitFor("answer selected") { rule.onNodeWithTag("answer_choice_${qs[1].options.first().id}").fetchSemanticsNode().config.getOrNull(SemanticsProperties.Selected) == true }
-        assertTrue("and saved", cache(attention).draftAnswers.containsKey(qs[1].id))
+        assertFalse("the new question is unanswered: no Next yet", has("diagnostic_next"))
+        val second = qs[1].options.first().id
+        answerCurrent(qs[1], second)
+        waitForText(str(R.string.tutor_question_count, 3, 4))
+        assertEquals(setOf(qs[0].id, qs[1].id), cache(attention).draftAnswers.keys)
+        // Previous goes back; the earlier choice is still marked and can be changed (which moves on again).
+        tapTutor("diagnostic_previous")
+        waitForText(str(R.string.tutor_question_count, 2, 4))
+        waitFor("earlier answer selected") { rule.onNodeWithTag("answer_choice_$second").fetchSemanticsNode().config.getOrNull(SemanticsProperties.Selected) == true }
+        scrollTutorTo("diagnostic_next")                                       // an answered question can be left with Next
+        assertTrue(has("diagnostic_next"))
+        val other = qs[1].options.first { it.id != second }.id
+        answerCurrent(qs[1], other)
+        waitForText(str(R.string.tutor_question_count, 3, 4))
+        assertEquals(other, cache(attention).draftAnswers[qs[1].id])
+        // Leaving here keeps the place; the card says "Continue", not "Start".
         systemBack(); waitForTag("home_LEARN")
+        assertLearnCard(attention, str(R.string.tutor_card_continue))
         startExplanation(attention)
-        waitForText(str(R.string.tutor_question_count, 2, 4))
+        waitForText(str(R.string.tutor_question_count, 3, 4))
         assertFalse("the focus question is asked again after it was answered", has("focus_continue"))
-        val selected = rule.onNodeWithTag("answer_choice_${qs[1].options.first().id}").fetchSemanticsNode().config.getOrNull(SemanticsProperties.Selected)
-        assertEquals("the chosen option is still chosen", true, selected)
         restartProcess(); waitForTag("home_LEARN"); startExplanation(attention)
-        waitForText(str(R.string.tutor_question_count, 2, 4))
+        waitForText(str(R.string.tutor_question_count, 3, 4))
+        // The last answer opens the starting-point screen with no further tap.
+        answerCurrent(qs[2], UNKNOWN_ANSWER); waitForText(str(R.string.tutor_question_count, 4, 4))
+        answerCurrent(qs[3], UNKNOWN_ANSWER); waitForText(str(R.string.tutor_assessment_title))
+        scrollTutorTo("start_tutor"); assertTrue(has("start_tutor"))
+        assertEquals(4, cache(attention).session.assessment.size)
     }
 
     // ---- journey 3 --------------------------------------------------------------------------------------
@@ -405,8 +465,8 @@ class LearnJourneysTest : LearnJourneyBase() {
         // ... then the explainer says plainly what it cannot do.
         assertEquals(str(R.string.explainer_name), textOf("dialogue_speaker"))
         val answer = textOf("dialogue_text")
-        assertTrue("answers honestly that it cannot answer free text: $answer", Regex("(?i)cannot interpret|cannot answer|can't answer").containsMatchIn(answer))
-        assertTrue("and tells the student what to do instead: $answer", answer.contains("buttons"))
+        assertTrue("answers honestly that it cannot answer free text: $answer", Regex("(?i)can't answer|cannot answer").containsMatchIn(answer))
+        assertTrue("and says the question is kept: $answer", answer.contains("saved in the log"))
         readPages("after the question")
         // The conversation goes on: the same concept can be rephrased and the walk continues.
         choose(attention, "tutor_rephrase"); readPages("rephrase after question")
@@ -440,7 +500,6 @@ class LearnJourneysTest : LearnJourneyBase() {
         assertFalse("the Ask sheet speaks of \"mock\" to a student", note)
     }
 
-    @Ignore("BUG (copy): the scripted reply to a question says \"This mock tutor ... real conversation requires a configured server model\": developer talk (contract Tutor.kt scriptedReply; TutorRulesTest pins the word \"mock\")")
     @Test fun the_explainers_reply_to_a_question_has_no_developer_words() {
         reachScene(attention, emptyList()); readPages("c1")
         askQuestion("Does this hold for every task?")
@@ -517,7 +576,6 @@ class LearnJourneysTest : LearnJourneyBase() {
         startConversation()
     }
 
-    @Ignore("BUG: at 200% text the diagnostic's first question and its answers are entirely below the fold (header, Aya, badge, notes fill the screen)")
     @Test fun at_200_percent_the_first_diagnostic_question_is_on_screen_without_scrolling() {
         RuntimeEnvironment.setFontScale(2f)
         launch(); chooseGuest(); waitForTag("home_LEARN")

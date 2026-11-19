@@ -115,11 +115,46 @@ object TutorRules {
         require(note.length <= MAX_FOCUS_NOTE) { "Focus note too long" }
     }
 
-    /** Teaching order: the reader's focus first, then concepts that are not yet demonstrated, then the rest. */
-    fun orderedQuestions(session: TutorSession): List<TutorQuestion> = session.questions.sortedWith(compareBy<TutorQuestion>(
-        { focusRank(it, session.focus) },
-        { q -> if (session.assessment.firstOrNull { it.questionId == q.id }?.evidence == Understanding.DEMONSTRATED) 1 else 0 },
-    ))
+    /**
+     * Teaching order, in four stable groups: (chosen facet and not demonstrated), (not demonstrated),
+     * (chosen facet and demonstrated), (the rest). With no focus chosen only "not demonstrated first" applies.
+     */
+    fun orderedQuestions(session: TutorSession): List<TutorQuestion> {
+        val demonstrated = session.assessment.filter { it.evidence == Understanding.DEMONSTRATED }.map { it.questionId }.toSet()
+        return session.questions.sortedBy { q ->
+            val chosen = session.focus.isNotEmpty() && q.facet in session.focus
+            val known = q.id in demonstrated
+            when { chosen && !known -> 0; !known -> 1; chosen -> 2; else -> 3 }
+        }
+    }
+
+    /** One scripted turn pulled apart: the concept's name, the personalised lead-in line, and the explanation itself. */
+    data class ScriptedParts(val title: String, val leadIn: String, val body: String)
+
+    /** The lead-in that opens a scripted turn, by what the reader's diagnostic answer showed. */
+    fun leadIn(evidence: Understanding, zh: Boolean): String = if (zh) when (evidence) {
+        Understanding.DEMONSTRATED -> "你在这道基础题上答对了。我们简要连接到文章："
+        Understanding.NEEDS_CLARIFICATION -> "这道题提示我们先澄清一个区别："
+        Understanding.NOT_YET_ASSESSED -> "你选了不知道，我们从这个概念开始："
+    } else when (evidence) {
+        Understanding.DEMONSTRATED -> "You answered this item correctly. Here is the connection to the document:"
+        Understanding.NEEDS_CLARIFICATION -> "Let us clarify this distinction first:"
+        Understanding.NOT_YET_ASSESSED -> "You chose not sure. Let us start with this concept:"
+    }
+
+    private val knownLeadIns: Set<String> = listOf(false, true).flatMap { zh -> Understanding.entries.map { leadIn(it, zh) } }.toSet()
+
+    /**
+     * Reads a message built by [scriptedReply] ("concept name, lead-in, explanation", one per line).
+     * Anything else (a server message, a reply to a typed question) returns null and is shown as it is.
+     */
+    fun splitScripted(text: String, conceptNames: Collection<String>): ScriptedParts? {
+        val lines = text.split("\n", limit = 3)
+        if (lines.size < 3) return null
+        val (title, lead, body) = lines
+        if (title !in conceptNames || lead !in knownLeadIns || body.isBlank()) return null
+        return ScriptedParts(title, lead, body.trim())
+    }
 
     /** Scripted fake mode only; explicitly does not interpret free text. */
     fun scriptedReply(session: TutorSession, blueprint: TutorBlueprint, intent: TutorIntent): TutorMessage {
@@ -128,22 +163,14 @@ object TutorRules {
         val c = blueprint.concepts.first { it.question.id == q.id }
         val zh = session.language == "zh"
         if (intent == TutorIntent.QUESTION) return TutorMessage("m${session.revision + 1}a", "tutor",
-            if (zh) "已保留你的追问。本机使用 mock 教师，不能理解自由提问。请用下方按钮查看预设讲解；真实对话需在服务器配置模型。" else "Your question is saved. This mock tutor cannot interpret free-text questions. Use the teaching buttons; real conversation requires a configured server model.")
+            if (zh) "这门课我只能按事先准备好的讲解来讲，没法回答新的问题。你的问题已记在记录里。"
+            else "I can only walk through the prepared explanation here, so I can't answer new questions on this course. Your question is saved in the log.")
         val evidence = session.assessment.first { it.questionId == q.id }.evidence
-        val prefix = if (zh) when (evidence) {
-            Understanding.DEMONSTRATED -> "你在这道基础题上答对了。我们简要连接到文章："
-            Understanding.NEEDS_CLARIFICATION -> "这道题提示我们先澄清一个区别："
-            Understanding.NOT_YET_ASSESSED -> "你选了不知道，我们从这个概念开始："
-        } else when (evidence) {
-            Understanding.DEMONSTRATED -> "You answered this item correctly. Here is the connection to the document:"
-            Understanding.NEEDS_CLARIFICATION -> "Let us clarify this distinction first:"
-            Understanding.NOT_YET_ASSESSED -> "You chose not sure. Let us start with this concept:"
-        }
         val body = when (intent) {
             TutorIntent.REPHRASE -> c.simpler
             TutorIntent.EXAMPLE -> c.example
             else -> c.explanation
         }
-        return TutorMessage("m${session.revision + 1}a", "tutor", "${q.concept}\n$prefix\n$body", q.sourceRefs)
+        return TutorMessage("m${session.revision + 1}a", "tutor", "${q.concept}\n${leadIn(evidence, zh)}\n$body", q.sourceRefs)
     }
 }

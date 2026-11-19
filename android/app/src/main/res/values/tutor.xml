@@ -3,11 +3,11 @@
     <string name="tutor_diagnostic_title">Before we talk</string>
     <string name="tutor_assessment_title">Your starting point</string>
     <string name="tutor_chat_title">Talk through the document</string>
-    <string name="tutor_server_mock_badge">DOCUMENT PARSED · AI MOCK</string>
+    <string name="tutor_server_mock_badge">PRACTICE SERVER · NO REAL AI</string>
     <string name="tutor_model_badge">DOCUMENT TUTOR · AI</string>
     <string name="tutor_coverage_note">Introductory questions cover selected excerpts, not the entire document or your overall ability. Sources are traceable, not independently verified.</string>
     <string name="tutor_question_count">FOUNDATION %1$d / %2$d</string>
-    <string name="tutor_diagnostic_note">Answer from your current understanding. Not sure is welcome. This is preparation for a conversation, not a scored practice game.</string>
+    <string name="tutor_diagnostic_note">Answer from your current understanding. Not sure is welcome. Tapping an answer takes you to the next question. This is preparation for a conversation, not a scored practice game.</string>
     <string name="tutor_unknown">I do not know yet</string>
     <string name="tutor_previous">Previous</string>
     <string name="tutor_next">Next</string>
@@ -37,7 +37,7 @@
     <string name="tutor_offline">Offline: showing saved answers and conversation. Reconnect for new server replies.</string>
     <string name="tutor_unavailable">This preset has no dedicated diagnostic yet. Its original passages are below. Pick a course that has an explanation, or import a document for the tutor flow.</string>
     <string name="tutor_limit">This session has reached its 40-turn limit. Existing conversation is retained.</string>
-    <string name="tutor_upload_consent">Confirm to send this document to the server below for text extraction and introductory questions. The local QA server uses an AI mock; no paid model is called. A separately configured server may use AI.</string>
+    <string name="tutor_upload_consent">Confirm to send this document to the server below. It reads the text and prepares a few starting questions. This is a practice server with no real AI, so the questions are simple stand-ins. A server set up differently may use a real AI.</string>
     <string name="tutor_no_endpoint">No server configured in this build. The offline fixed example is available.</string>
     <string name="tutor_uploaded">The document has been uploaded and its text extracted.</string>
     <string name="tutor_uploading">Uploading and reading the document…</string>
@@ -65,4 +65,7 @@
     <string name="focus_continue">Continue</string>
     <string name="focus_summary">Your focus: %1$s</string>
     <string name="focus_summary_note">Your note: “%1$s” (saved on this device; this explainer cannot read it)</string>
+    <string name="tutor_card_continue">Continue</string>
+    <string name="tutor_card_continue_concept">Continue · concept %1$d/%2$d</string>
+    <string name="tutor_card_explained">Explained</string>
 </resources>

@@ -81,9 +81,15 @@ abstract class LearnJourneyBase : JourneyTest() {
     /** What the student sees on the card of one course in Learn: the text of its action button. */
     protected fun learnCardAction(pkgId: String): String { scrollLearnTo("start_explanation_$pkgId"); return textOf("start_explanation_$pkgId") }
 
+    /** The shelf re-reads the saved sessions when it comes back on screen: wait until the card of [pkgId] says [label]. */
+    protected fun assertLearnCard(pkgId: String, label: String) {
+        scrollLearnTo("start_explanation_$pkgId")
+        waitFor("the Learn card of $pkgId to say \"$label\" (says \"${runCatching { textOf("start_explanation_$pkgId") }.getOrNull()}\")") { textOf("start_explanation_$pkgId") == label }
+    }
+
     // ---- focus + diagnostic -----------------------------------------------------------------------------
 
-    private fun scrollTutorTo(tag: String) = scrollListTo("tutor_list", tag)
+    protected fun scrollTutorTo(tag: String) = scrollListTo("tutor_list", tag)
     protected fun scrollTutorToText(text: String) {
         waitFor("question \"${text.take(30)}\"") { runCatching { rule.onNodeWithTag("tutor_list").performScrollToNode(hasText(text)); true }.getOrDefault(false) }
         rule.waitForIdle()
@@ -96,7 +102,7 @@ abstract class LearnJourneyBase : JourneyTest() {
         tapTutor("focus_continue")
     }
 
-    /** Answers every diagnostic question the way [answer] says, by tapping the option and "Next". Ends on the starting-point screen. */
+    /** Answers every diagnostic question the way [answer] says, by tapping the option. Ends on the starting-point screen. */
     protected fun runDiagnostic(pkgId: String, answer: (TutorQuestion) -> String) {
         val total = cache(pkgId).session.questions.size
         for (i in 0 until total) {
@@ -109,11 +115,9 @@ abstract class LearnJourneyBase : JourneyTest() {
         waitForText(str(R.string.tutor_assessment_title))
     }
 
+    /** Taps the answer: that is the whole step, the next question (or the starting-point screen) follows by itself. */
     protected fun answerCurrent(q: TutorQuestion, option: String) {
         tapTutor(if (option == UNKNOWN_ANSWER) "answer_unknown" else "answer_choice_$option")
-        scrollTutorTo("diagnostic_next")
-        waitFor("Next enabled") { runCatching { rule.onNodeWithTag("diagnostic_next").fetchSemanticsNode().config.getOrNull(SemanticsProperties.Disabled) == null }.getOrDefault(false) }
-        tapTutor("diagnostic_next")
     }
 
     protected fun right(pkgId: String): (TutorQuestion) -> String = { q -> concept(pkgId, q.id).correctOptionId }
@@ -168,10 +172,15 @@ abstract class LearnJourneyBase : JourneyTest() {
         }
     }
 
-    /** The page the student reads is what the message says, in order, with nothing lost. */
+    /** The page the student reads is what the message says, in order, with nothing lost (a scripted turn: its explanation; the title and lead-in sit above the box's text). */
     protected fun assertPagesCoverMessage(where: String, pages: List<String>, message: String) {
-        assertEquals("$where: the pages together are not the message", norm(message).replace(" ", ""), norm(pages.joinToString(" ")).replace(" ", ""))
+        val body = bodyOf(message)
+        assertEquals("$where: the pages together are not the message", norm(body).replace(" ", ""), norm(pages.joinToString(" ")).replace(" ", ""))
     }
+
+    /** The explanation part of a scripted turn ("concept / lead-in / explanation"); any other message is its own body. */
+    protected fun bodyOf(message: String): String =
+        TutorRules.splitScripted(message, listOf(attention, resnet, zhSpaced, retrieval).flatMap { p -> script(p).blueprint.concepts.map { it.question.concept } })?.body ?: message
 
     protected fun lastTutorMessage(pkgId: String) = cache(pkgId).session.messages.last { it.role != "user" }
 

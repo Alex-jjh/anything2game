@@ -53,7 +53,7 @@ class TutorApiTest {
         val question = ContractJson.json.encodeToString(TutorTurnRequest.serializer(), TutorTurnRequest(s.revision, TutorIntent.QUESTION, "What about transfer?", "follow-up"))
         s = api.decode(TutorSession.serializer(), api.send(HttpMethod.Post, "$tutorPath/turns", token, question))
         assertEquals(4, s.messages.size)
-        assertTrue(s.messages.last().text.contains("mock"))
+        assertTrue(s.messages.last().text.contains("没法回答新的问题"))
         assertTrue(s.messages.last().sourceRefs.isEmpty())
         assertEquals(s, api.decode(TutorSession.serializer(), api.send(HttpMethod.Get, tutorPath, token)))
         // File-backed durability, without touching game packages or inventing an in-memory-only session.

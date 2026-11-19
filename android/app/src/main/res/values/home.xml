@@ -13,13 +13,7 @@
     <string name="home_retry">Retry</string>
     <string name="home_read_first">FOUNDATIONS → CONVERSATION</string>
     <string name="home_upload_title">Bring a document to the conversation</string>
-    <string name="home_upload_body">Choose a PDF, confirm the destination, then answer introductory questions before talking through it. Local QA uses real text extraction with AI mock.</string>
-    <string name="home_library">Other local materials</string>
-    <plurals name="home_chapters">
-        <item quantity="one">%1$d learning chapter</item>
-        <item quantity="other">%1$d learning chapters</item>
-    </plurals>
-    <string name="home_start_reading">View material</string>
+    <string name="home_upload_body">Choose a PDF. After you confirm, it is sent to our server, which prepares a few starting questions and an explanation of it.</string>
     <string name="home_read_first_action">Read the source</string>
     <string name="home_classic">BY DOCUMENT · CHOOSE HOW TO PLAY</string>
     <string name="home_level_solid">Consolidated</string>

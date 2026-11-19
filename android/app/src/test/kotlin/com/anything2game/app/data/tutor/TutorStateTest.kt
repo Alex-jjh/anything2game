@@ -59,10 +59,43 @@ class TutorStateTest {
         try {
             val repo = Repository(initial()); val vm = TutorViewModel(repo, "tut_test"); runCurrent()
             vm.next(); runCurrent(); assertTrue(vm.state.value.cache!!.session.assessment.isEmpty())
+            // With one question, its answer is also the last one: it is kept and the starting point is assessed right away.
             vm.choose(UNKNOWN_ANSWER); advanceUntilIdle()
             assertEquals(mapOf("q" to UNKNOWN_ANSWER), repo.cache.draftAnswers)
-            vm.next(); advanceUntilIdle()
             assertEquals(Understanding.NOT_YET_ASSESSED, vm.state.value.cache!!.session.assessment.single().evidence)
+        } finally { Dispatchers.resetMain() }
+    }
+    private fun three(): TutorCache = initial().let { c ->
+        val q = c.session.questions.single()
+        c.copy(session = c.session.copy(questions = listOf(q, q.copy(id = "q2", conceptId = "c2"), q.copy(id = "q3", conceptId = "c3"))))
+    }
+    private class ThreeRepo(cache: TutorCache) : Repository(cache) {
+        override suspend fun assess(cache: TutorCache, requestId: String) = cache.session.copy(revision = 1, answers = cache.draftAnswers,
+            assessment = TutorRules.assess(TutorBlueprint(concepts = cache.session.questions.map { TutorConcept(it, "a", "e", "s", "x") }), cache.draftAnswers))
+    }
+    @Test fun `choosing an answer moves to the next question and the last answer assesses`() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        try {
+            val repo = ThreeRepo(three()); val vm = TutorViewModel(repo, "tut_test"); runCurrent()
+            vm.choose("a"); advanceUntilIdle()
+            assertEquals(1, vm.state.value.cache!!.questionIndex)
+            assertEquals(mapOf("q" to "a"), vm.state.value.cache!!.draftAnswers)
+            vm.previous(); advanceUntilIdle()                                   // go back: the earlier answer is still there, and can be changed
+            assertEquals(0, vm.state.value.cache!!.questionIndex)
+            assertEquals("a", vm.state.value.cache!!.draftAnswers["q"])
+            vm.choose("b"); advanceUntilIdle()
+            assertEquals(1, vm.state.value.cache!!.questionIndex); assertEquals("b", vm.state.value.cache!!.draftAnswers["q"])
+            assertTrue(vm.state.value.cache!!.session.assessment.isEmpty())
+            vm.choose(UNKNOWN_ANSWER); advanceUntilIdle()
+            assertEquals(2, vm.state.value.cache!!.questionIndex); assertTrue(vm.state.value.cache!!.session.assessment.isEmpty())
+            vm.choose("a"); advanceUntilIdle()                                   // the last answer: starting points, no further tap
+            val done = vm.state.value.cache!!
+            assertEquals(3, done.session.assessment.size)
+            assertEquals(listOf(Understanding.DEMONSTRATED, Understanding.NEEDS_CLARIFICATION, Understanding.NOT_YET_ASSESSED).sorted(), done.session.assessment.map { it.evidence }.sorted())
+            assertEquals(done, repo.cache)
+            vm.choose("a"); advanceUntilIdle()                                   // answering after the assessment changes nothing
+            assertEquals(done, vm.state.value.cache)
+            assertFalse("the assessed session was saved with all three answers", repo.saved.any { it.session.assessment.isNotEmpty() && it.draftAnswers.size < 3 })
         } finally { Dispatchers.resetMain() }
     }
     @Test fun `import retry and process reconstruction reuse a completed upload`() = runTest {

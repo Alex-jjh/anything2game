@@ -14,12 +14,20 @@ const val EXAMPLE_TUTOR_PACKAGE = "pkg_demo_retrieval"
 class TutorUnavailable : Exception()
 data class OpenTutor(val cache: TutorCache, val offline: Boolean = false)
 
+/** How far a student got in a scripted course's saved explanation (read from the cache without creating a session). */
+data class TutorProgress(val explaining: Boolean, val position: Int, val total: Int) {
+    /** The walk reached its last concept. */
+    val finished: Boolean get() = explaining && position >= total - 1
+}
+
 interface TutorRepository {
     val endpoint: String
     val localServer: Boolean
     suspend fun open(id: String): OpenTutor
     suspend fun save(cache: TutorCache)
     suspend fun list(): List<TutorSession>
+    /** Saved progress of a scripted course, or null when nothing was saved yet. Never creates or changes a session. */
+    suspend fun progressFor(packageId: String): TutorProgress? = null
     suspend fun assess(cache: TutorCache, requestId: String): TutorSession
     suspend fun turn(cache: TutorCache, intent: TutorIntent, question: String, requestId: String): TutorSession
     suspend fun cancel(cache: TutorCache, requestId: String): TutorSession
@@ -89,6 +97,12 @@ class AndroidTutorRepository(
     }
     override suspend fun save(cache: TutorCache) = files.write(cache)
     override suspend fun list() = files.list()
+    override suspend fun progressFor(packageId: String): TutorProgress? {
+        val pkg = packages.load(packageId).getOrNull() ?: return null
+        val saved = try { files.read(localTutorKey(pkg)) } catch (e: CancellationException) { throw e } catch (e: Exception) { null } ?: return null
+        val s = saved.session
+        return TutorProgress(explaining = s.messages.isNotEmpty(), position = s.conceptPosition, total = s.questions.size)
+    }
     override suspend fun assess(cache: TutorCache, requestId: String): TutorSession {
         val s = cache.session
         if (s.mode == "local-mock") return s.copy(revision = s.revision + 1, answers = cache.draftAnswers,

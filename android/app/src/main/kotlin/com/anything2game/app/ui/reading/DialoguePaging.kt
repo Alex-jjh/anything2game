@@ -9,6 +9,16 @@ object DialoguePaging {
     const val LATIN_BUDGET = 170
     const val CJK_BUDGET = 90
 
+    /** A scripted turn's box also carries the concept title (and, on the first page, the lead-in): its pages hold a bit less. */
+    const val TITLED_SHARE = 0.86f
+
+    /** The pages of a scripted turn's explanation (its title and lead-in are shown above the text, not paged). */
+    fun pages(parts: com.anything2game.contract.tutor.TutorRules.ScriptedParts, latinBudget: Int = LATIN_BUDGET, cjkBudget: Int = CJK_BUDGET, share: Float = TITLED_SHARE): List<String> =
+        pages(parts.body, (latinBudget * share).toInt(), (cjkBudget * share).toInt())
+
+    /** With large system text the title lines take a bigger part of the box, so a page holds less. */
+    fun titledShare(fontScale: Float): Float = if (fontScale >= 1.3f) 0.72f else TITLED_SHARE
+
     fun pages(text: String, latinBudget: Int = LATIN_BUDGET, cjkBudget: Int = CJK_BUDGET): List<String> {
         if (text.isBlank()) return listOf("")
         val perCjk = latinBudget.toFloat() / cjkBudget

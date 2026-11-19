@@ -13,12 +13,7 @@
     <string name="home_retry">重新读取</string>
     <string name="home_read_first">基础摸底 → 对话讲解</string>
     <string name="home_upload_title">把下一篇文档带进对话</string>
-    <string name="home_upload_body">选择 PDF 并确认发送位置，先回答相关基础问题，再展开讲解。本机联调使用真实文字提取与 AI mock。</string>
-    <string name="home_library">其他本机资料</string>
-    <plurals name="home_chapters">
-        <item quantity="other">%1$d 个学习章节</item>
-    </plurals>
-    <string name="home_start_reading">查看资料</string>
+    <string name="home_upload_body">选择一份 PDF。你确认后，它会发送到我们的服务器，由服务器准备几道起点题和对应的讲解。</string>
     <string name="home_read_first_action">查看资料原文</string>
     <string name="home_classic">按资料归档 · 可选玩法</string>
     <string name="home_level_solid">已巩固</string>

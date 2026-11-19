@@ -82,13 +82,18 @@ import com.anything2game.app.ui.theme.A2g
 import com.anything2game.contract.SourceRef
 import com.anything2game.contract.tutor.TutorIntent
 import com.anything2game.contract.tutor.TutorMessage
+import com.anything2game.contract.tutor.TutorRules
 import com.anything2game.contract.tutor.TutorSession
 
 /** Message cap of a session (kept from the chat screen: the server and the local example both stop here). */
 private const val MESSAGE_LIMIT = 80
 
 /** One screenful of dialogue: a page of the player's question or of the explainer's answer. */
-private data class Beat(val player: Boolean, val text: String, val refs: List<SourceRef>)
+private data class Beat(
+    val player: Boolean, val text: String, val refs: List<SourceRef>,
+    /** Concept name (dialogue-box title) and the personalised lead-in, for a scripted turn; the lead-in only on its first page. */
+    val title: String? = null, val leadIn: String? = null,
+)
 
 /**
  * Phase 3 as a scene (visual-novel layout): the explainer on stage at the top with the player's own character in the
@@ -116,10 +121,14 @@ internal fun ExplainerTheatre(
     val scale = androidx.compose.ui.platform.LocalDensity.current.fontScale.coerceAtLeast(1f)
     val latinBudget = (DialoguePaging.LATIN_BUDGET / scale).toInt()
     val cjkBudget = (DialoguePaging.CJK_BUDGET / scale).toInt()
+    // A scripted turn is "concept, lead-in, explanation": the first two become the box's title lines, the pages are the explanation.
+    val parts = remember(latest.id) { TutorRules.splitScripted(latest.text, session.questions.map { it.concept }) }
     val beats = remember(latest.id, question?.id, scale) {
         buildList {
             question?.let { q -> DialoguePaging.pages(q.text, latinBudget, cjkBudget).forEach { add(Beat(true, it, emptyList())) } }
-            DialoguePaging.pages(latest.text, latinBudget, cjkBudget).forEach { add(Beat(false, it, latest.sourceRefs)) }
+            if (parts == null) DialoguePaging.pages(latest.text, latinBudget, cjkBudget).forEach { add(Beat(false, it, latest.sourceRefs)) }
+            else DialoguePaging.pages(parts, latinBudget, cjkBudget, DialoguePaging.titledShare(scale))
+                .forEachIndexed { i, text -> add(Beat(false, text, latest.sourceRefs, parts.title, if (i == 0) parts.leadIn else null)) }
         }
     }
     var page by rememberSaveable(latest.id) { mutableIntStateOf(0) }
@@ -155,7 +164,8 @@ internal fun ExplainerTheatre(
 
     BoxWithConstraints(modifier.fillMaxSize()) {
         val landscape = maxWidth > maxHeight
-        val stageHeight = (maxHeight - 48.dp) * 0.45f
+        // Large text needs the room for the dialogue: the stage gets smaller.
+        val stageHeight = (maxHeight - 48.dp) * (if (scale >= 1.3f) 0.32f else 0.45f)
         val topBar = 48.dp
         val stageModifier = Modifier.then(tap).testTag("explainer_stage")
         val stage: @Composable (Modifier) -> Unit = { m ->
@@ -231,7 +241,7 @@ private fun Stage(
             skin.evidence, skin.evidenceSoft, Modifier.align(Alignment.TopStart).padding(12.dp).widthIn(max = 280.dp),
         )
         // The player's own character, small in the corner; poking it makes it react (it must not turn the page).
-        player.Draw(playerMood, Modifier.align(Alignment.BottomStart).padding(start = 10.dp, bottom = 6.dp).size(64.dp).testTag("player_avatar"))
+        player.Draw(playerMood, Modifier.align(Alignment.BottomStart).padding(start = 10.dp, bottom = 6.dp).size(64.dp).testTag("player_avatar"), pokeable = true)
     }
 }
 
@@ -258,6 +268,8 @@ private fun DialogueBox(
                 Text(speaker, style = MaterialTheme.typography.titleMedium, color = accent, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).testTag("dialogue_speaker"))
                 Text(stringResource(R.string.explainer_concept, session.conceptPosition + 1, session.questions.size), style = MaterialTheme.typography.labelMedium, color = skin.inkMuted, modifier = Modifier.testTag("concept_count"))
             }
+            if (!busy && beat.title != null) Text(beat.title, style = MaterialTheme.typography.titleMedium, color = skin.ink, fontWeight = FontWeight.SemiBold, modifier = Modifier.testTag("dialogue_title"))
+            if (!busy && beat.leadIn != null) Text(beat.leadIn, style = MaterialTheme.typography.bodySmall, color = skin.inkMuted, modifier = Modifier.testTag("dialogue_lead_in"))
             Box(Modifier.weight(1f, fill = true).verticalScroll(rememberScrollState())) {
                 if (busy) TypingIndicator(speaker)
                 else Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.graphicsLayer { alpha = fade.value }) {

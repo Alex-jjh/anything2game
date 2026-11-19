@@ -52,10 +52,10 @@ internal fun focusDue(c: TutorCache?): Boolean =
  * The single hook for the reading screen. Emits the focus question while it is due and returns true (the caller then
  * shows nothing else); afterwards emits a one-line reminder of the choice and returns false.
  */
-fun LazyListScope.focusItems(c: TutorCache?, enabled: Boolean, onSet: (List<Facet>, String) -> Unit): Boolean {
+fun LazyListScope.focusItems(c: TutorCache?, enabled: Boolean, allowNote: Boolean, onSet: (List<Facet>, String) -> Unit): Boolean {
     if (c == null) return false
     if (focusDue(c)) {
-        item { FocusPicker(enabled, onSet) }
+        item { FocusPicker(enabled, allowNote, onSet) }
         return true
     }
     val s = c.session
@@ -65,7 +65,7 @@ fun LazyListScope.focusItems(c: TutorCache?, enabled: Boolean, onSet: (List<Face
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
-private fun FocusPicker(enabled: Boolean, onSet: (List<Facet>, String) -> Unit) {
+private fun FocusPicker(enabled: Boolean, allowNote: Boolean, onSet: (List<Facet>, String) -> Unit) {
     val skin = A2g.skin
     var mask by rememberSaveable { mutableIntStateOf(0) } // bit per Facet ordinal; 0 = let the explainer decide
     var note by rememberSaveable { mutableStateOf("") }
@@ -80,11 +80,12 @@ private fun FocusPicker(enabled: Boolean, onSet: (List<Facet>, String) -> Unit) 
                     modifier = Modifier.testTag("focus_${f.name.lowercase()}"), label = { Text(stringResource(f.label())) })
             }
         }
-        OutlinedTextField(value = note, onValueChange = { note = it.take(MAX_FOCUS_NOTE) }, enabled = enabled,
+        // Free text can only steer a real model; a pre-written course has nothing to read it with.
+        if (allowNote) OutlinedTextField(value = note, onValueChange = { note = it.take(MAX_FOCUS_NOTE) }, enabled = enabled,
             modifier = Modifier.fillMaxWidth().testTag("focus_note"), minLines = 2, maxLines = 4,
             label = { Text(stringResource(R.string.focus_other)) },
             supportingText = { Text(stringResource(R.string.focus_other_note)) })
-        Button(onClick = { onSet(Facet.entries.filter { mask and (1 shl it.ordinal) != 0 }, note) }, enabled = enabled,
+        Button(onClick = { onSet(Facet.entries.filter { mask and (1 shl it.ordinal) != 0 }, if (allowNote) note else "") }, enabled = enabled,
             modifier = Modifier.fillMaxWidth().testTag("focus_continue")) { Text(stringResource(R.string.focus_continue)) }
     }
 }

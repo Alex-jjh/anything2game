@@ -17,7 +17,7 @@ import org.robolectric.annotation.GraphicsMode
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class ReadingFlowTest {
     @get:Rule val rule = createComposeRule()
-    @Test fun diagnostic_requires_answers_then_opens_tutor_not_practice() {
+    @Test fun an_answer_moves_on_and_the_last_one_opens_the_tutor_not_practice() {
         val deps = AndroidAppContainer(RuntimeEnvironment.getApplication())
         rule.setContent { A2gTheme { ReadingContent(deps, "pkg_demo_retrieval", onBack = {}) } }
         rule.waitUntil(10000) { rule.onAllNodesWithText("Pre-generated sample").fetchSemanticsNodes().isNotEmpty() }
@@ -27,14 +27,10 @@ class ReadingFlowTest {
         rule.onNodeWithTag("focus_decide").assertIsSelected()
         rule.onNodeWithTag("focus_continue").performClick()
         rule.waitUntil(10000) { rule.onAllNodesWithText("FOUNDATION 1 / 3").fetchSemanticsNodes().isNotEmpty() }
-        rule.onNodeWithTag("tutor_list").performScrollToNode(hasTestTag("diagnostic_next"))
-        rule.onNodeWithTag("diagnostic_next").assertIsNotEnabled()
+        rule.onNodeWithTag("diagnostic_next").assertDoesNotExist()   // nothing to move on with before an answer
         repeat(3) {
             rule.onNode(hasScrollToNodeAction()).performScrollToNode(hasTestTag("answer_unknown"))
-            rule.onNodeWithTag("answer_unknown").performClick()
-            rule.onNodeWithTag("diagnostic_next").performScrollTo()
-            rule.waitUntil(10000) { rule.onAllNodes(hasTestTag("diagnostic_next") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
-            rule.onNodeWithTag("diagnostic_next").performClick()
+            rule.onNodeWithTag("answer_unknown").performClick()   // the answer itself moves on
             val nextHeading = if (it < 2) "FOUNDATION ${it + 2} / 3" else "Your starting point"
             rule.waitUntil(10000) { rule.onAllNodesWithText(nextHeading).fetchSemanticsNodes().isNotEmpty() }
         }
@@ -51,23 +47,23 @@ class ReadingFlowTest {
         rule.onNodeWithText("Start practice").assertDoesNotExist()
     }
 
-    @Test fun focus_puts_the_chosen_facet_first_and_keeps_an_honest_note() {
+    @Test fun focus_puts_the_chosen_facet_first_and_a_scripted_course_offers_no_free_text() {
         val deps = AndroidAppContainer(RuntimeEnvironment.getApplication())
         rule.setContent { A2gTheme { ReadingContent(deps, "pkg_demo_retrieval", onBack = {}) } }
         rule.waitUntil(10000) { rule.onAllNodesWithTag("focus_continue").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithTag("tutor_list").performScrollToNode(hasTestTag("focus_limitation"))
         rule.onNodeWithTag("focus_limitation").performClick()
         rule.onNodeWithTag("focus_decide").assertIsNotSelected()
-        rule.onNodeWithTag("tutor_list").performScrollToNode(hasTestTag("focus_note"))
-        rule.onNodeWithTag("focus_note").performTextInput("what does it not show?")
+        // A pre-written course has nothing that could read a note: the field is not offered.
+        rule.onNodeWithTag("focus_note").assertDoesNotExist()
         rule.onNodeWithTag("tutor_list").performScrollToNode(hasTestTag("focus_continue"))
         rule.onNodeWithTag("focus_continue").performClick()
         // The first question is now the one about limits (the example's third concept); nothing was dropped.
         rule.waitUntil(10000) { rule.onAllNodesWithText("FOUNDATION 1 / 3").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithText("结论的适用范围").assertExists()
-        rule.onNodeWithTag("tutor_list").performScrollToNode(hasTestTag("focus_summary_note"))
-        rule.onNodeWithTag("focus_summary_note").assertExists()
+        rule.onNodeWithTag("tutor_list").performScrollToNode(hasTestTag("focus_summary"))
         rule.onNodeWithTag("focus_summary").assertExists()
+        rule.onNodeWithTag("focus_summary_note").assertDoesNotExist()
         rule.onNodeWithTag("focus_continue").assertDoesNotExist()
     }
 }

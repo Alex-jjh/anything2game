@@ -188,4 +188,9 @@ class ExplainerScreenshotTest {
         show(seed(Stage.STARTED), fontScale = 2f)
         rule.onRoot().captureRoboImage("$out/09b_font200_page.png")
     }
+
+    @Test fun font_scale_200_diagnostic() {
+        show(seed(Stage.FRESH, "demo_attention"), fontScale = 2f, ready = "answer_unknown", pkg = "demo_attention")
+        rule.onRoot().captureRoboImage("$out/09c_font200_diagnostic.png")
+    }
 }

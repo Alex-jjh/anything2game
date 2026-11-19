@@ -115,4 +115,25 @@ class TutorPersistenceTest {
         assertEquals(1, opened.questionIndex)
         assertEquals(retrievalKey, opened.session.sessionId)
     }
+
+    @Test fun `progress is read from the saved session without creating one`() = runBlocking {
+        val dir = File(context.cacheDir, "progress-test"); dir.deleteRecursively()
+        val repo = repo(dir)
+        assertNull(repo.progressFor(EXAMPLE_TUTOR_PACKAGE))
+        assertNull("asking must not create a session", dir.listFiles()?.firstOrNull { it.extension == "json" })
+        assertNull(repo.progressFor("no_such_course"))
+        var cache = repo.setFocus(repo.open(EXAMPLE_TUTOR_PACKAGE).cache, emptyList(), "")
+        repo.save(cache)
+        assertEquals(TutorProgress(explaining = false, position = 0, total = 3), repo.progressFor(EXAMPLE_TUTOR_PACKAGE))
+        cache = cache.copy(draftAnswers = cache.session.questions.associate { it.id to UNKNOWN_ANSWER }, questionIndex = 2)
+        cache = cache.copy(session = repo.assess(cache, "a"))
+        cache = cache.copy(session = repo.turn(cache, TutorIntent.START, "", "s"))
+        repo.save(cache)
+        val started = repo.progressFor(EXAMPLE_TUTOR_PACKAGE)!!
+        assertEquals(TutorProgress(true, 0, 3), started); assertFalse(started.finished)
+        cache = cache.copy(session = repo.turn(cache, TutorIntent.CONTINUE, "", "c1")); repo.save(cache)
+        assertEquals(TutorProgress(true, 1, 3), repo.progressFor(EXAMPLE_TUTOR_PACKAGE))
+        cache = cache.copy(session = repo.turn(cache, TutorIntent.CONTINUE, "", "c2")); repo.save(cache)
+        assertTrue(repo.progressFor(EXAMPLE_TUTOR_PACKAGE)!!.finished)
+    }
 }

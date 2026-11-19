@@ -61,10 +61,7 @@ class ExplainerFlowTest {
         rule.onNodeWithTag("explainer_header").assertExists()
         repeat(3) {
             rule.onNode(hasScrollToNodeAction()).performScrollToNode(hasTestTag("answer_unknown"))
-            rule.onNodeWithTag("answer_unknown").performClick()
-            rule.onNodeWithTag("diagnostic_next").performScrollTo()
-            rule.waitUntil(10000) { rule.onAllNodes(hasTestTag("diagnostic_next") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
-            rule.onNodeWithTag("diagnostic_next").performClick()
+            rule.onNodeWithTag("answer_unknown").performClick()   // choosing an answer moves on by itself
             rule.waitUntil(10000) { rule.onAllNodesWithText(if (it < 2) "FOUNDATION ${it + 2} / 3" else "Your starting point").fetchSemanticsNodes().isNotEmpty() }
         }
         rule.onNodeWithTag("explainer_header").assertExists()
@@ -129,10 +126,7 @@ class ExplainerFlowTest {
         rule.waitUntil(10000) { rule.onAllNodesWithText("FOUNDATION 1 / 3").fetchSemanticsNodes().isNotEmpty() }
         repeat(3) {
             rule.onNode(hasScrollToNodeAction()).performScrollToNode(hasTestTag("answer_unknown"))
-            rule.onNodeWithTag("answer_unknown").performClick()
-            rule.onNodeWithTag("diagnostic_next").performScrollTo()
-            rule.waitUntil(10000) { rule.onAllNodes(hasTestTag("diagnostic_next") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
-            rule.onNodeWithTag("diagnostic_next").performClick()
+            rule.onNodeWithTag("answer_unknown").performClick()   // choosing an answer moves on by itself
             rule.waitUntil(10000) { rule.onAllNodesWithText(if (it < 2) "FOUNDATION ${it + 2} / 3" else "Your starting point").fetchSemanticsNodes().isNotEmpty() }
         }
         rule.onNode(hasScrollToNodeAction()).performScrollToNode(hasTestTag("start_tutor"))

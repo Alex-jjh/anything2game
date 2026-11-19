@@ -70,4 +70,46 @@ class HomeFlowTest {
         assertEquals(0, reads)
     }
 
+    private fun entry(id: String, title: String, tutor: Boolean, progress: com.anything2game.app.data.tutor.TutorProgress? = null) = com.anything2game.app.ui.library.LibraryEntry(
+        com.anything2game.engine.ports.PackageSummary(id, title, "en", 1, true),
+        listOf(com.anything2game.app.ui.library.LevelEntry("L1", 1, "First level", com.anything2game.app.ui.library.LevelStatus.New)), hasTutor = tutor, tutorProgress = progress)
+
+    @Test fun learn_lists_only_explained_courses_and_uploaded_documents_with_no_dead_end() {
+        val upload = com.anything2game.contract.tutor.TutorSession(sessionId = "tut_up", documentId = "doc_up", documentVersion = "v1", title = "My uploaded paper", language = "en", mode = "mock",
+            questions = emptyList(), sources = emptyList())
+        library = LibraryUiState(false, listOf(entry("explained", "Explained course", true), entry("practice_only", "Practice-only course", false)), tutorials = listOf(upload))
+        rule.onNodeWithText("Explained course").assertExists()
+        rule.onNodeWithTag("home_LEARN").performScrollToNode(hasText("My uploaded paper"))
+        rule.onNodeWithText("My uploaded paper").assertExists()
+        rule.onNodeWithText("Practice-only course").assertDoesNotExist()           // it has no explanation: it lives in Practice
+        rule.onNodeWithText("View material").assertDoesNotExist()
+        rule.onNodeWithText("Other local materials").assertDoesNotExist()
+        rule.onNodeWithTag("tab_PRACTICE").performClick()
+        rule.onNodeWithTag("home_PRACTICE").performScrollToNode(hasText("Practice-only course"))
+        rule.onNodeWithText("Practice-only course").assertExists()
+    }
+
+    @Test fun learn_with_nothing_to_explain_says_so_instead_of_listing_practice_courses() {
+        library = LibraryUiState(false, listOf(entry("practice_only", "Practice-only course", false)))
+        rule.onNodeWithText("Practice-only course").assertDoesNotExist()
+        rule.onNodeWithTag("pick_pdf").assertExists()
+        rule.onNodeWithText(RuntimeEnvironment.getApplication().getString(com.anything2game.app.R.string.empty_library)).assertExists()
+    }
+
+    @Test fun the_learn_card_says_start_continue_with_the_concept_or_explained() {
+        fun p(explaining: Boolean, at: Int) = com.anything2game.app.data.tutor.TutorProgress(explaining, at, 4)
+        val app = RuntimeEnvironment.getApplication()
+        library = LibraryUiState(false, listOf(
+            entry("fresh", "Fresh", true), entry("diag", "Diag", true, p(false, 0)),
+            entry("mid", "Mid", true, p(true, 1)), entry("first", "First", true, p(true, 0)), entry("done", "Done", true, p(true, 3))))
+        fun label(id: String) = rule.onNodeWithTag("home_LEARN").performScrollToNode(hasTestTag("start_explanation_$id")).let {
+            rule.onNodeWithTag("start_explanation_$id").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.Text].joinToString("") { t -> t.text }
+        }
+        assertEquals(app.getString(com.anything2game.app.R.string.tutor_start_explanation), label("fresh"))
+        assertEquals(app.getString(com.anything2game.app.R.string.tutor_card_continue), label("diag"))
+        assertEquals(app.getString(com.anything2game.app.R.string.tutor_card_continue_concept, 2, 4), label("mid"))
+        assertEquals("Continue · concept 2/4", label("mid"))
+        assertEquals(app.getString(com.anything2game.app.R.string.tutor_card_continue_concept, 1, 4), label("first"))
+        assertEquals(app.getString(com.anything2game.app.R.string.tutor_card_explained), label("done"))
+    }
 }

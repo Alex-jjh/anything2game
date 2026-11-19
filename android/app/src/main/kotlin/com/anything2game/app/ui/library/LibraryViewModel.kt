@@ -37,6 +37,8 @@ data class LibraryEntry(
     val mock: Boolean = false,
     /** The course ships a pre-generated tutor script, so the Learn tab can start an explanation offline. */
     val hasTutor: Boolean = false,
+    /** Where the student is in the saved explanation of this course (null: nothing saved yet). */
+    val tutorProgress: com.anything2game.app.data.tutor.TutorProgress? = null,
 ) {
     /** An open session resumes in its own frame; anything new starts in the frame the player chose (Classic by default). */
     fun frameFor(levelId: String): FrameId = if (levelId == resumableLevelId) resumeFrame else selectedFrame
@@ -101,7 +103,10 @@ class LibraryViewModel(private val deps: AppDependencies) : ViewModel() {
             catch (_: Exception) { emptySet() }
         val tutorials = try { deps.tutors.list() } catch (e: CancellationException) { throw e }
             catch (_: Exception) { failed = true; emptyList() }
-        _state.value = LibraryUiState(loading = false, entries = entries.map { it.copy(hasTutor = it.summary.packageId in scripted) }, hasError = failed, tutorials = tutorials, preparingPractice = _state.value.preparingPractice, practiceError = _state.value.practiceError)
+        _state.value = LibraryUiState(loading = false, entries = entries.map { e ->
+            val has = e.summary.packageId in scripted
+            e.copy(hasTutor = has, tutorProgress = if (has) try { deps.tutors.progressFor(e.summary.packageId) } catch (c: CancellationException) { throw c } catch (_: Exception) { null } else null)
+        }, hasError = failed, tutorials = tutorials, preparingPractice = _state.value.preparingPractice, practiceError = _state.value.practiceError)
     }
 }
 
