@@ -33,6 +33,13 @@ Notes from the build:
 - **The explainer, Aya,** is an original procedural character, coloured sky blue so it stays clearly apart from well-known round yellow mascots and from the player's three characters.
 - **Dialogue pages** fill what the box holds (≈ 170 Latin or 90 CJK characters at 19 sp), with fewer per page at larger system font sizes. Text is never clipped.
 
+Native-feeling drag and drop is also built (it was a goal of the review owner):
+- **Sort:** press and hold a card and drag it into a bin. The bin highlights, with a haptic tick on entering it and a confirm when the card is dropped.
+- **Order:** drag a row by its handle, or press and hold it. The other rows slide out of the way, and the list auto-scrolls at its edges.
+- **Kept paths:** tap and arrow buttons remain, and TalkBack actions cover every move.
+- **Screens:** `docs/design/screens/drag/`.
+- **Remaining issue:** long generated steps (30+ words) make rows tall. The real fix is the length budgets in generation (design-review §4).
+
 ## 3. Still to decide (team)
 
 - The explainer's look: which CC0 standee art, whether to use a background image, the explainer's name and personality.
