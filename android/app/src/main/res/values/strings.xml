@@ -34,10 +34,10 @@
     <string name="swipe_instruction">Swipe right if the material supports it, left if it doesn\'t.</string>
     <string name="swipe_card_count">Card %1$d of %2$d</string>
     <string name="swipe_you_said">You said: %1$s</string>
-    <string name="sort_instruction">Tap a card, then the bin it belongs in.</string>
+    <string name="sort_instruction">Tap a card, then the bin it belongs in. Or press and hold a card, and drag it there.</string>
     <string name="sort_correct_bin">Belongs in: %1$s</string>
     <string name="sort_left">%1$d left</string>
-    <string name="sort_tap_to_return">Tap a filed card to take it back.</string>
+    <string name="sort_tap_to_return">Tap a filed card to take it back, or drag it to another bin.</string>
     <string name="evidence_title">Evidence</string>
     <string name="evidence_page">Page %1$s</string>
     <string name="evidence_close">Back to the case</string>
@@ -92,7 +92,7 @@
     <string name="crossexam_wrong_evidence">Right statement — but that passage doesn\'t show it.</string>
     <string name="crossexam_flawed">Goes beyond the evidence</string>
     <string name="crossexam_you_chose">You challenged this</string>
-    <string name="order_instruction">Move the steps into the right order.</string>
+    <string name="order_instruction">Move the steps into the right order. Drag a step by its handle, or press and hold it.</string>
     <string name="order_up">Move up</string>
     <string name="order_down">Move down</string>
     <string name="order_correct_position">Should be step %1$d</string>
@@ -184,4 +184,8 @@
     <string name="level_status_cleared">Cleared · review tomorrow to make it stick</string>
     <string name="setting_pause_walking">Pause when I\'m walking</string>
     <string name="setting_pause_walking_body">Off: walking only switches to the one-handed layout. On: the level waits until you stop.</string>
+    <string name="sort_put_in">Put in %1$s</string>
+    <string name="sort_take_back">Take back</string>
+    <string name="sort_pool_empty">All filed. Drag a card here to take it back.</string>
+    <string name="order_drag_handle">Drag to reorder</string>
 </resources>

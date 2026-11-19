@@ -34,10 +34,10 @@
     <string name="swipe_instruction">资料能支持就右滑，不能支持就左滑。</string>
     <string name="swipe_card_count">第 %1$d / %2$d 张</string>
     <string name="swipe_you_said">你的判断：%1$s</string>
-    <string name="sort_instruction">先点卡片，再点它该放的类别。</string>
+    <string name="sort_instruction">先点卡片，再点它该放的类别；也可以按住卡片拖过去。</string>
     <string name="sort_correct_bin">应归入：%1$s</string>
     <string name="sort_left">还剩 %1$d 张</string>
-    <string name="sort_tap_to_return">点已归档的卡片可以撤回。</string>
+    <string name="sort_tap_to_return">点已归档的卡片可以撤回，也可以把它拖到另一个类别。</string>
     <string name="evidence_title">证据</string>
     <string name="evidence_page">第 %1$s 页</string>
     <string name="evidence_close">回到案卷</string>
@@ -92,7 +92,7 @@
     <string name="crossexam_wrong_evidence">质疑对了，但这段原文证明不了。</string>
     <string name="crossexam_flawed">超出了证据</string>
     <string name="crossexam_you_chose">你质疑的是这句</string>
-    <string name="order_instruction">把步骤排成正确的顺序。</string>
+    <string name="order_instruction">把步骤排成正确的顺序。拖动手柄，或按住步骤直接拖。</string>
     <string name="order_up">上移</string>
     <string name="order_down">下移</string>
     <string name="order_correct_position">应为第 %1$d 步</string>
@@ -184,4 +184,8 @@
     <string name="level_status_cleared">已通关 · 明天复习一次就更牢</string>
     <string name="setting_pause_walking">走路时暂停</string>
     <string name="setting_pause_walking_body">关闭：走路时只切换成单手布局。打开：等你停下再继续。</string>
+    <string name="sort_put_in">放入「%1$s」</string>
+    <string name="sort_take_back">撤回</string>
+    <string name="sort_pool_empty">都归好了。把卡片拖到这里可以撤回。</string>
+    <string name="order_drag_handle">拖动排序</string>
 </resources>

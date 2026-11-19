@@ -320,7 +320,7 @@ abstract class JourneyTest {
                 }
                 is OrderItem -> {
                     val want = (answer as OrderAnswer).stepIds.map { id -> item.steps.first { it.id == id }.text }
-                    fun shown(): List<String> = item.steps.map { it.text }.sortedBy { t -> rule.onNode(hasText(t)).fetchSemanticsNode().boundsInRoot.top }
+                    fun shown(): List<String> = item.steps.map { it.text }.sortedBy { t -> rule.onNode(hasText(t)).fetchSemanticsNode().positionInRoot.y }
                     for (target in want.indices) {
                         while (true) {
                             val now = shown()
