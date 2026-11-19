@@ -1,5 +1,7 @@
 # How a course starts: explain first or play first, the reading map and focus choice (2026-11-19)
 
+**Status (2026-11-20)**: the team chose a diagnostic → grounded tutor opening ([document-tutor](../design/document-tutor.md)), which replaces §5 here. The focus/facet design (§4.3) is still an open proposal (PRODUCT.md D4).
+
 **Scope**: what the player sees before the first question, and how the opening adapts to what a reader cares about. Answers Q30–Q32 in the [question log](question-log.md). This is input for the team's design decision. Under the CSI301 rules the app design, the reports and the demo are the team's own work. The technical parts (contract, engine, generation) are code and may use AI.
 
 ## 1. Today's flow (Case frame)
