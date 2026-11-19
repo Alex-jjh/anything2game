@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nav_practice">Practice</string>
+    <string name="nav_learn">Learn</string>
+    <string name="nav_profile">Me</string>
+    <string name="home_learn_title">Understand. Then remember.</string>
+    <string name="home_learn_subtitle">Build your knowledge, one paper at a time.</string>
+    <string name="home_practice_title">Your practice files</string>
+    <string name="home_practice_subtitle">A separate file for each document. Read first, then practice.</string>
+    <string name="home_profile_title">My learning file</string>
+    <string name="home_profile_subtitle">A little more understanding, every time.</string>
+    <string name="home_load_error">Some local records could not be read. They have not been changed or deleted. Statistics may be incomplete; please retry.</string>
+    <string name="home_retry">Retry</string>
+    <string name="home_read_first">READ → PRACTICE</string>
+    <string name="home_upload_title">Bring your next paper</string>
+    <string name="home_upload_body">Choose a PDF to confirm the file. Upload is not connected yet; your file will not be uploaded or parsed.</string>
+    <string name="home_library">Your reading shelf</string>
+    <plurals name="home_chapters">
+        <item quantity="one">%1$d learning chapter</item>
+        <item quantity="other">%1$d learning chapters</item>
+    </plurals>
+    <string name="home_start_reading">Start reading</string>
+    <string name="home_read_first_action">Read the explanation first</string>
+    <string name="home_classic">CLASSIC · BY DOCUMENT</string>
+    <string name="home_level_solid">Consolidated</string>
+    <string name="home_resume">Continue your session</string>
+    <string name="home_practice_action">Start practice</string>
+    <string name="home_progress">Learning progress</string>
+    <string name="home_stat_documents">Documents</string>
+    <string name="home_stat_practiced">Practiced units</string>
+    <string name="home_stat_review">Due for review</string>
+    <string name="home_stats_note">Local records, including presets. Practiced does not mean mastered.</string>
+    <string name="home_go_practice">Go to practice</string>
+    <string name="home_account_title">On this device</string>
+    <string name="home_account_body">You are using a local profile. Your name, character and progress are saved on this device. Accounts and cloud sync are not connected yet.</string>
+    <string name="home_demo_tools">Demo controls</string>
+    <string name="home_guest">Learner</string>
+    <string name="home_local_profile">LOCAL PROFILE</string>
+    <string name="home_edit_name">Edit nickname</string>
+    <string name="home_name_label">Nickname (optional)</string>
+    <string name="home_save">Save</string>
+    <string name="home_identity_note">Choose a study companion and make sense of the paper together.</string>
+    <string name="reading_title">Paper explanation</string>
+    <string name="reading_note">These are the chapter points supplied with the learning package. Open the source to check them; having a citation does not imply human verification.</string>
+    <string name="preflight_title">Before you begin</string>
+    <string name="preflight_note">How familiar are these chapter topics? Your choices stay on this device and mark chapters to focus on. They do not assess ability or trigger AI generation. You can also continue directly.</string>
+    <string name="preflight_known">I know this</string>
+    <string name="preflight_unsure">A little unsure</string>
+    <string name="preflight_new">New to me</string>
+    <string name="preflight_continue">Read the explanation</string>
+    <string name="preflight_edit">Update my preparation</string>
+    <string name="reading_focus">FOCUS HERE</string>
+    <string name="reading_source">View source passages</string>
+    <string name="reading_hide_source">Hide source passages</string>
+    <string name="home_needs_review">Needs practice</string>
+</resources>

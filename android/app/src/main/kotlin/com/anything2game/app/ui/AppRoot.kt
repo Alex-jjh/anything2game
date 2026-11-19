@@ -17,75 +17,55 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.SavedStateHandle
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anything2game.app.AppDependencies
 import com.anything2game.app.R
-import com.anything2game.contract.FrameId
-import com.anything2game.app.importing.ImportRequest
 import com.anything2game.app.platform.SimulatedContextSource
 import com.anything2game.app.ui.common.ContextSimulator
 import com.anything2game.app.ui.importing.ImportContent
-import com.anything2game.app.ui.library.LibraryContent
+import com.anything2game.app.ui.home.HomeContent
+import com.anything2game.app.ui.home.HomeNavigation
+import com.anything2game.app.ui.home.HomeTab
+import com.anything2game.app.ui.reading.ReadingContent
 import com.anything2game.app.ui.library.LibraryViewModel
 import com.anything2game.app.ui.play.PlayContent
 import com.anything2game.app.ui.play.PlayUiState
 import com.anything2game.app.ui.play.PlayViewModel
 import com.anything2game.app.ui.theme.A2g
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-
-sealed interface Route {
-    data object Library : Route
-    data class Play(val packageId: String, val levelId: String, val frameId: FrameId) : Route
-    data class Import(val request: ImportRequest) : Route
-}
-
-/** Three screens don't need a navigation library. The open level survives process death via SavedStateHandle. */
-class Navigator(private val saved: SavedStateHandle) : ViewModel() {
-    private val _route = MutableStateFlow(restore())
-    val route: StateFlow<Route> = _route.asStateFlow()
-
-    private fun restore(): Route {
-        val pkg = saved.get<String>(KEY_PKG)
-        val level = saved.get<String>(KEY_LEVEL)
-        val frame = saved.get<String>(KEY_FRAME)?.let { v -> FrameId.entries.firstOrNull { it.name == v } } ?: FrameId.CLASSIC
-        return if (pkg != null && level != null) Route.Play(pkg, level, frame) else Route.Library
-    }
-
-    fun openPlay(packageId: String, levelId: String, frameId: FrameId) {
-        saved[KEY_PKG] = packageId; saved[KEY_LEVEL] = levelId; saved[KEY_FRAME] = frameId.name
-        _route.value = Route.Play(packageId, levelId, frameId)
-    }
-
-    fun openImport(request: ImportRequest) { _route.value = Route.Import(request) }
-
-    fun toLibrary() {
-        saved.remove<String>(KEY_PKG); saved.remove<String>(KEY_LEVEL); saved.remove<String>(KEY_FRAME)
-        _route.value = Route.Library
-    }
-
-    private companion object { const val KEY_PKG = "route.pkg"; const val KEY_LEVEL = "route.level"; const val KEY_FRAME = "route.frame" }
-}
 
 @Composable
 fun AppRoot(deps: AppDependencies, navigator: Navigator, onPickPdf: () -> Unit) {
     val route by navigator.route.collectAsStateWithLifecycle()
+    val tab by navigator.tab.collectAsStateWithLifecycle()
     val simulator = simulatorFor(deps)
     var avatarId by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(deps.avatarPreferences.get() ?: Avatars.default.id) }
+    var nickname by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(deps.homePreferences.nickname) }
+    val tabsState = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
+    LaunchedEffect(navigator) { navigator.initializeTab(deps.homePreferences.lastTab) }
+    val selectTab: (HomeTab) -> Unit = { navigator.selectTab(it); deps.homePreferences.lastTab = it.name }
     androidx.compose.runtime.CompositionLocalProvider(LocalAvatar provides Avatars.of(avatarId)) {
     when (val r = route) {
-        Route.Library -> {
+        Route.Home -> {
             val vm = viewModel { LibraryViewModel(deps) }
             LaunchedEffect(Unit) { vm.refresh() }
             val state by vm.state.collectAsStateWithLifecycle()
-            Scaffold(containerColor = A2g.skin.paper) { padding ->
-                LibraryContent(state, onOpenLevel = navigator::openPlay, onSelectFrame = vm::selectFrame, onPickPdf = onPickPdf,
-                    avatarId = avatarId, onSelectAvatar = { avatarId = it; deps.avatarPreferences.set(it) }, footer = { simulator?.invoke() }, contentPadding = padding)
+            BackHandler(enabled = tab != HomeTab.LEARN) { selectTab(HomeTab.LEARN) }
+            Scaffold(containerColor = A2g.skin.paper, bottomBar = { HomeNavigation(tab, selectTab) }) { padding ->
+                tabsState.SaveableStateProvider(tab.name) {
+                    HomeContent(tab, state, avatarId, nickname,
+                        onSelectAvatar = { avatarId = it; deps.avatarPreferences.set(it) },
+                        onRename = { nickname = it; deps.homePreferences.nickname = it },
+                        onPickPdf = onPickPdf, onRead = navigator::openRead, onPlay = navigator::openPlay,
+                        onSelectTab = selectTab, onRetry = { vm.refresh() }, padding = padding, simulator = simulator)
+                }
             }
+        }
+        is Route.Read -> {
+            BackHandler(onBack = navigator::toHome)
+            ReadingContent(deps, r.packageId, onBack = navigator::toHome, onPractice = { pkg, level, frame ->
+                selectTab(HomeTab.PRACTICE); navigator.openPlay(pkg, level, frame)
+            })
         }
         is Route.Play -> {
             val vm = viewModel(key = "play:${r.packageId}:${r.levelId}:${r.frameId}") { PlayViewModel(deps, r.packageId, r.levelId, r.frameId) }
@@ -93,15 +73,15 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator, onPickPdf: () -> Unit) 
             when (val s = state) {
                 PlayUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                 is PlayUiState.Failed -> {
-                    BackHandler(onBack = navigator::toLibrary)
+                    BackHandler(onBack = navigator::toHome)
                     Text(stringResource(R.string.load_failed, s.reason), Modifier.padding(24.dp))
                 }
-                is PlayUiState.Ready -> PlayContent(s, onAction = vm::dispatch, onBack = navigator::toLibrary, onRestart = vm::restart, simulator = simulator)
+                is PlayUiState.Ready -> PlayContent(s, onAction = vm::dispatch, onBack = navigator::toHome, onRestart = vm::restart, simulator = simulator)
             }
         }
         is Route.Import -> {
-            BackHandler(onBack = navigator::toLibrary)
-            Scaffold(containerColor = A2g.skin.paper) { padding -> ImportContent(r.request, onCancel = navigator::toLibrary, contentPadding = padding) }
+            BackHandler(onBack = navigator::toHome)
+            Scaffold(containerColor = A2g.skin.paper) { padding -> ImportContent(r.request, onCancel = navigator::toHome, contentPadding = padding) }
         }
     }
     }

@@ -63,8 +63,8 @@
     <string name="import_kind_text">文字</string>
     <string name="import_size_unknown">大小未知</string>
     <string name="import_chars">%1$d 个字符</string>
-    <string name="import_consent">生成关卡时，文字会发送给外部 AI 服务处理。照片只在手机上识别，不会上传。</string>
-    <string name="import_start">生成关卡</string>
+    <string name="import_consent">当前仅在本机确认资料，不上传、不解析，也不调用 AI；生成服务尚未接入。</string>
+    <string name="import_start">查看生成服务说明</string>
     <string name="import_not_connected">尚未接入服务器：这个版本只能玩示例，没有上传任何内容。</string>
     <string name="import_cancel">取消</string>
     <string name="import_nothing">没有可导入的内容。</string>

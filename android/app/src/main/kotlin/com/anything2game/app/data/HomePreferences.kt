@@ -1,0 +1,28 @@
+package com.anything2game.app.data
+
+import android.content.Context
+import androidx.core.content.edit
+
+/** Device-only profile and reading preparation. No account or inferred knowledge score. */
+class HomePreferences(context: Context) {
+    private val prefs = context.applicationContext.getSharedPreferences("home", Context.MODE_PRIVATE)
+    var nickname: String
+        get() = prefs.getString("nickname", "").orEmpty()
+        set(value) { prefs.edit { putString("nickname", value.trim().take(24)) } }
+    var lastTab: String
+        get() = prefs.getString("tab", "LEARN") ?: "LEARN"
+        set(value) { prefs.edit { putString("tab", value) } }
+
+    // Length prefixes avoid collisions; versioning retains old answers without applying them to new content.
+    private fun key(pkg: String, version: String, level: String) =
+        listOf("familiarity", pkg, version, level).joinToString(":") { "${it.length}:$it" }
+    fun isPrepared(pkg: String, version: String): Boolean = prefs.getBoolean("prepared:" + key(pkg, version, ""), false)
+    fun markPrepared(pkg: String, version: String) { prefs.edit { putBoolean("prepared:" + key(pkg, version, ""), true) } }
+    fun familiarity(pkg: String, version: String, level: String): Familiarity? =
+        prefs.getString(key(pkg, version, level), null)?.let { raw -> Familiarity.entries.firstOrNull { it.name == raw } }
+    fun setFamiliarity(pkg: String, version: String, level: String, value: Familiarity) {
+        prefs.edit { putString(key(pkg, version, level), value.name) }
+    }
+}
+
+enum class Familiarity { KNOWN, UNSURE, NEW }

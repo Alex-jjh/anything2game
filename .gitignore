@@ -7,3 +7,6 @@ local.properties
 *.keystore
 /server/data/
 .DS_Store
+
+# Kotlin incremental compiler state
+.kotlin/

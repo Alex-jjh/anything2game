@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nav_practice">巩固</string>
+    <string name="nav_learn">讲解</string>
+    <string name="nav_profile">我的</string>
+    <string name="home_learn_title">读懂，再记住。</string>
+    <string name="home_learn_subtitle">从一篇论文开始，建立自己的知识档案。</string>
+    <string name="home_practice_title">知识巩固</string>
+    <string name="home_practice_subtitle">每份资料独立存档。先读讲解，再用经典练习巩固。</string>
+    <string name="home_profile_title">我的学习档案</string>
+    <string name="home_profile_subtitle">每一次理解，都值得留下记录。</string>
+    <string name="home_load_error">部分本机记录暂时无法读取；未修改或删除原记录。统计可能不完整，请重试。</string>
+    <string name="home_retry">重新读取</string>
+    <string name="home_read_first">讲解 → 巩固</string>
+    <string name="home_upload_title">把下一篇论文带进来</string>
+    <string name="home_upload_body">选择 PDF，先确认文件。当前版本尚未连接上传服务，不会上传或解析你的文件。</string>
+    <string name="home_library">资料与讲解</string>
+    <plurals name="home_chapters">
+        <item quantity="other">%1$d 个学习章节</item>
+    </plurals>
+    <string name="home_start_reading">开始阅读</string>
+    <string name="home_read_first_action">先看讲解</string>
+    <string name="home_classic">经典巩固 · 按资料归档</string>
+    <string name="home_level_solid">已巩固</string>
+    <string name="home_resume">继续上次进度</string>
+    <string name="home_practice_action">开始巩固</string>
+    <string name="home_progress">学习足迹</string>
+    <string name="home_stat_documents">本机资料</string>
+    <string name="home_stat_practiced">已练知识点</string>
+    <string name="home_stat_review">待复习</string>
+    <string name="home_stats_note">仅统计本机记录，含预生成示例；已练习不等于已掌握。</string>
+    <string name="home_go_practice">前往巩固</string>
+    <string name="home_account_title">数据留在这台设备</string>
+    <string name="home_account_body">当前使用本机资料，无需登录。昵称、角色和学习记录保存在此设备；尚未接入账户与云同步。</string>
+    <string name="home_demo_tools">演示工具</string>
+    <string name="home_guest">学习者</string>
+    <string name="home_local_profile">本机个人资料</string>
+    <string name="home_edit_name">编辑昵称</string>
+    <string name="home_name_label">昵称（可留空）</string>
+    <string name="home_save">保存</string>
+    <string name="home_identity_note">选一位学习伙伴，一起把论文读明白。</string>
+    <string name="reading_title">论文讲解</string>
+    <string name="reading_note">这里展示学习包已有的章节要点。可展开对应原文核对；有来源不等于内容已经人工验证。</string>
+    <string name="preflight_title">学前摸底</string>
+    <string name="preflight_note">先看看你对这些章节主题的熟悉程度。选择仅保存在本机，用来标记需要重点阅读的章节，不评定能力，也不会触发 AI 生成。可直接继续。</string>
+    <string name="preflight_known">知道</string>
+    <string name="preflight_unsure">有点模糊</string>
+    <string name="preflight_new">不知道</string>
+    <string name="preflight_continue">查看讲解</string>
+    <string name="preflight_edit">调整学前摸底</string>
+    <string name="reading_focus">建议重点阅读</string>
+    <string name="reading_source">查看对应原文</string>
+    <string name="reading_hide_source">收起原文</string>
+    <string name="home_needs_review">待巩固</string>
+</resources>

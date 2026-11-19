@@ -1,0 +1,38 @@
+{
+  "app": {
+    "tests": 65,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "engine": {
+    "tests": 27,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "contract": {
+    "tests": 30,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "lint": {
+    "Warning": 21
+  },
+  "apk_sha256": "f39e414ca96a3a8f8b80388acc72635589147b764d0346cd416e9cc2808117da",
+  "emulator_smoke": {
+    "status": "passed",
+    "checks": [
+      "All three tabs open the expected screen",
+      "Native keyboard nickname save",
+      "Cancel keeps saved nickname",
+      "Character persisted",
+      "Configuration change retains profile",
+      "Cold relaunch restores tab, nickname and character",
+      "PDF picker cancellation returns to Learn"
+    ],
+    "serial": "emulator-5578",
+    "api": "37"
+  }
+}

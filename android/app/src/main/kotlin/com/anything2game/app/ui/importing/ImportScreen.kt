@@ -33,13 +33,13 @@ import com.anything2game.app.ui.theme.A2g
 
 /**
  * Confirms what was shared before anything leaves the phone. Until the server is connected,
- * "Make a game" only says so — it never pretends to generate.
+ * the generation information action only says so — it never pretends to generate.
  */
 @Composable
 fun ImportContent(request: ImportRequest, onCancel: () -> Unit, contentPadding: PaddingValues = PaddingValues()) {
     val skin = A2g.skin
     val context = LocalContext.current
-    var attempted by rememberSaveable { mutableStateOf(false) }
+    var attempted by rememberSaveable(request) { mutableStateOf(false) }
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(contentPadding).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),

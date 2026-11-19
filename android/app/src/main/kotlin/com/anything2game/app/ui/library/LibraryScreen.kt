@@ -123,6 +123,7 @@ private fun LevelRow(level: LevelEntry, onClick: () -> Unit) {
         when (val s = level.status) {
             LevelStatus.New -> Badge(stringResource(R.string.level_status_new), skin.inkMuted, skin.paper)
             is LevelStatus.InProgress -> Badge(stringResource(R.string.level_status_in_progress, s.position, s.total), skin.paused, skin.paper)
+            LevelStatus.NeedsReview -> Badge(stringResource(R.string.home_needs_review), skin.evidence, skin.evidenceSoft)
             LevelStatus.Done -> Badge(stringResource(R.string.level_status_done), skin.correct, skin.correctSoft)
         }
         Spacer(Modifier.size(4.dp))
@@ -147,15 +148,16 @@ private fun ImportCard(onPickPdf: () -> Unit) {
 }
 
 /** Pick your character. Each one plays live (breathes, blinks, reacts to a poke); the chosen one cheers. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun AvatarPicker(selectedId: String?, onSelect: (String) -> Unit) {
+fun AvatarPicker(selectedId: String?, onSelect: (String) -> Unit) {
     val skin = A2g.skin
     val current = com.anything2game.app.ui.character.LocalAvatar.current
     androidx.compose.material3.Card(colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = skin.card)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(stringResource(R.string.avatar_pick_title), style = MaterialTheme.typography.titleMedium, color = skin.ink)
             Text(stringResource(R.string.avatar_pick_body), style = MaterialTheme.typography.bodySmall, color = skin.inkMuted)
-            androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 com.anything2game.app.ui.character.Avatars.all.forEach { a ->
                     val chosen = a.id == (selectedId ?: current.id)
                     Column(
@@ -165,7 +167,7 @@ private fun AvatarPicker(selectedId: String?, onSelect: (String) -> Unit) {
                             .padding(horizontal = 10.dp, vertical = 8.dp),
                         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
                     ) {
-                        a.Draw(if (chosen) com.anything2game.app.ui.character.Mood.HAPPY else com.anything2game.app.ui.character.Mood.IDLE, Modifier.size(78.dp))
+                        a.Draw(if (chosen) com.anything2game.app.ui.character.Mood.HAPPY else com.anything2game.app.ui.character.Mood.IDLE, Modifier.size(64.dp))
                         Text(stringResource(a.nameRes), style = MaterialTheme.typography.labelLarge, color = if (chosen) skin.action else skin.ink, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                         Text(stringResource(a.traitRes), style = MaterialTheme.typography.labelSmall, color = skin.inkMuted)
                     }

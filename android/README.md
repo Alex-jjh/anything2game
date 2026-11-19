@@ -75,3 +75,9 @@ Needs JDK 21 and Android SDK platform 37 (`local.properties` → `sdk.dir`). Rev
 3. Play a level, rotate mid-card, kill the app from recents, reopen → same card, same decisions.
 4. Simulator: Walking → pause screen; On the metro → bigger buttons; Offline → Ask explains.
 5. Switch phone language to Chinese → UI in Chinese.
+
+## Three-tab home (2026-11-19)
+
+The current entry point is Practice / Learn / Me, with Learn in the center and selected on first launch. Me contains a device-only nickname, existing character picker and local learning statistics; accounts and cloud sync remain unconnected. New practice uses Classic, while unfinished historical sessions keep their original frame. Learn opens a chapter self-assessment and existing package explanations/sources before practice. PDF selection still opens the existing local confirmation screen without uploading or parsing.
+
+See [design and data boundaries](../docs/design/home-navigation.md) and [acceptance evidence](../docs/design/home-navigation-acceptance.md). The older LibraryContent remains a historical screenshot fixture; AppRoot renders HomeContent.

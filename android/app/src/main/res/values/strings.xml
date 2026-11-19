@@ -63,8 +63,8 @@
     <string name="import_kind_text">Text</string>
     <string name="import_size_unknown">Size unknown</string>
     <string name="import_chars">%1$d characters</string>
-    <string name="import_consent">To build levels, the text is sent to an external AI provider. Photos are read on your phone and never uploaded.</string>
-    <string name="import_start">Make a game</string>
+    <string name="import_consent">This version only confirms material on this device. Files and text are not uploaded, parsed or sent to AI; generation is not connected yet.</string>
+    <string name="import_start">About generation</string>
     <string name="import_not_connected">Not connected yet: this build plays the samples only. Nothing was uploaded.</string>
     <string name="import_cancel">Cancel</string>
     <string name="import_nothing">Nothing to import.</string>

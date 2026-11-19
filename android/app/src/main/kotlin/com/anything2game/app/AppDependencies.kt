@@ -30,6 +30,7 @@ interface AppDependencies {
     val packages: PackageRepository
     val frames: FrameRepository
     val framePreferences: FramePreferences
+    val homePreferences: com.anything2game.app.data.HomePreferences
     val avatarPreferences: AvatarPreferences
     val sessions: SessionStore
     val mastery: MasteryStore
@@ -50,6 +51,7 @@ class AndroidAppContainer(context: Context) : AppDependencies {
     override val packages: PackageRepository = content
     override val frames: FrameRepository = content
     override val framePreferences: FramePreferences = SharedPrefsFramePreferences(app)
+    override val homePreferences = com.anything2game.app.data.HomePreferences(app)
     override val avatarPreferences: AvatarPreferences = SharedPrefsAvatarPreferences(app)
     override val sessions: SessionStore = FileSessionStore(File(app.filesDir, "sessions"))
     override val mastery: MasteryStore = FileMasteryStore(File(app.filesDir, "mastery"))
