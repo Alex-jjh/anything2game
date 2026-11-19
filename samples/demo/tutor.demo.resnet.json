@@ -1,0 +1,148 @@
+{
+ "packageId": "demo_resnet",
+ "contentVersion": "1",
+ "documentVersion": "sha256:c420497b5df5220f36e158af5f75576514afdc6e14afecfc494d53d4517764e3",
+ "blueprint": {
+  "schema": "a2g.tutor/draft-v1",
+  "concepts": [
+   {
+    "question": {
+     "id": "q1",
+     "conceptId": "degradation-problem",
+     "concept": "The Degradation Problem",
+     "prompt": "What happens to training error when a 'plain' (non-residual) network is made much deeper?",
+     "options": [
+      {
+       "id": "a",
+       "text": "Training error goes down because the extra layers fit the data better"
+      },
+      {
+       "id": "b",
+       "text": "Training error goes up, and this is not caused by overfitting"
+      },
+      {
+       "id": "c",
+       "text": "Training error stays exactly the same no matter the depth"
+      }
+     ],
+     "sourceRefs": [
+      {
+       "chunkId": "c4",
+       "quote": "adding more layers to a suitably deep model leads to higher train- ing error"
+      }
+     ],
+     "facet": "background"
+    },
+    "correctOptionId": "b",
+    "explanation": "The paper shows that once plain networks get deep enough, piling on more layers actually hurts training accuracy, not just test accuracy. This rules out overfitting as the cause and points to an optimization difficulty instead — the real puzzle the paper sets out to solve.",
+    "simpler": "Making an ordinary deep network deeper can make it worse at even its own training data, which is weird and not just 'too much studying.'",
+    "example": "A made-up example: imagine a 20-floor building that's easy to climb, but adding 36 more floors somehow makes even the first 20 floors harder to climb too — that's the strange degradation effect."
+   },
+   {
+    "question": {
+     "id": "q2",
+     "conceptId": "residual-learning",
+     "concept": "Residual Learning Reformulation",
+     "prompt": "In residual learning, what do the stacked layers actually learn to produce?",
+     "options": [
+      {
+       "id": "a",
+       "text": "The full desired mapping H(x) directly, with no shortcut"
+      },
+      {
+       "id": "b",
+       "text": "A residual mapping F(x), which is added back to the input x"
+      },
+      {
+       "id": "c",
+       "text": "A copy of the input x with all original features removed"
+      }
+     ],
+     "sourceRefs": [
+      {
+       "chunkId": "c5",
+       "quote": "we explicitly let these lay- ers fit a residual mapping"
+      }
+     ],
+     "facet": "method"
+    },
+    "correctOptionId": "b",
+    "explanation": "Instead of forcing a block of layers to learn the whole target function H(x) from scratch, residual learning has them learn only the leftover piece F(x) = H(x) - x, then adds x back via a shortcut connection. The idea is that it's easier to nudge something toward zero than to relearn an entire mapping, especially when identity-like behavior is close to optimal.",
+    "simpler": "Instead of learning the whole answer, each block just learns the small correction needed on top of what it already received.",
+    "example": "A made-up example: if the right output is almost the same as the input, it's easier for a layer to learn 'add almost nothing' than to learn 'reproduce this complicated input from scratch.'"
+   },
+   {
+    "question": {
+     "id": "q3",
+     "conceptId": "deeper-resnets-accuracy",
+     "concept": "Accuracy Gains from Deeper ResNets",
+     "prompt": "How did the 50/101/152-layer ResNets perform compared to the 34-layer ResNet on ImageNet?",
+     "options": [
+      {
+       "id": "a",
+       "text": "They were more accurate by considerable margins, with no degradation problem observed"
+      },
+      {
+       "id": "b",
+       "text": "They were less accurate due to the degradation problem returning"
+      },
+      {
+       "id": "c",
+       "text": "They performed about the same, showing depth no longer mattered"
+      }
+     ],
+     "sourceRefs": [
+      {
+       "chunkId": "c29",
+       "quote": "The 50/101/152-layer ResNets are more accurate than the 34-layer ones by considerable margins"
+      }
+     ],
+     "facet": "result"
+    },
+    "correctOptionId": "a",
+    "explanation": "With the residual (and bottleneck) design, going from 34 to 50, 101, and 152 layers kept paying off — accuracy improved and the degradation problem did not reappear. This is the core evidence that residual learning lets networks genuinely benefit from extra depth.",
+    "simpler": "Adding more layers to these residual networks kept making them better, instead of eventually making them worse.",
+    "example": "The paper's own 152-layer ResNet ended up winning 1st place in the ILSVRC 2015 classification competition, showing real-world payoff from that extra depth."
+   },
+   {
+    "question": {
+     "id": "q4",
+     "conceptId": "very-deep-overfitting",
+     "concept": "Limits of Extremely Deep Nets",
+     "prompt": "What happened when the authors tested a 1202-layer ResNet on the small CIFAR-10 dataset?",
+     "options": [
+      {
+       "id": "a",
+       "text": "It trained fine but tested worse than the 110-layer network, likely from overfitting"
+      },
+      {
+       "id": "b",
+       "text": "It could not be trained at all due to vanishing gradients"
+      },
+      {
+       "id": "c",
+       "text": "It beat every other network on both training and test error"
+      }
+     ],
+     "sourceRefs": [
+      {
+       "chunkId": "c37",
+       "quote": "The testing result of this 1202-layer network is worse than that of our 110-layer network, although both training data"
+      }
+     ],
+     "facet": "limitation"
+    },
+    "correctOptionId": "a",
+    "explanation": "Residual learning solved the optimization problem even at 1202 layers — training error got below 0.1% — but on a small dataset like CIFAR-10, that much capacity led to worse test results than the 110-layer model, which the authors attribute to overfitting rather than any training difficulty. This shows residual learning fixes optimization, but doesn't automatically fix generalization on tiny datasets.",
+    "simpler": "The giant 1202-layer network trained perfectly but memorized too much, so it did worse on new test data than a smaller 110-layer version.",
+    "example": "A made-up example: it's like a student who perfectly memorizes every past exam question (great 'training' score) but struggles on a new exam with slightly different questions (worse 'test' score)."
+   }
+  ]
+ },
+ "generation": {
+  "mode": "pre-generated",
+  "model": "us.anthropic.claude-sonnet-5",
+  "promptVersion": "tutor-script.v1",
+  "review": "needs human review"
+ }
+}

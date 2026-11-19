@@ -19,6 +19,16 @@ class PoliciesTest {
         assertFalse(bus.pause); assertTrue(bus.oneHanded); assertFalse(bus.askAvailable); assertFalse(bus.prefetchAllowed)
     }
 
+    @Test fun `standard policy - walking goes one-handed and pauses only when the player asked for it`() {
+        var optIn = false
+        val p = com.anything2game.engine.context.StandardContextPolicy { optIn }
+        val walk = ContextSignals(activity = ContextSignals.Activity.WALKING)
+        p.decide(walk).let { assertFalse(it.pause); assertTrue(it.oneHanded) }
+        optIn = true
+        p.decide(walk).let { assertTrue(it.pause); assertEquals(com.anything2game.engine.context.ContextDecision.PauseReason.WALKING, it.pauseReason) }
+        assertFalse(p.decide(ContextSignals(activity = ContextSignals.Activity.STILL)).pause)
+    }
+
     @Test fun `leitner boxes and due times`() {
         val p = LeitnerPolicy()
         var r = MasteryRecord("u")

@@ -13,7 +13,6 @@ import com.anything2game.app.data.FileSessionStore
 import com.anything2game.app.platform.ContextSource
 import com.anything2game.app.platform.SimulatedContextSource
 import com.anything2game.engine.context.ContextPolicy
-import com.anything2game.engine.context.DefaultContextPolicy
 import com.anything2game.engine.grading.GraderRegistry
 import com.anything2game.engine.grading.Grading
 import com.anything2game.engine.mastery.LeitnerPolicy
@@ -72,7 +71,7 @@ class AndroidAppContainer(context: Context) : AppDependencies {
     override val masteryPolicy: MasteryPolicy = LeitnerPolicy()
     // Real sensors (Activity Recognition, ConnectivityManager) replace this adapter later; nothing else changes.
     override val contextSource: ContextSource = SimulatedContextSource()
-    override val contextPolicy: ContextPolicy = DefaultContextPolicy
+    override val contextPolicy: ContextPolicy = com.anything2game.engine.context.StandardContextPolicy { scope.homePreferences.pauseWhenWalking }
     override val clock: Clock = Clock.SYSTEM
 
     /** Everything that belongs to one person on this phone, built from the same store classes for every profile. */

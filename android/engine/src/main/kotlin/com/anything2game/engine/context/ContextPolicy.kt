@@ -27,6 +27,27 @@ fun interface ContextPolicy {
     fun decide(signals: ContextSignals): ContextDecision
 }
 
+/**
+ * The app's policy. Walking does not pause by default (team review 2026-11-20: many walks don't need a pause, and an
+ * unasked pause feels patronising); instead the screen goes one-handed. Pausing on a walk is the player's opt-in
+ * ([pauseWhenWalking], read on every decision so a settings change applies at once).
+ */
+class StandardContextPolicy(private val pauseWhenWalking: () -> Boolean) : ContextPolicy {
+    override fun decide(signals: ContextSignals): ContextDecision {
+        val walking = signals.activity == ContextSignals.Activity.WALKING
+        val pause = walking && pauseWhenWalking()
+        return ContextDecision(
+            pause = pause,
+            pauseReason = if (pause) ContextDecision.PauseReason.WALKING else null,
+            oneHanded = signals.activity == ContextSignals.Activity.IN_VEHICLE || walking,
+            askAvailable = signals.network != ContextSignals.Network.OFFLINE,
+            prefetchAllowed = signals.network == ContextSignals.Network.UNMETERED && !signals.batteryLow,
+            reduceMotion = signals.batteryLow,
+        )
+    }
+}
+
+/** Walking always pauses (kept for tests and screenshots that show the pause). */
 object DefaultContextPolicy : ContextPolicy {
     override fun decide(signals: ContextSignals): ContextDecision {
         val walking = signals.activity == ContextSignals.Activity.WALKING

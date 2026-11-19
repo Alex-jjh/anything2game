@@ -182,4 +182,6 @@
     <string name="frame_companion_best">适合：还没读，第一次接触。</string>
     <string name="practice_play_as">玩法</string>
     <string name="level_status_cleared">已通关 · 明天复习一次就更牢</string>
+    <string name="setting_pause_walking">走路时暂停</string>
+    <string name="setting_pause_walking_body">关闭：走路时只切换成单手布局。打开：等你停下再继续。</string>
 </resources>

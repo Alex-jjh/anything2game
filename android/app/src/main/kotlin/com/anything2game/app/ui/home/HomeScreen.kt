@@ -71,6 +71,8 @@ fun HomeContent(
     padding: PaddingValues = PaddingValues(), simulator: (@Composable () -> Unit)? = null, onPreparePractice: (String) -> Unit = {},
     onSwitchProfile: (() -> Unit)? = null,
     onSelectFrame: (String, FrameId) -> Unit = { _, _ -> },
+    pauseWhenWalking: Boolean = false,
+    onPauseWhenWalking: ((Boolean) -> Unit)? = null,
 ) {
     val skin = A2g.skin
     LazyColumn(
@@ -196,6 +198,17 @@ fun HomeContent(
                         // Guest ↔ sample student; nothing is deleted when switching.
                         if (onSwitchProfile != null) OutlinedButton(onClick = onSwitchProfile, modifier = Modifier.fillMaxWidth()) {
                             Text(stringResource(R.string.profile_switch))
+                        }
+                    }
+                }
+                if (onPauseWhenWalking != null) item {
+                    PaperCard {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(stringResource(R.string.setting_pause_walking), style = MaterialTheme.typography.titleMedium, color = skin.ink)
+                                Text(stringResource(R.string.setting_pause_walking_body), style = MaterialTheme.typography.bodySmall, color = skin.inkMuted)
+                            }
+                            androidx.compose.material3.Switch(pauseWhenWalking, onPauseWhenWalking, Modifier.testTag("setting_pause_walking"))
                         }
                     }
                 }

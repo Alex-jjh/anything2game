@@ -43,8 +43,23 @@ class EverydayJourneysTest : JourneyTest() {
         assertEquals("a missed clue stays in box 0", 0, missed.box)
     }
 
-    @Test fun walking_pauses_the_level_and_the_student_can_continue_and_finish() {
+    @Test fun by_default_walking_does_not_pause_it_goes_one_handed() {
         launch(); chooseGuest(); openPractice()
+        startLevel(attentionTitle, level1)
+        val level = Level("demo_attention", FrameId.CLASSIC)
+        level.play(steps = 1)
+        val sensors = deps.contextSource as SimulatedContextSource
+        sensors.setActivity(ContextSignals.Activity.WALKING)
+        waitForText(str(R.string.one_handed_badge))
+        assertTrue("no pause by default", !textShown(str(R.string.paused_title)))
+        assertNull(level.session()!!.pausedFor)
+        sensors.setActivity(ContextSignals.Activity.STILL)
+    }
+
+    @Test fun walking_pauses_the_level_and_the_student_can_continue_and_finish() {
+        launch(); chooseGuest()
+        deps.homePreferences.pauseWhenWalking = true // opt-in since the team review
+        openPractice()
         startLevel(attentionTitle, level1)
         val level = Level("demo_attention", FrameId.CLASSIC)
         level.play(steps = 2)
@@ -63,7 +78,9 @@ class EverydayJourneysTest : JourneyTest() {
     }
 
     @Test fun a_level_left_paused_does_not_greet_the_student_with_a_pause_after_they_have_stopped() {
-        launch(); chooseGuest(); openPractice()
+        launch(); chooseGuest()
+        deps.homePreferences.pauseWhenWalking = true
+        openPractice()
         startLevel(attentionTitle, level1)
         val level = Level("demo_attention", FrameId.CLASSIC)
         level.play(steps = 2)
