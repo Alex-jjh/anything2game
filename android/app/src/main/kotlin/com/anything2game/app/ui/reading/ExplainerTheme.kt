@@ -55,7 +55,8 @@ interface ExplainerTheme {
 /** The explainer persona of the default theme: a blob like the player's, but never one of the three the player can pick. */
 internal val AyaAvatar = BlobAvatar(
     "aya", R.string.explainer_name, R.string.explainer_trait,
-    BlobLook(body = Color(0xFFF7DE8F), outline = Color(0xFF8A6A1F), cheek = Color(0xFFF08A7A), accent = Color(0xFFB04A5A), shape = BlobShape.ROUND, topper = Topper.ANTENNA),
+    // Sky blue, not yellow: an original look, clearly apart from well-known round yellow mascots and from the player's three.
+    BlobLook(body = Color(0xFFBFDDF2), outline = Color(0xFF2F5D86), cheek = Color(0xFFF29A8A), accent = Color(0xFFE07A5F), shape = BlobShape.ROUND, topper = Topper.ANTENNA),
     emptyMap(),
 )
 

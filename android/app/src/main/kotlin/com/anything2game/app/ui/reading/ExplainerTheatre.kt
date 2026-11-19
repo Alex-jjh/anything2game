@@ -112,10 +112,14 @@ internal fun ExplainerTheatre(
     val latestIndex = session.messages.indexOf(latest)
     // The player's own words are a line of the scene only when they were a real question; button presses are not speech.
     val question = if (lastIntent == TutorIntent.QUESTION) session.messages.getOrNull(latestIndex - 1)?.takeIf { it.role == "user" } else null
-    val beats = remember(latest.id, question?.id) {
+    // Pages fill what the box holds: larger system text means fewer characters per page, never clipped text.
+    val scale = androidx.compose.ui.platform.LocalDensity.current.fontScale.coerceAtLeast(1f)
+    val latinBudget = (DialoguePaging.LATIN_BUDGET / scale).toInt()
+    val cjkBudget = (DialoguePaging.CJK_BUDGET / scale).toInt()
+    val beats = remember(latest.id, question?.id, scale) {
         buildList {
-            question?.let { q -> DialoguePaging.pages(q.text).forEach { add(Beat(true, it, emptyList())) } }
-            DialoguePaging.pages(latest.text).forEach { add(Beat(false, it, latest.sourceRefs)) }
+            question?.let { q -> DialoguePaging.pages(q.text, latinBudget, cjkBudget).forEach { add(Beat(true, it, emptyList())) } }
+            DialoguePaging.pages(latest.text, latinBudget, cjkBudget).forEach { add(Beat(false, it, latest.sourceRefs)) }
         }
     }
     var page by rememberSaveable(latest.id) { mutableIntStateOf(0) }

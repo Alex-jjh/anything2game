@@ -76,10 +76,13 @@ class ExplainerFlowTest {
         rule.onNodeWithTag("explainer_stage").assertIsDisplayed()
         rule.onNodeWithTag("player_avatar").assertIsDisplayed()
         assertEquals("Aya", textOf("dialogue_speaker"))
-        assertTrue("the first page of a two-page message hides the choice bar", !has("tutor_rephrase"))
-        val firstPage = textOf("dialogue_text")
-        rule.onNodeWithTag("dialogue_box").performClick()
-        assertNotEquals("tap turns the page", firstPage, textOf("dialogue_text"))
+        // Until the last page is read, the choice bar stays hidden; a tap turns the page.
+        var guard = 0
+        while (!has("tutor_rephrase") && guard++ < 10) {
+            val page = textOf("dialogue_text")
+            rule.onNodeWithTag("dialogue_box").performClick()
+            assertNotEquals("tap turns the page", page, textOf("dialogue_text").takeIf { !has("tutor_rephrase") } ?: "")
+        }
         rule.onNodeWithTag("tutor_rephrase").assertIsDisplayed()
         rule.onNodeWithTag("message_source").assertExists()
         assertEquals("Concept 1/3", textOf("concept_count"))

@@ -1,12 +1,13 @@
 package com.anything2game.app.ui.reading
 
 /**
- * Cuts one tutor message into dialogue-box pages: whole sentences, about 110 characters of Latin text or 60 CJK
+ * Cuts one tutor message into dialogue-box pages: whole sentences, about 170 characters of Latin text or 90 CJK
+ * (what the portrait dialogue box holds at 19 sp; callers divide by the font scale),
  * characters per page. A short heading line stays with the sentence after it, and a line ending in a colon stays with what it introduces.
  */
 object DialoguePaging {
-    const val LATIN_BUDGET = 110
-    const val CJK_BUDGET = 60
+    const val LATIN_BUDGET = 170
+    const val CJK_BUDGET = 90
 
     fun pages(text: String, latinBudget: Int = LATIN_BUDGET, cjkBudget: Int = CJK_BUDGET): List<String> {
         if (text.isBlank()) return listOf("")
