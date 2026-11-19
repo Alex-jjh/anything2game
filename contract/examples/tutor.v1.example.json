@@ -9,6 +9,7 @@
         "question": {
           "id": "foundation-1",
           "conceptId": "retrieval",
+          "facet": "background",
           "concept": "检索练习",
           "prompt": "文中的 retrieval practice（检索练习）指哪一种学习动作？",
           "options": [
@@ -41,6 +42,7 @@
         "question": {
           "id": "foundation-2",
           "conceptId": "delay",
+          "facet": "result",
           "concept": "即时与延迟测验",
           "prompt": "这段示例为什么同时提到“五分钟后”和“一周后”？",
           "options": [
@@ -73,6 +75,7 @@
         "question": {
           "id": "foundation-3",
           "conceptId": "scope",
+          "facet": "limitation",
           "concept": "结论的适用范围",
           "prompt": "材料说“是否能迁移到新问题尚未测试”，我们应怎样理解？",
           "options": [

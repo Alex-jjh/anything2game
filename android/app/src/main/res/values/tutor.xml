@@ -3,10 +3,8 @@
     <string name="tutor_diagnostic_title">Before we talk</string>
     <string name="tutor_assessment_title">Your starting point</string>
     <string name="tutor_chat_title">Talk through the document</string>
-    <string name="tutor_fixed_badge">FIXED EXAMPLE / MOCK · NO AI</string>
     <string name="tutor_server_mock_badge">DOCUMENT PARSED · AI MOCK</string>
     <string name="tutor_model_badge">DOCUMENT TUTOR · AI</string>
-    <string name="tutor_fixed_note">Self-authored illustrative material, not a real paper. No file was uploaded or parsed. Local answers are only for this example.</string>
     <string name="tutor_coverage_note">Introductory questions cover selected excerpts, not the entire document or your overall ability. Sources are traceable, not independently verified.</string>
     <string name="tutor_question_count">FOUNDATION %1$d / %2$d</string>
     <string name="tutor_diagnostic_note">Answer from your current understanding. Not sure is welcome. This is preparation for a conversation, not a scored practice game.</string>
@@ -37,7 +35,7 @@
     <string name="tutor_reload">Reload session</string>
     <string name="tutor_cancel">Cancel this request</string>
     <string name="tutor_offline">Offline: showing saved answers and conversation. Reconnect for new server replies.</string>
-    <string name="tutor_unavailable">This preset has no dedicated diagnostic yet. Its original passages are below. Use the fixed example or import a document for the tutor flow.</string>
+    <string name="tutor_unavailable">This preset has no dedicated diagnostic yet. Its original passages are below. Pick a course that has an explanation, or import a document for the tutor flow.</string>
     <string name="tutor_limit">This session has reached its 40-turn limit. Existing conversation is retained.</string>
     <string name="tutor_upload_consent">Confirm to send this document to the server below for text extraction and introductory questions. The local QA server uses an AI mock; no paid model is called. A separately configured server may use AI.</string>
     <string name="tutor_no_endpoint">No server configured in this build. The offline fixed example is available.</string>
@@ -49,9 +47,22 @@
     <string name="tutor_import_cancel_note">Cancel stops this screen from accepting late results. A document already received by the server is retained; cancellation is not deletion.</string>
     <string name="tutor_separate_example">Preview with a separate self-authored example. It is not generated from the selected file.</string>
     <string name="tutor_demo_action">Try the fixed tutorial</string>
-    <string name="tutor_demo_title">Why does recalling help?</string>
-    <string name="tutor_demo_body">3 foundation questions → a starting point → conversational teaching. Self-authored content; no upload or AI.</string>
     <string name="tutor_resume">Continue this document</string>
     <string name="tutor_prepare_practice">Prepare practice</string>
     <string name="tutor_practice_separate">Practice is generated separately. It does not reuse your diagnostic as a score.</string>
+    <string name="tutor_scripted_note">Written for this course ahead of time. Nothing is uploaded and no AI is running; your answers here stay on this device.</string>
+    <string name="tutor_start_explanation">Start explanation</string>
+    <string name="tutor_course_body">A few foundation questions, then an explanation that starts where you are. Pre-written for this course; no upload, no AI.</string>
+    <string name="focus_title">What do you want to get out of this reading?</string>
+    <string name="focus_hint">Pick anything that matters to you. It only changes the order we go through things in; nothing is skipped.</string>
+    <string name="focus_decide">Let the explainer decide</string>
+    <string name="focus_background">Quick overview</string>
+    <string name="focus_method">Method</string>
+    <string name="focus_result">Results</string>
+    <string name="focus_limitation">Limits</string>
+    <string name="focus_other">Something else</string>
+    <string name="focus_other_note">Saved on this device. Offline it cannot change the explanation; it can only steer an AI explainer when you are online.</string>
+    <string name="focus_continue">Continue</string>
+    <string name="focus_summary">Your focus: %1$s</string>
+    <string name="focus_summary_note">Your note: “%1$s” (saved on this device; this explainer cannot read it)</string>
 </resources>

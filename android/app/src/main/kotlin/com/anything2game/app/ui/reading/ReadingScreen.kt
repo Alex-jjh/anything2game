@@ -59,8 +59,8 @@ fun ReadingContent(deps: AppDependencies, packageId: String, onBack: () -> Unit)
             }
             if (s != null) item {
                 Text(s.title, style = MaterialTheme.typography.titleMedium, color = skin.inkMuted)
-                Badge(stringResource(when (s.mode) { "local-mock" -> R.string.tutor_fixed_badge; "mock" -> R.string.tutor_server_mock_badge; else -> R.string.tutor_model_badge }), skin.evidence, skin.evidenceSoft)
-                Text(stringResource(if (s.mode == "local-mock") R.string.tutor_fixed_note else R.string.tutor_coverage_note), style = MaterialTheme.typography.bodySmall, color = skin.inkMuted)
+                Badge(stringResource(when (s.mode) { "local-mock" -> R.string.badge_pre_generated; "mock" -> R.string.tutor_server_mock_badge; else -> R.string.tutor_model_badge }), skin.evidence, skin.evidenceSoft)
+                Text(stringResource(if (s.mode == "local-mock") R.string.tutor_scripted_note else R.string.tutor_coverage_note), style = MaterialTheme.typography.bodySmall, color = skin.inkMuted)
             }
             if (state.offline) item { Text(stringResource(R.string.tutor_offline), color = skin.hint) }
             if (state.busy) item {
@@ -78,7 +78,8 @@ fun ReadingContent(deps: AppDependencies, packageId: String, onBack: () -> Unit)
                 items(unsupported?.sources.orEmpty()) { chunk -> PaperCard { Text("${chunk.pageLabel ?: (chunk.pageIndex + 1)} · ${chunk.chunkId}", color = skin.evidence); Text(chunk.text, color = skin.ink) } }
             }
             val enabled = !state.busy && state.problem == null
-            if (s != null) when (phase) {
+            val askingFocus = focusItems(c, enabled, vm::setFocus)
+            if (s != null && !askingFocus) when (phase) {
                 1 -> {
                     val q = s.questions[c.questionIndex]
                     item {

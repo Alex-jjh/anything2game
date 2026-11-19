@@ -43,6 +43,7 @@ import java.io.File
 interface AppDependencies {
     val tutors: com.anything2game.app.data.tutor.TutorRepository
     val packages: PackageRepository
+    val tutorScripts: com.anything2game.app.data.tutor.TutorScripts
     val frames: FrameRepository
     val framePreferences: FramePreferences
     val homePreferences: com.anything2game.app.data.HomePreferences
@@ -67,6 +68,7 @@ class AndroidAppContainer(context: Context) : AppDependencies {
     val installedPacks = DirectoryPackSource(File(app.filesDir, "packs"))
     val content = ContentLibrary(listOf(AssetPackSource(app.assets), installedPacks))
     override val packages: PackageRepository = content
+    override val tutorScripts: com.anything2game.app.data.tutor.TutorScripts = content
     override val frames: FrameRepository = content
     override val grading: Grading = GraderRegistry.default()
     override val masteryPolicy: MasteryPolicy = LeitnerPolicy()
@@ -83,7 +85,7 @@ class AndroidAppContainer(context: Context) : AppDependencies {
         val framePreferences: FramePreferences = SharedPrefsFramePreferences(app, profile.prefs("frames"))
         val homePreferences = HomePreferences(app, profile.prefs("home"))
         val avatarPreferences: AvatarPreferences = SharedPrefsAvatarPreferences(app, profile.prefs("avatar"))
-        val tutors = AndroidTutorRepository(app, packages, ::installServerPackage, File(dir, "tutor-sessions"), profile.prefs("tutor_connection"))
+        val tutors = AndroidTutorRepository(app, packages, tutorScripts, ::installServerPackage, File(dir, "tutor-sessions"), profile.prefs("tutor_connection"))
     }
 
     private suspend fun installServerPackage(pkg: com.anything2game.contract.LearningPackage) {

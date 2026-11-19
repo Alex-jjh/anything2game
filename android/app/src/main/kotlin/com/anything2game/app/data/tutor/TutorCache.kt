@@ -9,12 +9,25 @@ import kotlinx.serialization.Serializable
 import java.io.File
 import java.security.MessageDigest
 
-@Serializable data class TutorCache(val session: TutorSession, val draftAnswers: Map<String, String> = emptyMap(), val questionIndex: Int = 0) {
+@Serializable data class TutorCache(
+    val session: TutorSession, val draftAnswers: Map<String, String> = emptyMap(), val questionIndex: Int = 0,
+    /** The reader has been asked what they want out of the reading (even if they let the explainer decide). */
+    val focusChosen: Boolean = false,
+) {
+    /** Records the reader's focus and moves the chosen facets' questions first. Only before the diagnostic is assessed. */
+    fun withFocus(facets: Collection<Facet>, note: String): TutorCache {
+        require(session.assessment.isEmpty()) { "Focus is chosen before the diagnostic" }
+        val chosen = TutorRules.normalizeFocus(facets)
+        val text = note.trim()
+        TutorRules.checkFocus(chosen, text)
+        return copy(session = session.copy(focus = chosen, focusNote = text, questions = TutorRules.orderByFocus(session.questions, chosen)), questionIndex = 0, focusChosen = true)
+    }
     fun validate(): TutorCache {
         val s = session
         require(s.schema == TUTOR_SCHEMA && s.questions.isNotEmpty() && s.questions.size <= 6)
         require(s.revision >= 0 && s.mode in setOf("mock", "model", "local-mock"))
         require(s.questions.map { it.id }.distinct().size == s.questions.size)
+        TutorRules.checkFocus(s.focus, s.focusNote)
         require(questionIndex in s.questions.indices && s.conceptPosition in s.questions.indices)
         s.questions.forEach { q ->
             require(q.id.isNotBlank() && q.conceptId.isNotBlank() && q.prompt.isNotBlank())

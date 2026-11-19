@@ -2,16 +2,29 @@ package com.anything2game.contract.tutor
 
 import com.anything2game.contract.SourceChunk
 import com.anything2game.contract.SourceRef
+import com.anything2game.contract.LearningPackage
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /** Draft integration contract, introduced for the document tutor. Not a team-approved product schema. */
 const val TUTOR_SCHEMA = "a2g.tutor/draft-v1"
 const val UNKNOWN_ANSWER = "__unknown__"
 
+/** What a reader may want out of a document. A concept is tagged with the facet it mostly teaches. */
+@Serializable enum class Facet {
+    @SerialName("background") BACKGROUND,
+    @SerialName("method") METHOD,
+    @SerialName("result") RESULT,
+    @SerialName("limitation") LIMITATION,
+}
+const val MAX_FOCUS_NOTE = 200
+
 @Serializable data class TutorOption(val id: String, val text: String)
 @Serializable data class TutorQuestion(
     val id: String, val conceptId: String, val concept: String, val prompt: String,
     val options: List<TutorOption>, val sourceRefs: List<SourceRef>,
+    /** Optional: which facet this concept belongs to. Without it the concept is never moved by a focus. */
+    val facet: Facet? = null,
 )
 /** Private scoring/teaching material. Never included in the server's pre-assessment response. */
 @Serializable data class TutorConcept(
@@ -19,6 +32,18 @@ const val UNKNOWN_ANSWER = "__unknown__"
     val explanation: String, val simpler: String, val example: String,
 )
 @Serializable data class TutorBlueprint(val schema: String = TUTOR_SCHEMA, val concepts: List<TutorConcept>)
+
+/**
+ * Pre-generated tutor content for one course: the `tutor.json` entry of a content pack (ADR-017) and the
+ * `tutor.*.json` source files PackTool picks up. Versions must match the course it ships with.
+ */
+@Serializable data class TutorScript(val packageId: String, val contentVersion: String, val documentVersion: String, val blueprint: TutorBlueprint) {
+    fun validate(pkg: LearningPackage): TutorScript {
+        require(packageId == pkg.packageId && contentVersion == pkg.contentVersion && documentVersion == pkg.documentVersion) { "Tutor script version mismatch" }
+        TutorRules.validate(blueprint, pkg.sources)
+        return this
+    }
+}
 @Serializable enum class Understanding { DEMONSTRATED, NEEDS_CLARIFICATION, NOT_YET_ASSESSED }
 @Serializable data class ConceptAssessment(val questionId: String, val conceptId: String, val evidence: Understanding)
 @Serializable enum class TutorIntent { START, REPHRASE, EXAMPLE, CONTINUE, QUESTION }
@@ -29,6 +54,8 @@ const val UNKNOWN_ANSWER = "__unknown__"
     val revision: Int = 0, val answers: Map<String, String> = emptyMap(),
     val assessment: List<ConceptAssessment> = emptyList(), val messages: List<TutorMessage> = emptyList(),
     val conceptPosition: Int = 0,
+    /** What the reader wants to get out of the document. Empty = let the explainer decide. */
+    val focus: List<Facet> = emptyList(), val focusNote: String = "",
 )
 @Serializable data class CreateTutorRequest(val language: String = "zh", val clientRequestId: String)
 @Serializable data class AssessTutorRequest(val expectedRevision: Int, val answers: Map<String, String>, val clientRequestId: String)
@@ -73,9 +100,26 @@ object TutorRules {
         }
     }
 
-    fun orderedQuestions(session: TutorSession): List<TutorQuestion> = session.questions.sortedBy { q ->
-        if (session.assessment.firstOrNull { it.questionId == q.id }?.evidence == Understanding.DEMONSTRATED) 1 else 0
+    /** Chosen facets first, everything else after (stable; nothing is dropped). No focus, or no facets on the questions: unchanged. */
+    fun orderByFocus(questions: List<TutorQuestion>, focus: List<Facet>): List<TutorQuestion> = questions.sortedBy { focusRank(it, focus) }
+
+    private fun focusRank(q: TutorQuestion, focus: List<Facet>) = if (focus.isEmpty() || q.facet in focus) 0 else 1
+
+    /** The focus UI only makes sense when the content says which facet each concept is. */
+    fun carriesFacets(questions: List<TutorQuestion>) = questions.any { it.facet != null }
+
+    fun normalizeFocus(facets: Collection<Facet>): List<Facet> = facets.distinct().sortedBy { it.ordinal }
+
+    fun checkFocus(focus: List<Facet>, note: String) {
+        require(focus.distinct().size == focus.size) { "Duplicate facet" }
+        require(note.length <= MAX_FOCUS_NOTE) { "Focus note too long" }
     }
+
+    /** Teaching order: the reader's focus first, then concepts that are not yet demonstrated, then the rest. */
+    fun orderedQuestions(session: TutorSession): List<TutorQuestion> = session.questions.sortedWith(compareBy<TutorQuestion>(
+        { focusRank(it, session.focus) },
+        { q -> if (session.assessment.firstOrNull { it.questionId == q.id }?.evidence == Understanding.DEMONSTRATED) 1 else 0 },
+    ))
 
     /** Scripted fake mode only; explicitly does not interpret free text. */
     fun scriptedReply(session: TutorSession, blueprint: TutorBlueprint, intent: TutorIntent): TutorMessage {
