@@ -105,7 +105,7 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator, onPickPdf: () -> Unit) 
             LaunchedEffect(state.ready) { state.ready?.let(navigator::openRead) }
             Scaffold(containerColor = A2g.skin.paper) { padding ->
                 ImportContent(r.request, onCancel = cancel, contentPadding = padding, endpoint = deps.tutors.endpoint,
-                    state = state, onStart = vm::start, onDemo = { vm.cancel(); navigator.openRead(com.anything2game.app.data.tutor.FIXED_TUTOR_PACKAGE) })
+                    state = state, onStart = vm::start, onDemo = { vm.cancel(); navigator.openRead(com.anything2game.app.data.tutor.EXAMPLE_TUTOR_PACKAGE) })
             }
         }
     }

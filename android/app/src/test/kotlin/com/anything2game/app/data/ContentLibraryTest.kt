@@ -9,6 +9,7 @@ import com.anything2game.contract.pack.PackCodec
 import com.anything2game.contract.pack.PackOrigin
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -64,6 +65,20 @@ class ContentLibraryTest {
         val lib = ContentLibrary(listOf(installed))
         assertEquals("Good", lib.load("demo_attention").getOrThrow().title)
         assertEquals(listOf("demo_attention.a2gpack"), dir.list()!!.sorted())
+    }
+
+    @Test fun `tutor scripts come out of the real preset packs and match their courses`() = runBlocking {
+        val lib = ContentLibrary(listOf(AssetPackSource(assets)))
+        val scripted = lib.scriptedPackageIds()
+        assertTrue("scripted: $scripted", "pkg_demo_retrieval" in scripted)
+        scripted.forEach { id -> lib.scriptFor(id)!!.validate(lib.load(id).getOrThrow()) }
+        assertNull(lib.scriptFor("no_such_course"))
+        // Without a script in the pack there is nothing to offer, and an installed pack without one hides the preset's script
+        // only when it is the winning copy of the same course.
+        val installed = DirectoryPackSource(tmp.newFolder("scripts"))
+        installed.install(ByteArrayInputStream(packBytes("1"))).getOrThrow()
+        assertNull(ContentLibrary(listOf(installed)).scriptFor("demo_attention"))
+        assertTrue(ContentLibrary(listOf(installed)).scriptedPackageIds().isEmpty())
     }
 
     @Test fun `versions compare by number, not by text`() {

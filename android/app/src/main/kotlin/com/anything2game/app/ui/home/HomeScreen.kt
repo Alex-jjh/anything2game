@@ -117,11 +117,11 @@ fun HomeContent(
                         }
                     }
                 }
-                item { PaperCard {
-                    Badge(stringResource(R.string.tutor_fixed_badge), skin.evidence, skin.evidenceSoft)
-                    Text(stringResource(R.string.tutor_demo_title), style = MaterialTheme.typography.titleLarge, color = skin.ink)
-                    Text(stringResource(R.string.tutor_demo_body), color = skin.inkMuted)
-                    OutlinedButton(onClick = { onRead(com.anything2game.app.data.tutor.FIXED_TUTOR_PACKAGE) }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.tutor_demo_action)) }
+                items(state.entries.filter { it.hasTutor }, key = { "explain:${it.summary.packageId}" }) { entry -> PaperCard {
+                    if (entry.summary.preGenerated) Badge(stringResource(R.string.badge_pre_generated), skin.evidence, skin.evidenceSoft)
+                    Text(entry.summary.title, style = MaterialTheme.typography.titleLarge, color = skin.ink)
+                    Text(stringResource(R.string.tutor_course_body), color = skin.inkMuted)
+                    OutlinedButton(onClick = { onRead(entry.summary.packageId) }, modifier = Modifier.fillMaxWidth().testTag("start_explanation_${entry.summary.packageId}")) { Text(stringResource(R.string.tutor_start_explanation)) }
                 } }
                 items(state.tutorials, key = { "tutor:${it.sessionId}" }) { tutorial -> PaperCard {
                     Text(tutorial.title, style = MaterialTheme.typography.titleLarge, color = skin.ink)

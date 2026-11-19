@@ -39,6 +39,12 @@ class TutorViewModel(private val repository: TutorRepository, private val id: St
         if (c.session.assessment.isNotEmpty() || (option != UNKNOWN_ANSWER && q.options.none { it.id == option })) return
         execute { old, _ -> old.copy(draftAnswers = old.draftAnswers + (q.id to option)) }
     }
+    /** What the reader wants out of this reading; empty facets and a blank note = let the explainer decide. */
+    fun setFocus(facets: List<Facet>, note: String) {
+        val c = mutable.value.cache ?: return
+        if (c.session.assessment.isNotEmpty()) return
+        execute { old, _ -> repository.setFocus(old, facets, note) }
+    }
     fun previous() = execute { c, _ -> c.copy(questionIndex = (c.questionIndex - 1).coerceAtLeast(0)) }
     fun next() {
         val c = mutable.value.cache ?: return

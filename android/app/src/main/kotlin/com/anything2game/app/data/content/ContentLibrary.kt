@@ -5,7 +5,9 @@ import com.anything2game.contract.FrameOverlay
 import com.anything2game.contract.FrameSpec
 import com.anything2game.contract.GenerationMode
 import com.anything2game.contract.LearningPackage
+import com.anything2game.app.data.tutor.TutorScripts
 import com.anything2game.contract.pack.ContentPack
+import com.anything2game.contract.tutor.TutorScript
 import com.anything2game.engine.ports.FrameRepository
 import com.anything2game.engine.ports.PackageRepository
 import com.anything2game.engine.ports.PackageSummary
@@ -19,7 +21,7 @@ import kotlinx.coroutines.sync.withLock
  * When two sources hold the same package, the newer contentVersion wins; on a tie the later source wins
  * (sources are given preset-first, so an installed copy replaces the bundled one).
  */
-class ContentLibrary(private val sources: List<PackSource>) : PackageRepository, FrameRepository {
+class ContentLibrary(private val sources: List<PackSource>) : PackageRepository, FrameRepository, TutorScripts {
     private val mutex = Mutex()
     private var index: Map<String, PackRef>? = null
     private val opened = HashMap<String, ContentPack>()
@@ -60,6 +62,11 @@ class ContentLibrary(private val sources: List<PackSource>) : PackageRepository,
     }
 
     override suspend fun load(packageId: String, frameId: FrameId): FrameOverlay? = pack(packageId)?.frames?.get(frameId)
+
+    override suspend fun scriptFor(packageId: String): TutorScript? = pack(packageId)?.tutor
+
+    override suspend fun scriptedPackageIds(): List<String> =
+        refs().values.sortedBy { it.manifest.title }.map { it.manifest.packageId }.filter { pack(it)?.tutor != null }
 
     internal companion object {
         /** "2" > "10"? No: numeric parts compare as numbers ("1.10" > "1.9"); otherwise as text. */

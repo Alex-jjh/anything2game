@@ -5,7 +5,7 @@ android/app/build.gradle.kts
 android/app/src/debug/AndroidManifest.xml
 android/app/src/debug/res/xml/local_tutor_network.xml
 android/app/src/main/AndroidManifest.xml
-android/app/src/main/assets/tutor/retrieval.draft.json
+contract/examples/tutor.v1.example.json
 android/app/src/main/kotlin/com/anything2game/app/AppDependencies.kt
 android/app/src/main/kotlin/com/anything2game/app/MainActivity.kt
 android/app/src/main/kotlin/com/anything2game/app/data/tutor/TutorCache.kt
