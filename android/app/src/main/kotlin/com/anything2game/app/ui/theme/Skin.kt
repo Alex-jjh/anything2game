@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
@@ -36,6 +37,14 @@ data class Skin(
     val hintSoft: Color,
     val paused: Color,
     val headingFont: FontFamily,
+    /** Body/UI face (system families until the team bundles fonts). */
+    val bodyFont: FontFamily = FontFamily.Default,
+    /** Card and panel shape: the skin's shape language. */
+    val cardShape: androidx.compose.foundation.shape.CornerBasedShape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+    val dark: Boolean = false,
+    /** Cast identity colours, deliberately NOT the right/wrong pair. Null = legacy mapping (case-file skin). */
+    val cast: Map<com.anything2game.contract.CastRole, Color>? = null,
+    val displayName: String = "Case file (current)",
 )
 
 /** Default "case file" skin. Placeholder until the visual team ships theirs. */
@@ -66,7 +75,7 @@ object A2g {
 }
 
 /** Each cast role keeps one colour everywhere (name tag, bubble edge, avatar). */
-fun Skin.castColor(role: com.anything2game.contract.CastRole): Color = when (role) {
+fun Skin.castColor(role: com.anything2game.contract.CastRole): Color = cast?.get(role) ?: when (role) {
     com.anything2game.contract.CastRole.PARTNER -> action
     com.anything2game.contract.CastRole.SUSPECT -> wrong
     com.anything2game.contract.CastRole.ROOKIE -> hint
@@ -76,7 +85,10 @@ fun Skin.castColor(role: com.anything2game.contract.CastRole): Color = when (rol
 
 @Composable
 fun A2gTheme(skin: Skin = CaseFileSkin, content: @Composable () -> Unit) {
-    val colors = lightColorScheme(
+    val colors = (if (skin.dark) androidx.compose.material3.darkColorScheme(
+        primary = skin.action, onPrimary = skin.onAction, background = skin.paper, onBackground = skin.ink, surface = skin.card, onSurface = skin.ink,
+        onSurfaceVariant = skin.inkMuted, outline = skin.outline, secondary = skin.evidence, error = skin.wrong,
+    ) else null) ?: lightColorScheme(
         primary = skin.action,
         onPrimary = skin.onAction,
         background = skin.paper,
@@ -92,9 +104,13 @@ fun A2gTheme(skin: Skin = CaseFileSkin, content: @Composable () -> Unit) {
     val typography = base.copy(
         headlineSmall = TextStyle(fontFamily = skin.headingFont, fontWeight = FontWeight.Bold, fontSize = 24.sp, lineHeight = 30.sp),
         titleLarge = TextStyle(fontFamily = skin.headingFont, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 26.sp),
-        bodyLarge = base.bodyLarge.copy(fontSize = 17.sp, lineHeight = 25.sp),
+        bodyLarge = base.bodyLarge.copy(fontFamily = skin.bodyFont, fontSize = 17.sp, lineHeight = 25.sp),
+        bodyMedium = base.bodyMedium.copy(fontFamily = skin.bodyFont),
+        labelMedium = base.labelMedium.copy(fontFamily = skin.bodyFont),
+        titleMedium = base.titleMedium.copy(fontFamily = skin.bodyFont),
     )
     CompositionLocalProvider(LocalSkin provides skin) {
-        MaterialTheme(colorScheme = colors, typography = typography, content = content)
+        val shapes = androidx.compose.material3.Shapes(medium = skin.cardShape, large = skin.cardShape, small = skin.cardShape)
+        MaterialTheme(colorScheme = colors, typography = typography, shapes = shapes, content = content)
     }
 }
