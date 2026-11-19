@@ -18,7 +18,7 @@
 | 012 | Cloud-portable server + Terraform/OpenTofu, one module per cloud behind the same inputs/outputs | proposed |
 | 013 | The app never calls an AI provider; phone → our server → provider (build-enforced) | **accepted** |
 | 014 | Infrastructure on AWS (ECS Fargate, RDS, CloudFront VPC origin, Cognito); model endpoints swappable per tier | **accepted** |
-| 015 | Support gate on by default; layered pipeline stays an experiment (A/B 2026-11-19) | **accepted** |
+| 015 | Support gate on by default (**provisional — benefit not confirmed**); layered pipeline stays an experiment | provisional |
 
 ---
 
@@ -116,3 +116,4 @@
 **Decision**: `A2G_SUPPORT_GATE` defaults to **on** (wrong answer parts 2.7 % → 0.7 % for +10 % cost and ~50 s). `A2G_PIPELINE=layered` remains an experiment: it improved grounding and feedback but missed the bar (2.1 % wrong parts vs A+G's 0.7 %, 3 × the answer leaks, 2.4 × cost).
 **Why**: precision over recall (product-review §3) at acceptable cost; the layered design's wins (feedback naming the misconception) can be ported one variable at a time.
 **Revisit**: after the blind human check, and after B v2 (no-leak hints, claim groups, cheaper frames).
+**Correction (2026-11-19)**: the evidence for the gate was noise — in the run that showed 0.7 % the gate rejected 0 units; a replicate showed 2.2 %. The gate stays on provisionally (≈ 10 % cost, it does reject 2–4 units per run in other runs) while E3 tests a cross-family checker. Decision owner: the eval, not this ADR.
