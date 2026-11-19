@@ -190,7 +190,8 @@ private fun StepRow(id: String, index: Int, count: Int, text: String, reorder: R
                         if (index < count - 1) CustomAccessibilityAction(down) { reorder.nudge(id, 1); true } else null,
                     )
                 },
-                color = skin.ink, style = MaterialTheme.typography.bodyLarge,
+                // Long steps (generated text can run to 30+ words) use the smaller body size so a row stays draggable.
+                color = skin.ink, style = if (text.length > 90) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge,
             )
             // Press and drag: takes the touch at once, so it never fights the list's own scrolling.
             Box(
