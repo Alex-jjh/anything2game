@@ -134,7 +134,7 @@ object DerivedChallenges {
 
     /**
      * A short swipe lock from one room's units: one claim per unit (at most [MAX_LOCK_CARDS]), alternating "holds" and
-     * "does not hold" from a stable hash. A room with a single unit contributes one true and one false claim from it.
+     * "does not hold" from a stable hash. A one-unit room yields no lock (it would only repeat the clue just played).
      * Null when fewer than two claims result.
      */
     fun roomCheck(roomUnits: List<LearningUnit>, language: String): SwipeItem? {

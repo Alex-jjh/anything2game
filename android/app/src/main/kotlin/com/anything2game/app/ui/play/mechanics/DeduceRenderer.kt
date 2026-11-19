@@ -95,12 +95,14 @@ object DeduceRenderer : MechanicRenderer {
         val speaker = ctx.scenarioSpeaker
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             if (speaker != null) CastPortrait(speaker, size = 64.dp, dim = false)
+            // The portrait already names the speaker; drop a leading "Sam: " from the line.
+            val line = speaker?.let { s -> listOf("${s.name}: ", "${s.name}：").firstOrNull(text::startsWith)?.let { text.removePrefix(it) } } ?: text
             Card(
                 Modifier.weight(1f),
                 colors = CardDefaults.cardColors(containerColor = skin.paper),
                 border = BorderStroke(if (speaker != null) 1.5.dp else 1.dp, speaker?.let { skin.castColor(it.role) } ?: skin.outline),
             ) {
-                Text(text, Modifier.padding(16.dp), style = MaterialTheme.typography.bodyLarge, color = skin.ink)
+                Text(line, Modifier.padding(16.dp), style = MaterialTheme.typography.bodyLarge, color = skin.ink)
             }
         }
     }

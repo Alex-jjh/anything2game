@@ -75,7 +75,13 @@ Next steps that would make the differences go beyond the ends of a level, all ad
 
 Practice shows **Play as** on every course card. It offers the generated frames ordered by reader state: Classic → Case → Rookie → Escape. Companion is folded into Learn. Escape appears only when a course has at least 2 process units, or process makes up at least a quarter of it (today: Attention and the zh spaced-repetition course). Under the chips it shows *what you do* and *when it fits*. Classic stays the default, an open session resumes in its own frame, and the choice is remembered per course and per profile.
 
-## 6. In progress (2026-11-20)
+## 6. Built (2026-11-20)
 
-- **Rookie teach-back** and **Escape room locks**: derived, read-only challenges built from the validated items, so each frame has its own act *during* the level, not only at the ends. Being built on branch `feat/derived-challenges`.
-- An independent test pass will play full levels in every frame once that lands.
+- **Rookie teach-back.** After up to 2 clues per level, the rookie states that unit's misconception. The player picks the explanation: the item's own `why`, against 2 explanations borrowed from other units ("true elsewhere, but it does not answer this point"). Screens: `docs/design/screens/derived/d1–d3, d6`.
+- **Escape room lock.** After each room with at least 2 units: 2–3 claims (true and false mixed) built from that room's items, judged by swipe. A wrong lock costs credibility. Screens: `d4, d5, d7`.
+- **Rules.** Both are read-only recombinations of validated items, with fixed templates and the source citations kept. They are deterministic, have no mastery effect, and are not re-queued. Engine: `engine/frames/DerivedChallenges.kt`.
+
+Known weak spots, for the team to judge on the phone:
+- **Teach-back distractors come from unrelated units.** A player can sometimes pick the right explanation by keyword overlap alone.
+- **Order/sort claims quote whole steps.** The cards are long to read on a phone.
+- **Most demo Escape rooms hold one unit, so they get no lock.** The fix is on the generation side: rooms of at least 2 units.

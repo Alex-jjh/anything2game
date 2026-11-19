@@ -41,6 +41,8 @@ internal fun avatarMood(state: PlayUiState.Ready, signals: AvatarSignals): Mood 
                 g.correct && s.currentSlot?.kind == SlotKind.BOSS -> Mood.OBJECT
                 g.correct -> Mood.HAPPY
                 partly -> Mood.DOUBT
+                // Derived challenges (teach-back, room lock) are not re-queued: no "comes back tomorrow" line.
+                s.currentSlot?.kind == SlotKind.TEACH_BACK || s.currentSlot?.kind == SlotKind.ROOM_CHECK -> Mood.SURPRISED
                 else -> Mood.DEFLATED
             }
         }
