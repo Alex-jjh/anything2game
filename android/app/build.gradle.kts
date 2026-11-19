@@ -54,6 +54,7 @@ dependencies {
 
 tasks.withType<Test>().configureEach {
     systemProperty("contract.examples", rootProject.file("contract/examples").absolutePath)
+    systemProperty("contract.samples", rootProject.file("samples/demo").absolutePath)
     systemProperty("robolectric.pixelCopyRenderMode", "hardware")
 }
 
