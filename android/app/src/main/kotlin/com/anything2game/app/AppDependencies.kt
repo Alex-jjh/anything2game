@@ -15,7 +15,6 @@ import com.anything2game.app.data.FileSessionStore
 import com.anything2game.app.platform.ContextSource
 import com.anything2game.app.platform.SimulatedContextSource
 import com.anything2game.engine.context.ContextPolicy
-import com.anything2game.engine.context.DefaultContextPolicy
 import com.anything2game.engine.grading.GraderRegistry
 import com.anything2game.engine.grading.Grading
 import com.anything2game.engine.mastery.LeitnerPolicy
@@ -45,6 +44,7 @@ import java.io.File
 interface AppDependencies {
     val tutors: com.anything2game.app.data.tutor.TutorRepository
     val packages: PackageRepository
+    val tutorScripts: com.anything2game.app.data.tutor.TutorScripts
     val frames: FrameRepository
     val framePreferences: FramePreferences
     val homePreferences: com.anything2game.app.data.HomePreferences
@@ -70,12 +70,13 @@ class AndroidAppContainer(context: Context) : AppDependencies {
     val installedPacks = DirectoryPackSource(File(app.filesDir, "packs"))
     val content = ContentLibrary(listOf(AssetPackSource(app.assets), installedPacks))
     override val packages: PackageRepository = content
+    override val tutorScripts: com.anything2game.app.data.tutor.TutorScripts = content
     override val frames: FrameRepository = content
     override val grading: Grading = GraderRegistry.default()
     override val masteryPolicy: MasteryPolicy = LeitnerPolicy()
     // Real sensors (Activity Recognition, ConnectivityManager) replace this adapter later; nothing else changes.
     override val contextSource: ContextSource = SimulatedContextSource()
-    override val contextPolicy: ContextPolicy = DefaultContextPolicy
+    override val contextPolicy: ContextPolicy = com.anything2game.engine.context.StandardContextPolicy { scope.homePreferences.pauseWhenWalking }
     override val clock: Clock = Clock.SYSTEM
 
     /** Everything that belongs to one person on this phone, built from the same store classes for every profile. */
@@ -87,7 +88,7 @@ class AndroidAppContainer(context: Context) : AppDependencies {
         val homePreferences = HomePreferences(app, profile.prefs("home"))
         val avatarPreferences: AvatarPreferences = SharedPrefsAvatarPreferences(app, profile.prefs("avatar"))
         val explainerPreferences: ExplainerPreferences = SharedPrefsExplainerPreferences(app, profile.prefs("explainer"))
-        val tutors = AndroidTutorRepository(app, packages, ::installServerPackage, File(dir, "tutor-sessions"), profile.prefs("tutor_connection"))
+        val tutors = AndroidTutorRepository(app, packages, tutorScripts, ::installServerPackage, File(dir, "tutor-sessions"), profile.prefs("tutor_connection"))
     }
 
     private suspend fun installServerPackage(pkg: com.anything2game.contract.LearningPackage) {

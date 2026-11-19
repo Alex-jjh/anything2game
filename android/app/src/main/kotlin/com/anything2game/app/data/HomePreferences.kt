@@ -9,6 +9,10 @@ class HomePreferences(context: Context, name: String = "home") {
     var nickname: String
         get() = prefs.getString("nickname", "").orEmpty()
         set(value) { prefs.edit { putString("nickname", value.trim().take(24)) } }
+    /** Opt-in: pause a level when the phone says the player is walking (off by default). */
+    var pauseWhenWalking: Boolean
+        get() = prefs.getBoolean("pause_walking", false)
+        set(value) { prefs.edit { putBoolean("pause_walking", value) } }
     var lastTab: String
         get() = prefs.getString("tab", "LEARN") ?: "LEARN"
         set(value) { prefs.edit { putString("tab", value) } }

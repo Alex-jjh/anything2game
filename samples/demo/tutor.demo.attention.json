@@ -1,0 +1,148 @@
+{
+ "packageId": "demo_attention",
+ "contentVersion": "1",
+ "documentVersion": "sha256:1d8aec05ae4b4f276b808a8e1a627ca25828d73385e7d00bf10a3184e817b817",
+ "blueprint": {
+  "schema": "a2g.tutor/draft-v1",
+  "concepts": [
+   {
+    "question": {
+     "id": "q1",
+     "conceptId": "why-replace-recurrence",
+     "concept": "Why ditch recurrence",
+     "prompt": "Why did the authors want to replace recurrent networks in sequence models?",
+     "options": [
+      {
+       "id": "a",
+       "text": "Because recurrent models process positions one by one, blocking parallel computation within an example"
+      },
+      {
+       "id": "b",
+       "text": "Because recurrent networks cannot be combined with attention at all"
+      },
+      {
+       "id": "c",
+       "text": "Because convolutional networks always beat recurrent networks on translation"
+      }
+     ],
+     "sourceRefs": [
+      {
+       "chunkId": "c4",
+       "quote": "This inherently sequential nature precludes parallelization within training examples, which becomes critical at longer sequence lengths"
+      }
+     ],
+     "facet": "background"
+    },
+    "correctOptionId": "a",
+    "explanation": "Recurrent networks compute hidden states step by step, so each step has to wait for the previous one to finish. That sequential dependency makes it hard to parallelize training, especially as sentences get longer, which was the core motivation for a different architecture.",
+    "simpler": "RNNs read a sentence one word at a time in order, so you can't speed them up much by doing things in parallel.",
+    "example": "A made-up example: translating a 50-word sentence with an RNN means waiting through 50 sequential steps, like reading a book one page at a time even if you have many readers available."
+   },
+   {
+    "question": {
+     "id": "q2",
+     "conceptId": "multi-head-attention",
+     "concept": "Multi-head attention",
+     "prompt": "What is the purpose of using multiple attention heads instead of just one?",
+     "options": [
+      {
+       "id": "a",
+       "text": "To let the model jointly attend to information from different representation subspaces at different positions"
+      },
+      {
+       "id": "b",
+       "text": "To make the total computation cheaper than single-head attention"
+      },
+      {
+       "id": "c",
+       "text": "To remove the need for positional encodings in the model"
+      }
+     ],
+     "sourceRefs": [
+      {
+       "chunkId": "c13",
+       "quote": "Multi-head attention allows the model to jointly attend to information from different representation subspaces at different positions."
+      }
+     ],
+     "facet": "method"
+    },
+    "correctOptionId": "a",
+    "explanation": "A single attention head averages information across positions, which can blur useful distinctions. Running several smaller attention operations in parallel, each with its own learned projections, lets the model look at different kinds of relationships at once, then combine the results.",
+    "simpler": "Instead of one big spotlight, the model uses several smaller spotlights that can each focus on a different kind of relationship in the sentence.",
+    "example": "A made-up example: one head might track subject-verb agreement while another tracks which pronoun refers to which noun, and multi-head attention lets both happen simultaneously."
+   },
+   {
+    "question": {
+     "id": "q3",
+     "conceptId": "translation-results",
+     "concept": "Translation results",
+     "prompt": "How did the Transformer perform on the WMT 2014 English-to-German translation task?",
+     "options": [
+      {
+       "id": "a",
+       "text": "It reached 28.4 BLEU, beating the previous best results, including ensembles, by over 2 BLEU"
+      },
+      {
+       "id": "b",
+       "text": "It tied with previous ensemble models but didn't surpass them"
+      },
+      {
+       "id": "c",
+       "text": "It set a new state of the art only on English-to-French, not English-to-German"
+      }
+     ],
+     "sourceRefs": [
+      {
+       "chunkId": "c2",
+       "quote": "Our model achieves 28.4 BLEU on the WMT 2014 English- to-German translation task, improving over the existing best results, including ensembles, by over 2 BLEU."
+      }
+     ],
+     "facet": "result"
+    },
+    "correctOptionId": "a",
+    "explanation": "The Transformer didn't just match prior systems, it clearly outperformed them, including systems that combined multiple models together (ensembles). This result mattered because it showed the attention-only approach wasn't just faster, it was also more accurate.",
+    "simpler": "The new model's translations scored noticeably better than even the best older systems, even ones using teams of models at once.",
+    "example": "A made-up comparison: think of a race where the old champions were teams of runners, and a single new runner still crossed the line clearly ahead."
+   },
+   {
+    "question": {
+     "id": "q4",
+     "conceptId": "long-sequence-limitation",
+     "concept": "Local attention trade-off",
+     "prompt": "What trade-off happens if self-attention is restricted to a local neighborhood for long sequences?",
+     "options": [
+      {
+       "id": "a",
+       "text": "The maximum path length between distant positions grows to O(n/r)"
+      },
+      {
+       "id": "b",
+       "text": "It removes the need for multiple attention heads entirely"
+      },
+      {
+       "id": "c",
+       "text": "It makes self-attention slower than recurrent layers no matter the sequence length"
+      }
+     ],
+     "sourceRefs": [
+      {
+       "chunkId": "c20",
+       "quote": "This would increase the maximum path length to O(n/r)."
+      }
+     ],
+     "facet": "limitation"
+    },
+    "correctOptionId": "a",
+    "explanation": "Full self-attention connects every position to every other position in one step, which is great for learning long-range dependencies but expensive for very long sequences. Restricting attention to a nearby window saves computation, but it brings back longer paths between distant words, which is exactly the problem self-attention was meant to avoid.",
+    "simpler": "Looking only at nearby words saves work, but then far-apart words take more steps to connect again, which was the original problem attention solved.",
+    "example": "A made-up example: if a pronoun at the end of a long paragraph refers to a name at the start, a narrow attention window might force the model to relay that connection through several intermediate steps instead of linking them directly."
+   }
+  ]
+ },
+ "generation": {
+  "mode": "pre-generated",
+  "model": "us.anthropic.claude-sonnet-5",
+  "promptVersion": "tutor-script.v1",
+  "review": "needs human review"
+ }
+}

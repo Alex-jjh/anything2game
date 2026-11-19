@@ -20,7 +20,13 @@ class ReadingFlowTest {
     @Test fun diagnostic_requires_answers_then_opens_tutor_not_practice() {
         val deps = AndroidAppContainer(RuntimeEnvironment.getApplication())
         rule.setContent { A2gTheme { ReadingContent(deps, "pkg_demo_retrieval", onBack = {}) } }
-        rule.waitUntil(10000) { rule.onAllNodesWithText("FIXED EXAMPLE / MOCK · NO AI").fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(10000) { rule.onAllNodesWithText("Pre-generated sample").fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithText("FIXED EXAMPLE / MOCK · NO AI").assertDoesNotExist()
+        // The example's questions carry facets, so the reader is asked what they want first; "let the explainer decide" is the default.
+        rule.onNodeWithTag("tutor_list").performScrollToNode(hasTestTag("focus_continue"))
+        rule.onNodeWithTag("focus_decide").assertIsSelected()
+        rule.onNodeWithTag("focus_continue").performClick()
+        rule.waitUntil(10000) { rule.onAllNodesWithText("FOUNDATION 1 / 3").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithTag("tutor_list").performScrollToNode(hasTestTag("diagnostic_next"))
         rule.onNodeWithTag("diagnostic_next").assertIsNotEnabled()
         repeat(3) {
@@ -43,5 +49,25 @@ class ReadingFlowTest {
         rule.waitUntil(10000) { rule.onAllNodesWithTag("typing_indicator").fetchSemanticsNodes().isEmpty() && rule.onAllNodesWithTag("message_source").fetchSemanticsNodes().isNotEmpty() }
         rule.onAllNodesWithTag("message_source").onFirst().assertExists()
         rule.onNodeWithText("Start practice").assertDoesNotExist()
+    }
+
+    @Test fun focus_puts_the_chosen_facet_first_and_keeps_an_honest_note() {
+        val deps = AndroidAppContainer(RuntimeEnvironment.getApplication())
+        rule.setContent { A2gTheme { ReadingContent(deps, "pkg_demo_retrieval", onBack = {}) } }
+        rule.waitUntil(10000) { rule.onAllNodesWithTag("focus_continue").fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithTag("tutor_list").performScrollToNode(hasTestTag("focus_limitation"))
+        rule.onNodeWithTag("focus_limitation").performClick()
+        rule.onNodeWithTag("focus_decide").assertIsNotSelected()
+        rule.onNodeWithTag("tutor_list").performScrollToNode(hasTestTag("focus_note"))
+        rule.onNodeWithTag("focus_note").performTextInput("what does it not show?")
+        rule.onNodeWithTag("tutor_list").performScrollToNode(hasTestTag("focus_continue"))
+        rule.onNodeWithTag("focus_continue").performClick()
+        // The first question is now the one about limits (the example's third concept); nothing was dropped.
+        rule.waitUntil(10000) { rule.onAllNodesWithText("FOUNDATION 1 / 3").fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithText("结论的适用范围").assertExists()
+        rule.onNodeWithTag("tutor_list").performScrollToNode(hasTestTag("focus_summary_note"))
+        rule.onNodeWithTag("focus_summary_note").assertExists()
+        rule.onNodeWithTag("focus_summary").assertExists()
+        rule.onNodeWithTag("focus_continue").assertDoesNotExist()
     }
 }

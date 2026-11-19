@@ -55,6 +55,7 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator, onPickPdf: () -> Unit) 
     androidx.compose.runtime.key(current.id) {
     var avatarId by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(deps.avatarPreferences.get() ?: Avatars.default.id) }
     var nickname by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(deps.homePreferences.nickname) }
+    var pauseWalking by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(deps.homePreferences.pauseWhenWalking) }
     val tabsState = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
     LaunchedEffect(navigator) { navigator.initializeTab(deps.homePreferences.lastTab) }
     val selectTab: (HomeTab) -> Unit = { navigator.selectTab(it); deps.homePreferences.lastTab = it.name }
@@ -72,7 +73,8 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator, onPickPdf: () -> Unit) 
                         onRename = { nickname = it; deps.homePreferences.nickname = it },
                         onPickPdf = onPickPdf, onRead = navigator::openRead, onPlay = navigator::openPlay,
                         onSelectTab = selectTab, onRetry = { vm.refresh() }, padding = padding, simulator = simulator, onPreparePractice = vm::preparePractice,
-                        onSwitchProfile = { navigator.toHome(); deps.profiles.leave() }, onSelectFrame = vm::selectFrame)
+                        onSwitchProfile = { navigator.toHome(); deps.profiles.leave() }, onSelectFrame = vm::selectFrame,
+                        pauseWhenWalking = pauseWalking, onPauseWhenWalking = { pauseWalking = it; deps.homePreferences.pauseWhenWalking = it })
                 }
             }
         }
@@ -103,7 +105,7 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator, onPickPdf: () -> Unit) 
             LaunchedEffect(state.ready) { state.ready?.let(navigator::openRead) }
             Scaffold(containerColor = A2g.skin.paper) { padding ->
                 ImportContent(r.request, onCancel = cancel, contentPadding = padding, endpoint = deps.tutors.endpoint,
-                    state = state, onStart = vm::start, onDemo = { vm.cancel(); navigator.openRead(com.anything2game.app.data.tutor.FIXED_TUTOR_PACKAGE) })
+                    state = state, onStart = vm::start, onDemo = { vm.cancel(); navigator.openRead(com.anything2game.app.data.tutor.EXAMPLE_TUTOR_PACKAGE) })
             }
         }
     }

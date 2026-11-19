@@ -12,7 +12,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.Density
-import com.anything2game.app.data.tutor.FIXED_TUTOR_PACKAGE
+import com.anything2game.app.data.tutor.EXAMPLE_TUTOR_PACKAGE
 import com.anything2game.app.ui.reading.ReadingContent
 import com.anything2game.app.ui.theme.A2gTheme
 import com.anything2game.contract.tutor.TutorIntent
@@ -42,16 +42,18 @@ class ExplainerScreenshotTest {
         android.provider.Settings.Global.putFloat(app.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 0f)
     }
 
-    private enum class Stage { FRESH, STARTED, TALKED }
+    private enum class Stage { FOCUS, FRESH, STARTED, TALKED }
 
     /** Puts the saved session in the wanted state through the repository, the same way the view model would. */
-    private fun seed(stage: Stage): AppDependencies {
+    private fun seed(stage: Stage, pkg: String = EXAMPLE_TUTOR_PACKAGE): AppDependencies {
         val deps = AndroidAppContainer(app)
-        if (stage == Stage.FRESH) return deps
+        if (stage == Stage.FOCUS) return deps
         runBlocking {
             val repo = deps.tutors
-            var cache = repo.open(FIXED_TUTOR_PACKAGE).cache
-            cache = cache.copy(draftAnswers = cache.session.questions.associate { it.id to UNKNOWN_ANSWER }, questionIndex = 2)
+            var cache = repo.open(pkg).cache
+            cache = repo.setFocus(cache, emptyList(), "")
+            if (stage == Stage.FRESH) { repo.save(cache); return@runBlocking }
+            cache = cache.copy(draftAnswers = cache.session.questions.associate { it.id to UNKNOWN_ANSWER }, questionIndex = cache.session.questions.lastIndex)
             cache = cache.copy(session = repo.assess(cache, "a"))
             cache = cache.copy(session = repo.turn(cache, TutorIntent.START, "", "s"))
             if (stage == Stage.TALKED) {
@@ -64,11 +66,11 @@ class ExplainerScreenshotTest {
         return deps
     }
 
-    private fun show(deps: AppDependencies, fontScale: Float? = null, ready: String = "dialogue_text") {
+    private fun show(deps: AppDependencies, fontScale: Float? = null, ready: String = "dialogue_text", pkg: String = EXAMPLE_TUTOR_PACKAGE) {
         rule.setContent {
             A2gTheme {
-                if (fontScale == null) ReadingContent(deps, FIXED_TUTOR_PACKAGE, onBack = {})
-                else CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale)) { ReadingContent(deps, FIXED_TUTOR_PACKAGE, onBack = {}) }
+                if (fontScale == null) ReadingContent(deps, pkg, onBack = {})
+                else CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale)) { ReadingContent(deps, pkg, onBack = {}) }
             }
         }
         rule.waitUntil(10000) { rule.onAllNodesWithTag(ready).fetchSemanticsNodes().isNotEmpty() }
@@ -76,6 +78,46 @@ class ExplainerScreenshotTest {
     }
 
     private fun lastPage() { repeat(3) { if (rule.onAllNodesWithTag("tutor_rephrase").fetchSemanticsNodes().isEmpty()) { rule.onNodeWithTag("dialogue_box").performClick(); rule.waitForIdle() } } }
+
+    @Test fun focus_step() {
+        show(seed(Stage.FOCUS), ready = "focus_continue")
+        rule.onRoot().captureRoboImage("$out/00_focus.png")
+    }
+
+    // The two courses used in the product video: Attention (English) and spaced repetition (Chinese).
+    @Test fun attention_en() {
+        show(seed(Stage.FRESH, "demo_attention"), ready = "answer_unknown", pkg = "demo_attention")
+        rule.onRoot().captureRoboImage("$out/10_attention_diagnostic.png")
+    }
+
+    @Test fun attention_en_scene() {
+        show(seed(Stage.STARTED, "demo_attention"), pkg = "demo_attention")
+        rule.onRoot().captureRoboImage("$out/11_attention_page.png")
+        lastPage()
+        rule.onRoot().captureRoboImage("$out/12_attention_choice_bar.png")
+    }
+
+    @Test fun attention_en_ask_sheet() {
+        show(seed(Stage.STARTED, "demo_attention"), pkg = "demo_attention"); lastPage()
+        rule.onNodeWithTag("tutor_ask").performClick()
+        rule.onNodeWithTag("tutor_input").performTextInput("Does this hold for every task?")
+        rule.waitForIdle()
+        captureScreenRoboImage("$out/13_attention_ask_sheet.png")
+    }
+
+    @Test fun zh_spaced_diagnostic() {
+        RuntimeEnvironment.setQualifiers("+zh")
+        show(seed(Stage.FRESH, "demo_zh_spaced"), ready = "answer_unknown", pkg = "demo_zh_spaced")
+        rule.onRoot().captureRoboImage("$out/14_zh_spaced_diagnostic.png")
+    }
+
+    @Test fun zh_spaced_scene() {
+        RuntimeEnvironment.setQualifiers("+zh")
+        show(seed(Stage.STARTED, "demo_zh_spaced"), pkg = "demo_zh_spaced")
+        rule.onRoot().captureRoboImage("$out/15_zh_spaced_page.png")
+        lastPage()
+        rule.onRoot().captureRoboImage("$out/16_zh_spaced_choice_bar.png")
+    }
 
     @Test fun diagnostic() {
         show(seed(Stage.FRESH), ready = "answer_unknown")

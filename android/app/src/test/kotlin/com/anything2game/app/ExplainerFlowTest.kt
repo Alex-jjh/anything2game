@@ -51,9 +51,13 @@ class ExplainerFlowTest {
     @Test fun fixed_example_end_to_end() {
         val deps = AndroidAppContainer(app)
         rule.setContent { A2gTheme { ReadingContent(deps, "pkg_demo_retrieval", onBack = {}) } }
-        rule.waitUntil(10000) { rule.onAllNodesWithText("FIXED EXAMPLE / MOCK · NO AI").fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(10000) { rule.onAllNodesWithText("Pre-generated sample").fetchSemanticsNodes().isNotEmpty() }
 
-        // Phase 1 and 2 are introduced by the explainer.
+        // Every step before the scene is introduced by the explainer, the focus question included.
+        rule.onNodeWithTag("explainer_header").assertExists()
+        rule.onNodeWithTag("tutor_list").performScrollToNode(hasTestTag("focus_continue"))
+        rule.onNodeWithTag("focus_continue").performClick()
+        rule.waitUntil(10000) { rule.onAllNodesWithText("FOUNDATION 1 / 3").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithTag("explainer_header").assertExists()
         repeat(3) {
             rule.onNode(hasScrollToNodeAction()).performScrollToNode(hasTestTag("answer_unknown"))
@@ -116,7 +120,10 @@ class ExplainerFlowTest {
         val deps = AndroidAppContainer(app)
         var back = 0
         rule.setContent { A2gTheme { ReadingContent(deps, "pkg_demo_retrieval", onBack = { back++ }) } }
-        rule.waitUntil(10000) { rule.onAllNodesWithText("FIXED EXAMPLE / MOCK · NO AI").fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(10000) { rule.onAllNodesWithText("Pre-generated sample").fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithTag("tutor_list").performScrollToNode(hasTestTag("focus_continue"))
+        rule.onNodeWithTag("focus_continue").performClick()
+        rule.waitUntil(10000) { rule.onAllNodesWithText("FOUNDATION 1 / 3").fetchSemanticsNodes().isNotEmpty() }
         repeat(3) {
             rule.onNode(hasScrollToNodeAction()).performScrollToNode(hasTestTag("answer_unknown"))
             rule.onNodeWithTag("answer_unknown").performClick()

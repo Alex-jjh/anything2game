@@ -12,7 +12,7 @@
 
 - 沿用 Kotlin / Compose / ViewModel / 文件存储；未新增依赖或安装软件。保留纸色与卡片风格。
 - 新讲解页按题收集答案，全部完成后展示概念证据；先讲需要澄清或未判断的概念，再连接答对的概念。对话气泡、换个说法、举例、继续、自由追问和对应原文弹窗。
-- 保留单独的离线固定示例：`android/app/src/main/assets/tutor/retrieval.draft.json`。绑定现有自拟资料的 packageId/contentVersion/documentVersion，含独立基础题、选项、答案、讲解与引用。它不是从选中的 PDF 生成，也不代表团队已决定正式离线判题。
+- 保留离线示例：`contract/examples/tutor.v1.example.json`（随 retrieval 预设内容包以 `tutor.json` 分发，见 ADR-017；预设课程各自带 `tutor.<name>.json`）。绑定现有自拟资料的 packageId/contentVersion/documentVersion，含独立基础题、选项、答案、讲解与引用。它不是从选中的 PDF 生成，也不代表团队已决定正式离线判题。
 - `TutorRepository` 隔离页面、缓存与 HTTP。新会话在 `files/tutor-sessions/`，通过 AtomicFile 保存后再推进页面。损坏/不支持版本的缓存明确报错，不静默覆盖或删除。
 - 旧章节自评、session/mastery、昵称和角色不迁移成测评结论、不删除。固定内容换版使用独立会话键；原记录保留。
 - 真实上传需要用户在确认页操作。接入已有安装令牌接口；令牌仅保存在应用私有偏好中，按服务器地址隔离，不打印、不跟随 HTTP 重定向。增加 INTERNET 权限用于自有后端，不直连模型供应商。

@@ -15,8 +15,14 @@ object DialoguePaging {
         val budget = latinBudget.toFloat()
         val limit = budget * 1.1f
 
-        val lines = text.lines().map { it.trim() }.filter { it.isNotEmpty() }.map { sentences(it) }
-        val units = glue(lines).flatMap { u -> if (weight(u.text) <= limit) listOf(u) else split(u.text, ::weight, budget).map { Piece(it, u.sep) } }
+        val lines = text.lines().map { it.trim() }.filter { it.isNotEmpty() }.map { line ->
+            // A sentence too long for one page is cut first (evenly, at clause marks), then headings and colon lines are glued on.
+            sentences(line).flatMap { u ->
+                if (weight(u.text) <= limit) listOf(u)
+                else split(u.text, ::weight, budget).let { parts -> parts.mapIndexed { i, t -> Piece(t, if (i == parts.lastIndex) u.sep else if (isCjk(t.last())) "" else " ") } }
+            }
+        }
+        val units = glue(lines, ::weight, limit)
 
         val pages = mutableListOf<MutableList<Piece>>()
         var used = 0f
@@ -64,14 +70,14 @@ object DialoguePaging {
     }
 
     /** Join heading-like and colon-ending pieces to the piece that follows. */
-    private fun glue(lines: List<List<Piece>>): List<Piece> {
+    private fun glue(lines: List<List<Piece>>, weight: (String) -> Float, limit: Float): List<Piece> {
         val flat = lines.flatten()
         val merged = mutableListOf<Piece>()
         var i = 0
         while (i < flat.size) {
             var text = flat[i].text
             var sep = flat[i].sep
-            while (i < flat.lastIndex && sticks(text, sep)) { i++; text += sep + flat[i].text; sep = flat[i].sep }
+            while (i < flat.lastIndex && sticks(text, sep) && weight(text + sep + flat[i + 1].text) <= limit) { i++; text += sep + flat[i].text; sep = flat[i].sep }
             merged += Piece(text, sep)
             i++
         }
@@ -85,15 +91,17 @@ object DialoguePaging {
         return sep == "\n" && '\n' !in text && text.length <= 24 && last !in sentenceEnds && last != '.' && last !in closers && last != ',' && last != '，'
     }
 
-    /** One sentence too long for a page: cut at clause marks once the page is mostly full, else anywhere at the budget. */
+    /** One sentence too long for a page: cut it into equal parts, each ending at a clause mark or a space once it is as long as its share. */
     private fun split(text: String, weight: (String) -> Float, budget: Float): List<String> {
+        val parts = Math.ceil((weight(text) / budget).toDouble()).toInt().coerceAtLeast(2)
+        val target = weight(text) / parts
         val out = mutableListOf<String>()
         var cur = StringBuilder()
         fun flush() { if (cur.isNotBlank()) out += cur.toString().trim(); cur = StringBuilder() }
         text.forEach { c ->
             cur.append(c)
             val w = weight(cur.toString())
-            if (w >= budget) flush() else if (w >= budget * 0.7f && c in "，、：,: ") flush()
+            if (w >= budget) flush() else if (w >= target * 0.9f && c in "，、：,:; ") flush()
         }
         flush()
         return out

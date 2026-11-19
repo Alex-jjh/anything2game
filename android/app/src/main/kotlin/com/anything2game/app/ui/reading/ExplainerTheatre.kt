@@ -223,7 +223,7 @@ private fun Stage(
             Box(Modifier.align(Alignment.BottomCenter).size(side)) { theme.Standee(expression, Modifier.fillMaxSize()) }
         }
         Badge(
-            stringResource(when (session.mode) { "local-mock" -> R.string.tutor_fixed_badge; "mock" -> R.string.tutor_server_mock_badge; else -> R.string.tutor_model_badge }),
+            stringResource(when (session.mode) { "local-mock" -> R.string.badge_pre_generated; "mock" -> R.string.tutor_server_mock_badge; else -> R.string.tutor_model_badge }),
             skin.evidence, skin.evidenceSoft, Modifier.align(Alignment.TopStart).padding(12.dp).widthIn(max = 280.dp),
         )
         // The player's own character, small in the corner; poking it makes it react (it must not turn the page).
@@ -395,7 +395,7 @@ private fun LogSheet(session: TutorSession, explainer: String, player: String, o
             item {
                 Text(stringResource(R.string.explainer_log_title), style = MaterialTheme.typography.titleLarge, color = skin.ink)
                 Text(session.title, style = MaterialTheme.typography.titleMedium, color = skin.inkMuted)
-                Text(stringResource(if (session.mode == "local-mock") R.string.tutor_fixed_note else R.string.tutor_coverage_note), style = MaterialTheme.typography.bodySmall, color = skin.inkMuted)
+                Text(stringResource(if (session.mode == "local-mock") R.string.tutor_scripted_note else R.string.tutor_coverage_note), style = MaterialTheme.typography.bodySmall, color = skin.inkMuted)
             }
             items(session.messages, key = { it.id }) { message -> LogMessage(message, session, explainer, player, onSource) }
             item { Spacer(Modifier.navigationBarsPadding()) }

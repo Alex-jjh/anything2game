@@ -182,4 +182,6 @@
     <string name="frame_companion_best">Best for a first pass, before you have read it.</string>
     <string name="practice_play_as">Play as</string>
     <string name="level_status_cleared">Cleared · review tomorrow to make it stick</string>
+    <string name="setting_pause_walking">Pause when I\'m walking</string>
+    <string name="setting_pause_walking_body">Off: walking only switches to the one-handed layout. On: the level waits until you stop.</string>
 </resources>

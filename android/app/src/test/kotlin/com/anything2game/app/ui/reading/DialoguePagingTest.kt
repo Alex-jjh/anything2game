@@ -51,4 +51,14 @@ class DialoguePagingTest {
         val pages = DialoguePaging.pages(text)
         assertEquals(1, pages.size)
     }
+
+    @Test fun `a heading and a colon line stay in front of a long sentence that is cut evenly`() {
+        val long = "Recurrent networks compute hidden states step by step, so every step waits for the one before it, which gets slower as sentences get longer, and that was the core motivation for a different architecture."
+        val text = "Why ditch recurrence\nYou chose not sure. Let us start with this concept:\n$long"
+        val pages = DialoguePaging.pages(text)
+        assertTrue(pages.first().startsWith("Why ditch recurrence\nYou chose not sure."))
+        assertEquals("nothing lost", text.replace("\n", " ").replace(Regex("\\s+"), " "), pages.joinToString(" ").replace("\n", " ").replace(Regex("\\s+"), " "))
+        pages.forEach { assertTrue("page of ${it.length}: $it", it.length <= 135) }
+        assertTrue("no page is a sliver", pages.all { it.length > 30 })
+    }
 }

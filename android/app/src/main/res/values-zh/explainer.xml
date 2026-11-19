@@ -18,4 +18,5 @@
     <string name="explainer_thinking">%1$s 正在思考</string>
     <string name="explainer_cancel">取消</string>
     <string name="explainer_concept">概念 %1$d/%2$d</string>
+    <string name="explainer_focus_line">告诉我你想读出什么，我就从那里讲起。</string>
 </resources>
