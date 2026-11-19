@@ -1,0 +1,115 @@
+{
+ "packageId": "demo_zh_spaced",
+ "contentVersion": "1",
+ "documentVersion": "sha256:1689d305bcf68d5dac29bd1d57fe58dd29c5ac6361edd8a392ec8af4a957a752",
+ "blueprint": {
+  "schema": "a2g.tutor/draft-v1",
+  "concepts": [
+   {
+    "question": {
+     "id": "q1",
+     "conceptId": "spaced-repetition-principle",
+     "concept": "间隔重复原理",
+     "prompt": "间隔重复是一种什么样的学习技巧？",
+     "options": [
+      {
+       "id": "a",
+       "text": "利用间隔效应，复习时逐步增加两次复习间的间隔"
+      },
+      {
+       "id": "b",
+       "text": "要求每天固定时间复习，间隔始终不变"
+      },
+      {
+       "id": "c",
+       "text": "只适用于语言听力训练，不能用于词汇"
+      }
+     ],
+     "sourceRefs": [
+      {
+       "chunkId": "c1",
+       "quote": "间隔重复（英语：Spaced repetition）是一种利用心理学间隔效应，通过不断复习所学内容并逐步增加两次复习间的时间间隔来提升效率的学习技巧。"
+      }
+     ],
+     "facet": "background"
+    },
+    "correctOptionId": "a",
+    "explanation": "间隔重复的核心思路是：复习同一内容时，两次复习之间的时间间隔要逐渐拉长，而不是固定不变。这利用了心理学中的“间隔效应”，让复习效率更高，尤其适合需要记住大量知识点的学习，比如外语词汇。",
+    "simpler": "简单说：复习次数一样，但把复习的间隔越拉越长，记得更牢。",
+    "example": "一个虚构的例子：第一天学一个单词，第二天复习，然后隔四天、再隔八天复习，每次间隔都比上一次长。"
+   },
+   {
+    "question": {
+     "id": "q2",
+     "conceptId": "spitzer-experiment-history",
+     "concept": "间隔重复研究历史",
+     "prompt": "1939年Spitzer的实验结果在当时受到了怎样的关注？",
+     "options": [
+      {
+       "id": "a",
+       "text": "立刻被广泛引用，成为教育界热点"
+      },
+      {
+       "id": "b",
+       "text": "起初未受关注，直到20世纪60年代才被重新研究"
+      },
+      {
+       "id": "c",
+       "text": "被证明间隔重复方法完全无效"
+      }
+     ],
+     "sourceRefs": [
+      {
+       "chunkId": "c1",
+       "quote": "1939年，H·F·Spitzer在爱荷华州对36名学生进行了一项实验，验证了间隔重复方法的效果。这一工作起初并未引起关注，直到20世纪60年代，认知心理学家亚瑟·梅尔顿、托马斯·兰道尔及罗伯特·A·比约克再次研究了间隔时间对于复习效果的影响。"
+      }
+     ],
+     "facet": "result"
+    },
+    "correctOptionId": "b",
+    "explanation": "Spitzer在爱荷华州用36名学生验证了间隔重复的效果，但这项研究一开始并没有引起太多关注，要等到几十年后，认知心理学家重新研究间隔时间对复习效果的影响，这个方法才真正进入主流视野。这说明好的研究成果有时需要很长时间才能被重视和应用。",
+    "simpler": "简单说：1939年就有实验证明这个方法有效，但当时没人在意，几十年后才被重新发现。",
+    "example": "有点像一篇论文发表后被冷落多年，后来才被别的学者重新挖出来、发现它的价值。"
+   },
+   {
+    "question": {
+     "id": "q3",
+     "conceptId": "software-interval-adjustment",
+     "concept": "软件调整间隔的方法",
+     "prompt": "间隔重复软件是依据什么来调整卡片的复习间隔和出现频率？",
+     "options": [
+      {
+       "id": "a",
+       "text": "根据用户对每张卡片的辨认正确率来调整"
+      },
+      {
+       "id": "b",
+       "text": "所有卡片按固定时间表轮流出现，不看正确率"
+      },
+      {
+       "id": "c",
+       "text": "由用户手动给每张卡片设置间隔时间"
+      }
+     ],
+     "sourceRefs": [
+      {
+       "chunkId": "c1",
+       "quote": "为了使用户达到目标水平（例如，在任何给定时间点正确辨认90％的卡片），软件会调整重复的时间间隔。难以辨认的词汇经常出现，并且简单词汇出现频率较低，其词汇难度由软件根据用户的辨认正确率确定。"
+      }
+     ],
+     "facet": "method"
+    },
+    "correctOptionId": "a",
+    "explanation": "软件的做法是：为了让用户维持一个目标正确率（比如90%），它会根据用户答对或答错每张卡片的情况，动态调整这张卡片出现的间隔。难记的词出现得更频繁，容易记住的词出现得更少，这个难度判断完全基于用户自己的表现。",
+    "simpler": "简单说：软件会盯着你答对答错的情况，答错的词多出现几次，答对的词少出现几次。",
+    "example": "一个虚构的例子：你总是记不住某个单词，软件就让它一天后、两天后反复出现；另一个单词你每次都答对，软件就让它半年后才再出现一次。"
+   }
+  ]
+ },
+ "generation": {
+  "mode": "pre-generated",
+  "model": "us.anthropic.claude-sonnet-5",
+  "promptVersion": "tutor-script.v1",
+  "review": "needs human review"
+ }
+}
