@@ -99,28 +99,33 @@ fun PlayContent(
             )
         },
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
-            Column(
-                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                if (showSimulator) simulator?.invoke()
-                val recap = state.recap
-                when {
-                    session.phase == Phase.Failed -> FailedContent(state.frameId, onReplay = onRestart, onLibrary = onBack)
-                    recap != null -> {
-                        RecapContent(recap, unitCount = level?.units?.size ?: 0, title = stringResource(recapTitle(state.frameId)), onReplay = onRestart, onLibrary = onBack) {
-                            if (board != null) EvidenceBoard(board, state.solvedUnitIds)
-                        }
+        Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (showSimulator) simulator?.invoke()
+            val recap = state.recap
+            when {
+                // Finished screens scroll as a whole.
+                session.phase == Phase.Failed -> Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    FailedContent(state.frameId, onReplay = onRestart, onLibrary = onBack)
+                }
+                recap != null -> Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    RecapContent(recap, unitCount = level?.units?.size ?: 0, title = stringResource(recapTitle(state.frameId)), frameId = state.frameId, onReplay = onRestart, onLibrary = onBack) {
+                        if (board != null) EvidenceBoard(board, state.solvedUnitIds)
                     }
-                    state.scene != null -> {
-                        ProgressHeader(state, onAction)
-                        SceneContent(state.scene, state.overlay?.cast.orEmpty(), state.room, onEvidence = { onAction(Action.OpenEvidence(it)) }, onContinue = { onAction(Action.Next) })
-                    }
-                    else -> {
-                        ProgressHeader(state, onAction)
-                        UnitBody(state, onAction)
-                    }
+                }
+                // Scenes: stage on top, dialogue docked at the bottom (visual-novel layout).
+                state.scene != null -> {
+                    ProgressHeader(state, onAction)
+                    SceneStage(
+                        key = "${session.position}",
+                        lines = state.scene, cast = state.overlay?.cast.orEmpty(), room = state.room,
+                        onEvidence = { onAction(Action.OpenEvidence(it)) }, onContinue = { onAction(Action.Next) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                // Challenges: each renderer owns its scroll and keeps its main action docked at the bottom.
+                else -> {
+                    ProgressHeader(state, onAction)
+                    Box(Modifier.weight(1f)) { UnitBody(state, onAction) }
                 }
             }
         }
@@ -191,39 +196,42 @@ private fun UnitBody(state: PlayUiState.Ready, onAction: (Action) -> Unit) {
         return
     }
     val s = state.session
-    val ctx = RenderContext(oneHanded = state.context.oneHanded, chunks = state.pkg.sources, cast = state.overlay?.cast.orEmpty())
+    val ctx = RenderContext(
+        oneHanded = state.context.oneHanded, chunks = state.pkg.sources, cast = state.overlay?.cast.orEmpty(),
+        evidenceChunks = evidenceFor(state),
+    )
     when (val phase = s.phase) {
-        Phase.Presenting -> {
+        Phase.Presenting -> Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             unit.hints.take(s.hintsShown).forEachIndexed { i, hint ->
                 Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = skin.hintSoft)) {
-                    Column(Modifier.padding(12.dp)) {
+                    Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(stringResource(R.string.hint_label, i + 1), style = MaterialTheme.typography.labelMedium, color = skin.hint, fontWeight = FontWeight.SemiBold)
-                        Text(hint, color = skin.ink)
+                        Text(hint, color = skin.ink, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             }
             val slot = s.currentSlot
-            renderer.Question(
-                key = "${s.position}:${slot?.unitId}:${slot?.variant}",
-                item = item,
-                ctx = ctx,
-                onSubmit = { onAction(Action.Submit(it)) },
-            )
+            Box(Modifier.weight(1f)) {
+                renderer.Question(key = "${s.position}:${slot?.unitId}:${slot?.variant}", item = item, ctx = ctx, onSubmit = { onAction(Action.Submit(it)) })
+            }
         }
-        is Phase.Feedback -> {
-            ResultBanner(phase, state.retryQueued)
-            renderer.Review(item, phase.answer, phase.grade, ctx)
+        is Phase.Feedback -> Column(Modifier.fillMaxSize()) {
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                ResultStamp(phase, state.retryQueued, isBoss = s.currentSlot?.kind == SlotKind.BOSS)
+                renderer.Review(item, phase.answer, phase.grade, ctx)
+                Spacer(Modifier.size(4.dp))
+            }
             val chunkIds = item.allSourceRefs.map { it.chunkId }.distinct()
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.padding(top = 10.dp, bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(
                     onClick = { onAction(Action.OpenEvidence(chunkIds)) },
-                    modifier = Modifier.weight(1f).heightIn(min = 52.dp),
+                    modifier = Modifier.weight(1f).heightIn(min = 56.dp),
                     border = BorderStroke(1.5.dp, skin.evidence),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = skin.evidence),
                     contentPadding = PaddingValues(horizontal = 12.dp),
                 ) { Icon(Icons.Filled.Description, null, Modifier.size(20.dp)); Spacer(Modifier.size(6.dp)); Text(stringResource(R.string.action_show_evidence), maxLines = 1) }
                 val last = s.position + 1 >= s.queue.size
-                Button(onClick = { onAction(Action.Next) }, modifier = Modifier.weight(1f).heightIn(min = 52.dp)) {
+                Button(onClick = { onAction(Action.Next) }, modifier = Modifier.weight(1f).heightIn(min = 56.dp)) {
                     Text(stringResource(if (last) R.string.action_finish else R.string.action_next))
                 }
             }
@@ -232,19 +240,42 @@ private fun UnitBody(state: PlayUiState.Ready, onAction: (Action) -> Unit) {
     }
 }
 
+/**
+ * Evidence the player can present in a cross-exam: what this level's clues cite (what they "collected"),
+ * plus the boss's own passages so a correct answer always exists. Ordered by page; far fewer than the whole paper.
+ */
+private fun evidenceFor(state: PlayUiState.Ready): List<com.anything2game.contract.SourceChunk> {
+    val level = state.pkg.level(state.session.levelId) ?: return state.pkg.sources
+    // "Evidence you collected": the lines this level's clues cited (the boss's own refs only fill gaps),
+    // shown as the cited quote rather than the start of the chunk, so the picker reads like pinned notes.
+    val unitRefs = level.units.flatMap { u -> (listOf(u.item) + u.variants).flatMap { it.allSourceRefs } }
+    val bossRefs = state.overlay?.level(level.levelId)?.boss?.item?.allSourceRefs.orEmpty()
+    val quotes = LinkedHashMap<String, MutableList<String>>()
+    (unitRefs + bossRefs.filter { b -> unitRefs.none { it.chunkId == b.chunkId } }).forEach { r ->
+        val q = quotes.getOrPut(r.chunkId) { mutableListOf() }
+        if (r.quote.isNotBlank() && r.quote !in q) q += r.quote
+    }
+    return state.pkg.sources.filter { it.chunkId in quotes }
+        .map { c -> quotes[c.chunkId].orEmpty().takeIf { it.isNotEmpty() }?.let { c.copy(text = it.joinToString(" … ") { q -> "“$q”" }) } ?: c }
+        .sortedWith(compareBy({ it.pageIndex }, { it.chunkId }))
+}
+
+/** Verdict as a stamp: shape + word + colour, never colour alone. */
 @Composable
-private fun ResultBanner(phase: Phase.Feedback, retryQueued: Boolean) {
+private fun ResultStamp(phase: Phase.Feedback, retryQueued: Boolean, isBoss: Boolean) {
     val skin = A2g.skin
     val g = phase.grade
-    val (text, fg, bg) = when {
-        g.correct -> Triple(stringResource(R.string.result_correct), skin.correct, skin.correctSoft)
-        g.parts > 1 && g.wrongPartIds.size < g.parts -> Triple(stringResource(R.string.result_partial, g.parts - g.wrongPartIds.size, g.parts), skin.evidence, skin.evidenceSoft)
-        else -> Triple(stringResource(R.string.result_wrong), skin.wrong, skin.wrongSoft)
-    }
-    Card(colors = CardDefaults.cardColors(containerColor = bg)) {
-        Column(Modifier.fillMaxWidth().padding(16.dp)) {
-            Text(text, style = MaterialTheme.typography.titleLarge, color = fg)
-            if (!g.correct && retryQueued) Text(stringResource(R.string.retry_note), style = MaterialTheme.typography.bodyMedium, color = skin.ink)
+    val partly = !g.correct && g.parts > 1 && g.wrongPartIds.size < g.parts
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        when {
+            g.correct && isBoss -> com.anything2game.app.ui.common.Stamp(stringResource(R.string.stamp_overclaim), com.anything2game.app.ui.common.StampKind.YES, com.anything2game.app.ui.theme.StampRed, animate = false)
+            g.correct -> com.anything2game.app.ui.common.Stamp(stringResource(R.string.stamp_correct), com.anything2game.app.ui.common.StampKind.YES, skin.correct, animate = false)
+            partly -> com.anything2game.app.ui.common.Stamp(stringResource(R.string.stamp_partly), com.anything2game.app.ui.common.StampKind.PARTLY, skin.evidence, animate = false)
+            else -> com.anything2game.app.ui.common.Stamp(stringResource(R.string.stamp_wrong), com.anything2game.app.ui.common.StampKind.NO, skin.wrong, animate = false)
+        }
+        Column {
+            if (partly) Text(stringResource(R.string.result_partial, g.parts - g.wrongPartIds.size, g.parts), style = MaterialTheme.typography.titleMedium, color = skin.ink)
+            if (!g.correct && retryQueued) Text(stringResource(R.string.retry_note), style = MaterialTheme.typography.bodyMedium, color = skin.inkMuted)
         }
     }
 }

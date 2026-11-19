@@ -1,5 +1,8 @@
 package com.anything2game.app.ui.play.mechanics
 
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -42,7 +45,8 @@ object DeduceRenderer : MechanicRenderer {
         val deduce = item as DeduceItem
         val skin = A2g.skin
         var choice by rememberSaveable(key) { mutableStateOf<String?>(null) }
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.fillMaxSize()) {
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = skin.paper), border = BorderStroke(1.dp, skin.outline)) {
                 Text(deduce.scenario, Modifier.padding(16.dp), style = MaterialTheme.typography.bodyLarge, color = skin.ink)
             }
@@ -60,10 +64,12 @@ object DeduceRenderer : MechanicRenderer {
                     }
                 }
             }
+            }
+            // Docked submit: always in the thumb zone, never scrolled away.
             Button(
                 onClick = { choice?.let { onSubmit(DeduceAnswer(it)) } },
                 enabled = choice != null,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 10.dp).heightIn(min = 56.dp),
             ) { Text(stringResource(R.string.action_submit)) }
         }
     }

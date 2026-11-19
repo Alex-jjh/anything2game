@@ -21,21 +21,19 @@ import com.anything2game.engine.session.RecapSummary
 
 /** Closing the case: what you now know, and what is still shaky (never "100% = mastered"). */
 @Composable
-internal fun RecapContent(recap: RecapSummary, unitCount: Int, title: String, onReplay: () -> Unit, onLibrary: () -> Unit, extra: @Composable () -> Unit = {}) {
+internal fun RecapContent(recap: RecapSummary, unitCount: Int, title: String, frameId: com.anything2game.contract.FrameId = com.anything2game.contract.FrameId.CLASSIC, onReplay: () -> Unit, onLibrary: () -> Unit, extra: @Composable () -> Unit = {}) {
     val skin = A2g.skin
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text(title, style = MaterialTheme.typography.headlineSmall, color = skin.ink)
-        Text(stringResource(R.string.recap_score, recap.solidUnitIds.size, unitCount), style = MaterialTheme.typography.titleMedium, color = skin.action)
-        Card(colors = CardDefaults.cardColors(containerColor = skin.card)) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                recap.points.forEach { point ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("•", color = skin.evidence, style = MaterialTheme.typography.bodyLarge)
-                        Text(point, style = MaterialTheme.typography.bodyLarge, color = skin.ink)
-                    }
-                }
+        if (frameId == com.anything2game.contract.FrameId.CASE) {
+            // The one orchestrated moment of the level: the case-closed stamp lands.
+            androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth().padding(vertical = 12.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                com.anything2game.app.ui.common.Stamp(stringResource(R.string.stamp_case_closed), com.anything2game.app.ui.common.StampKind.CLOSED, com.anything2game.app.ui.theme.StampRed, big = true)
             }
+        } else {
+            Text(title, style = MaterialTheme.typography.headlineSmall, color = skin.ink)
         }
+        Text(stringResource(R.string.recap_score, recap.solidUnitIds.size, unitCount), style = MaterialTheme.typography.titleMedium, color = skin.action)
+        // Outcome first (what you caught, what comes back), then the takeaways (D8).
         recap.bossCleared?.let { cleared ->
             Card(colors = CardDefaults.cardColors(containerColor = if (cleared) skin.correctSoft else skin.wrongSoft)) {
                 Text(
@@ -53,6 +51,16 @@ internal fun RecapContent(recap: RecapSummary, unitCount: Int, title: String, on
                 color = if (shaky == 0) skin.correct else skin.hint,
                 style = MaterialTheme.typography.titleMedium,
             )
+        }
+        Card(colors = CardDefaults.cardColors(containerColor = skin.card)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                recap.points.forEach { point ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("•", color = skin.evidence, style = MaterialTheme.typography.bodyLarge)
+                        Text(point, style = MaterialTheme.typography.bodyLarge, color = skin.ink)
+                    }
+                }
+            }
         }
         extra()
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {

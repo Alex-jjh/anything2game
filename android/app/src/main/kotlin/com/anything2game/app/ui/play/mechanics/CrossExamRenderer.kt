@@ -1,6 +1,18 @@
 package com.anything2game.app.ui.play.mechanics
 
 import androidx.compose.foundation.BorderStroke
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -65,59 +77,60 @@ object CrossExamRenderer : MechanicRenderer {
         var challenged by rememberSaveable(key) { mutableStateOf<String?>(null) }
         var picking by rememberSaveable(key) { mutableStateOf(false) }
 
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(cx.prompt, style = MaterialTheme.typography.titleLarge, color = skin.ink)
-            if (!picking) {
-                Text(stringResource(R.string.crossexam_instruction), style = MaterialTheme.typography.bodyMedium, color = skin.inkMuted)
-                cx.statements.forEach { st ->
-                    val selected = challenged == st.id
-                    Card(
-                        Modifier.fillMaxWidth().selectable(selected, role = Role.RadioButton) { challenged = st.id },
-                        colors = CardDefaults.cardColors(containerColor = if (selected) skin.wrongSoft else skin.card),
-                        border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) color else skin.outline),
-                    ) {
-                        Row(Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Icon(Icons.Filled.FormatQuote, null, tint = color)
-                            Column {
-                                speaker?.let { Text(it.name, style = MaterialTheme.typography.labelMedium, color = color, fontWeight = FontWeight.SemiBold) }
-                                Text(st.text, style = MaterialTheme.typography.bodyLarge, color = skin.ink, fontStyle = FontStyle.Italic)
-                            }
-                        }
+        Column(Modifier.fillMaxSize()) {
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                // Testimony header: the speaker once, not on every statement.
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    speaker?.let { com.anything2game.app.ui.play.CastPortrait(it, size = 52.dp, dim = false) }
+                    Column {
+                        Text(stringResource(R.string.crossexam_testimony), style = MaterialTheme.typography.labelLarge, color = color, fontWeight = FontWeight.Bold)
+                        Text(cx.prompt, style = MaterialTheme.typography.bodyMedium, color = skin.inkMuted)
                     }
                 }
-                Button(
-                    onClick = { picking = true; haptic.performHapticFeedback(HapticFeedbackType.Confirm) },
-                    enabled = challenged != null,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = skin.evidence),
-                ) { Icon(Icons.Filled.Description, null); Spacer(Modifier.size(8.dp)); Text(stringResource(R.string.crossexam_present)) }
-            } else {
-                val st = cx.statements.firstOrNull { it.id == challenged }
-                Card(colors = CardDefaults.cardColors(containerColor = skin.wrongSoft)) {
-                    Column(Modifier.fillMaxWidth().padding(14.dp)) {
-                        Text(stringResource(R.string.crossexam_selected), style = MaterialTheme.typography.labelMedium, color = color)
+                if (!picking) {
+                    cx.statements.forEachIndexed { i, st ->
+                        val selected = challenged == st.id
+                        Row(
+                            Modifier.fillMaxWidth()
+                                .background(if (selected) skin.wrongSoft else skin.card, androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                                .border(if (selected) 2.dp else 1.dp, if (selected) com.anything2game.app.ui.theme.StampRed else skin.outline.copy(alpha = 0.6f), androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                                .selectable(selected, role = Role.RadioButton) { challenged = st.id; haptic.performHapticFeedback(HapticFeedbackType.SegmentTick) }
+                                .padding(14.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Text("${i + 1}", style = MaterialTheme.typography.titleMedium, color = if (selected) com.anything2game.app.ui.theme.StampRed else skin.inkMuted, fontWeight = FontWeight.Black)
+                            Text(st.text, style = MaterialTheme.typography.bodyLarge, color = skin.ink)
+                        }
+                    }
+                } else {
+                    val st = cx.statements.firstOrNull { it.id == challenged }
+                    Row(Modifier.fillMaxWidth().background(skin.wrongSoft, androidx.compose.foundation.shape.RoundedCornerShape(10.dp)).padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Icon(Icons.Filled.FormatQuote, null, tint = com.anything2game.app.ui.theme.StampRed)
                         Text(st?.text.orEmpty(), style = MaterialTheme.typography.bodyLarge, color = skin.ink, fontStyle = FontStyle.Italic)
                     }
-                }
-                Text(stringResource(R.string.crossexam_pick_evidence), style = MaterialTheme.typography.titleMedium, color = skin.ink)
-                ctx.chunks.forEach { chunk ->
-                    Card(
-                        Modifier.fillMaxWidth().selectable(false, role = Role.Button) {
-                            challenged?.let { onSubmit(CrossExamAnswer(it, chunk.chunkId)) }
-                        },
-                        colors = CardDefaults.cardColors(containerColor = skin.paper),
-                        border = BorderStroke(1.dp, skin.evidence),
-                    ) {
-                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(
-                                stringResource(R.string.evidence_page, chunk.pageLabel ?: (chunk.pageIndex + 1).toString()),
-                                style = MaterialTheme.typography.labelMedium, color = skin.evidence, fontWeight = FontWeight.SemiBold,
-                            )
-                            Text(chunk.text, maxLines = 4, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium, color = skin.ink)
+                    Text(stringResource(R.string.crossexam_collected), style = MaterialTheme.typography.titleMedium, color = skin.ink)
+                    ctx.evidenceChunks.forEach { chunk ->
+                        Row(
+                            Modifier.fillMaxWidth()
+                                .background(skin.paper, androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                                .border(1.dp, skin.evidence, androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                                .selectable(false, role = Role.Button) { challenged?.let { onSubmit(CrossExamAnswer(it, chunk.chunkId)) } }
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Text("p.${chunk.pageLabel ?: (chunk.pageIndex + 1)}", style = MaterialTheme.typography.labelLarge, color = skin.evidence, fontWeight = FontWeight.Bold)
+                            Text(chunk.text, maxLines = 3, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium, color = skin.ink)
                         }
                     }
                 }
-                OutlinedButton(onClick = { picking = false }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.action_back)) }
+            }
+            // Docked action: hold to object (no accidental objections), or step back from presenting.
+            if (!picking) {
+                HoldToObject(enabled = challenged != null, label = stringResource(if (challenged == null) R.string.crossexam_choose_first else R.string.crossexam_hold)) {
+                    picking = true
+                }
+            } else {
+                OutlinedButton(onClick = { picking = false }, modifier = Modifier.fillMaxWidth().padding(top = 10.dp).heightIn(min = 52.dp)) { Text(stringResource(R.string.action_back)) }
             }
         }
     }
@@ -146,3 +159,37 @@ object CrossExamRenderer : MechanicRenderer {
     }
 }
 
+
+/** Long-press button: fills over ~650 ms with a haptic tick at the start and a confirm at the end. Release early cancels. */
+@Composable
+private fun HoldToObject(enabled: Boolean, label: String, onDone: () -> Unit) {
+    val skin = A2g.skin
+    val haptic = LocalHapticFeedback.current
+    val progress = remember { androidx.compose.animation.core.Animatable(0f) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    Box(
+        Modifier.fillMaxWidth().padding(top = 10.dp).heightIn(min = 60.dp)
+            .background(if (enabled) com.anything2game.app.ui.theme.StampRed.copy(alpha = 0.12f) else skin.outline.copy(alpha = 0.15f), androidx.compose.foundation.shape.RoundedCornerShape(30.dp))
+            .pointerInput(enabled) {
+                if (!enabled) return@pointerInput
+                detectTapGestures(onPress = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    val job = scope.launch {
+                        progress.animateTo(1f, androidx.compose.animation.core.tween(650))
+                        haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                        onDone()
+                    }
+                    tryAwaitRelease()
+                    if (progress.value < 1f) { job.cancel(); scope.launch { progress.animateTo(0f) } } else scope.launch { progress.snapTo(0f) }
+                })
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        if (progress.value > 0f) {
+            Box(Modifier.matchParentSize(), contentAlignment = Alignment.CenterStart) {
+                Box(Modifier.fillMaxWidth(progress.value).fillMaxHeight().background(com.anything2game.app.ui.theme.StampRed.copy(alpha = 0.85f), androidx.compose.foundation.shape.RoundedCornerShape(30.dp)))
+            }
+        }
+        Text(label, color = if (!enabled) skin.inkMuted else if (progress.value > 0.5f) Color.White else com.anything2game.app.ui.theme.StampRed, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+    }
+}

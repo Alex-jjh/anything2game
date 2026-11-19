@@ -47,26 +47,41 @@ data class Skin(
     val displayName: String = "Case file (current)",
 )
 
-/** Default "case file" skin. Placeholder until the visual team ships theirs. */
+/**
+ * Default "case file" skin, v2 (2026-11-19): the team kept the warm case-file look; v2 fixes contrast (every text role
+ * ≥ 4.5:1, outlines ≥ 3:1 on paper), separates correct/wrong in LIGHTNESS (1.84×) and gives the cast its own colours.
+ * Right/wrong is never colour alone: the stamp device carries shape (round ✓ / square ✗) and a word.
+ */
 val CaseFileSkin = Skin(
     paper = Color(0xFFF6F1E7),
     card = Color(0xFFFFFCF5),
     ink = Color(0xFF1F2A37),
-    inkMuted = Color(0xFF5B6575),
-    outline = Color(0xFFD9D0BF),
+    inkMuted = Color(0xFF55606F),
+    outline = Color(0xFF8A7D66),
     action = Color(0xFF1F4E5F),
     onAction = Color.White,
-    evidence = Color(0xFFB7791F),
+    evidence = Color(0xFF8A5A0F),
     evidenceSoft = Color(0xFFF8E7C4),
-    correct = Color(0xFF2F7D4F),
-    correctSoft = Color(0xFFDDF0E3),
-    wrong = Color(0xFFB4442F),
-    wrongSoft = Color(0xFFF7DED7),
-    hint = Color(0xFF6B4FA0),
+    correct = Color(0xFF1A5C36),
+    correctSoft = Color(0xFFDDEFE2),
+    wrong = Color(0xFFB9472D),
+    wrongSoft = Color(0xFFF8E1DA),
+    hint = Color(0xFF5E4396),
     hintSoft = Color(0xFFEAE3F5),
     paused = Color(0xFF2B5C9E),
     headingFont = FontFamily.Serif,
+    cast = mapOf(
+        com.anything2game.contract.CastRole.PARTNER to Color(0xFF1F4E5F),
+        com.anything2game.contract.CastRole.SUSPECT to Color(0xFF6B3F7A),
+        com.anything2game.contract.CastRole.ROOKIE to Color(0xFF2B6E8F),
+        com.anything2game.contract.CastRole.COMPANION to Color(0xFF9A4A6E),
+        com.anything2game.contract.CastRole.NARRATOR to Color(0xFF55606F),
+    ),
+    displayName = "Case file v2",
 )
+
+/** Stamp ink: the one bold device of the case-file skin (verdicts, objections, case closed). */
+val StampRed = Color(0xFFB3261E)
 
 val LocalSkin = staticCompositionLocalOf { CaseFileSkin }
 

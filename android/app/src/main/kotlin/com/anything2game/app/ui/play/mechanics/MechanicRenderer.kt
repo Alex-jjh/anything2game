@@ -31,6 +31,8 @@ data class RenderContext(
     val chunks: List<SourceChunk> = emptyList(),
     /** The frame's cast, e.g. to name the speaker of a cross-exam. */
     val cast: List<CastMember> = emptyList(),
+    /** Passages the player may present as evidence (cross-exam): what this level's clues cite. */
+    val evidenceChunks: List<SourceChunk> = chunks,
 )
 
 object MechanicRenderers {

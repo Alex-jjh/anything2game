@@ -118,4 +118,20 @@
     <string name="failed_title_default">机会用完了</string>
     <string name="failed_body">信誉用完了。重玩这一关，没答对的线索会换个形式出现。</string>
     <string name="mechanic_crossexam">对质</string>
+    <string name="stamp_supported">有据</string>
+    <string name="stamp_not_supported">无据</string>
+    <string name="stamp_correct">正确</string>
+    <string name="stamp_wrong">有误</string>
+    <string name="stamp_partly">部分对</string>
+    <string name="stamp_overclaim">夸大</string>
+    <string name="stamp_case_closed">结案</string>
+    <string name="stamp_case_cold">悬案</string>
+    <string name="crossexam_hold">按住提出异议</string>
+    <string name="crossexam_testimony">证词</string>
+    <string name="crossexam_collected">出示你收集到的证据</string>
+    <string name="crossexam_choose_first">先选出你怀疑的那一句</string>
+    <string name="scene_tap">点击继续</string>
+    <string name="scene_skip">跳过</string>
+    <string name="recap_caught">抓到 %1$d / %2$d</string>
+    <string name="evidence_pinned">已钉上证据板</string>
 </resources>

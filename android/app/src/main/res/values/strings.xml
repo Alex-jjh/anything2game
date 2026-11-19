@@ -118,4 +118,20 @@
     <string name="failed_title_default">Out of tries</string>
     <string name="failed_body">Out of credibility. Replay the level — you\'ll get different versions of the clues you missed.</string>
     <string name="mechanic_crossexam">Cross-examine</string>
+    <string name="stamp_supported">SUPPORTED</string>
+    <string name="stamp_not_supported">NO BASIS</string>
+    <string name="stamp_correct">CORRECT</string>
+    <string name="stamp_wrong">NOT QUITE</string>
+    <string name="stamp_partly">PARTLY</string>
+    <string name="stamp_overclaim">OVERCLAIM</string>
+    <string name="stamp_case_closed">CASE CLOSED</string>
+    <string name="stamp_case_cold">CASE COLD</string>
+    <string name="crossexam_hold">Hold to object</string>
+    <string name="crossexam_testimony">Testimony</string>
+    <string name="crossexam_collected">Present the evidence you collected</string>
+    <string name="crossexam_choose_first">Pick the statement you doubt</string>
+    <string name="scene_tap">Tap to continue</string>
+    <string name="scene_skip">Skip</string>
+    <string name="recap_caught">Caught %1$d of %2$d</string>
+    <string name="evidence_pinned">Pinned to the board</string>
 </resources>

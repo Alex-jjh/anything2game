@@ -1,5 +1,8 @@
 package com.anything2game.app.ui.play.mechanics
 
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -63,7 +66,8 @@ object OrderRenderer : MechanicRenderer {
             ids = ids.toMutableList().also { val t = it[i]; it[i] = it[j]; it[j] = t }
             haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
         }
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.fillMaxSize()) {
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(order.prompt, style = MaterialTheme.typography.titleLarge, color = skin.ink)
             Text(stringResource(R.string.order_instruction), style = MaterialTheme.typography.bodyMedium, color = skin.inkMuted)
             ids.forEachIndexed { i, id ->
@@ -76,7 +80,9 @@ object OrderRenderer : MechanicRenderer {
                     }
                 }
             }
-            Button(onClick = { onSubmit(OrderAnswer(ids)) }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text(stringResource(R.string.action_submit)) }
+            }
+            // Docked submit: always in the thumb zone, never scrolled away.
+            Button(onClick = { onSubmit(OrderAnswer(ids)) }, modifier = Modifier.fillMaxWidth().padding(top = 10.dp).heightIn(min = 56.dp)) { Text(stringResource(R.string.action_submit)) }
         }
     }
 

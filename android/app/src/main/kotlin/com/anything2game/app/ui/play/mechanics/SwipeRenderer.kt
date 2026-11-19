@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -75,71 +77,83 @@ object SwipeRenderer : MechanicRenderer {
             }
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.swipe_instruction), color = skin.inkMuted, style = MaterialTheme.typography.bodyMedium)
-            Text(stringResource(R.string.swipe_card_count, index + 1, swipe.cards.size), color = skin.inkMuted, style = MaterialTheme.typography.labelMedium)
-
+            Spacer(Modifier.weight(0.4f))
             val offset = remember(card.id) { Animatable(0f) }
             val scope = rememberCoroutineScope()
             val threshold = with(LocalDensity.current) { 110.dp.toPx() }
             val lean = (offset.value / threshold).coerceIn(-1f, 1f)
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .graphicsLayer { translationX = offset.value; rotationZ = offset.value / 40f }
-                    .pointerInput(card.id) {
-                        detectHorizontalDragGestures(
-                            onDragEnd = {
-                                scope.launch {
-                                    val v = offset.value
-                                    if (abs(v) > threshold) {
-                                        offset.animateTo(v * 3)
-                                        decide(v > 0)
-                                    } else offset.animateTo(0f)
-                                }
-                            },
-                            onDragCancel = { scope.launch { offset.animateTo(0f) } },
-                        ) { change, drag ->
-                            change.consume()
-                            scope.launch { offset.snapTo(offset.value + drag) }
-                        }
-                    },
-            ) {
-                Card(
-                    Modifier.fillMaxWidth().heightIn(min = 220.dp),
-                    colors = CardDefaults.cardColors(containerColor = skin.card),
-                    elevation = CardDefaults.cardElevation(4.dp),
+            var crossed by remember(card.id) { mutableStateOf(false) }
+            // Card stack: the next card peeks out behind the current one.
+            Box(Modifier.fillMaxWidth().heightIn(min = 300.dp)) {
+                swipe.cards.getOrNull(index + 1)?.let {
+                    Card(
+                        Modifier.fillMaxWidth().heightIn(min = 280.dp).graphicsLayer { scaleX = 0.93f; scaleY = 0.93f; translationY = 34f },
+                        colors = CardDefaults.cardColors(containerColor = skin.card.copy(alpha = 0.85f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, skin.outline.copy(alpha = 0.5f)),
+                    ) {}
+                }
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .graphicsLayer { translationX = offset.value; rotationZ = offset.value / 40f }
+                        .pointerInput(card.id) {
+                            detectHorizontalDragGestures(
+                                onDragEnd = {
+                                    scope.launch {
+                                        val v = offset.value
+                                        if (abs(v) > threshold) {
+                                            offset.animateTo(v * 3)
+                                            decide(v > 0)
+                                        } else offset.animateTo(0f)
+                                    }
+                                },
+                                onDragCancel = { scope.launch { offset.animateTo(0f) } },
+                            ) { change, drag ->
+                                change.consume()
+                                scope.launch { offset.snapTo(offset.value + drag) }
+                                // Threshold haptic when the drag crosses the commit point (once per crossing).
+                                val past = abs(offset.value) > threshold
+                                if (past != crossed) { crossed = past; if (past) haptic.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate) }
+                            }
+                        },
                 ) {
-                    Box(Modifier.fillMaxWidth().heightIn(min = 220.dp).padding(24.dp), contentAlignment = Alignment.Center) {
-                        Text(card.statement, style = MaterialTheme.typography.titleLarge, color = skin.ink)
+                    Card(
+                        Modifier.fillMaxWidth().heightIn(min = 280.dp),
+                        colors = CardDefaults.cardColors(containerColor = skin.card),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, skin.outline.copy(alpha = 0.6f)),
+                        elevation = CardDefaults.cardElevation(6.dp),
+                    ) {
+                        Column(Modifier.fillMaxWidth().heightIn(min = 280.dp).padding(24.dp), verticalArrangement = Arrangement.SpaceBetween) {
+                            Text(stringResource(R.string.swipe_card_count, index + 1, swipe.cards.size), color = skin.inkMuted, style = MaterialTheme.typography.labelMedium)
+                            Text(card.statement, style = MaterialTheme.typography.titleLarge.copy(fontSize = 22.sp, lineHeight = 30.sp), color = skin.ink)
+                            Spacer(Modifier.size(1.dp))
+                        }
+                    }
+                    if (lean != 0f) {
+                        val supported = lean > 0
+                        com.anything2game.app.ui.common.Stamp(
+                            stringResource(if (supported) R.string.stamp_supported else R.string.stamp_not_supported),
+                            if (supported) com.anything2game.app.ui.common.StampKind.YES else com.anything2game.app.ui.common.StampKind.NO,
+                            if (supported) skin.correct else skin.wrong,
+                            animate = false,
+                            modifier = Modifier.align(if (supported) Alignment.BottomStart else Alignment.BottomEnd).padding(20.dp).graphicsLayer { alpha = min(1f, abs(lean)) },
+                        )
                     }
                 }
-                if (lean != 0f) {
-                    val supported = lean > 0
-                    Text(
-                        stringResource(if (supported) R.string.swipe_supported else R.string.swipe_not_supported),
-                        color = if (supported) skin.correct else skin.wrong,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier
-                            .align(if (supported) Alignment.TopStart else Alignment.TopEnd)
-                            .padding(12.dp)
-                            .graphicsLayer { alpha = min(1f, abs(lean)) }
-                            .background(if (supported) skin.correctSoft else skin.wrongSoft, RoundedCornerShape(8.dp))
-                            .padding(horizontal = 10.dp, vertical = 4.dp),
-                    )
-                }
             }
-
-            // Buttons do the same as swiping: accessible, and one-handed friendly.
+            Spacer(Modifier.weight(1f))
+            // Buttons do the same as swiping: accessible, one-handed, in the thumb zone.
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(
                     onClick = { decide(false) },
-                    modifier = Modifier.weight(1f).heightIn(min = if (oneHanded) 64.dp else 52.dp),
+                    modifier = Modifier.weight(1f).heightIn(min = if (oneHanded) 68.dp else 60.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = skin.wrongSoft, contentColor = skin.wrong),
                 ) { Icon(Icons.Filled.Close, null); Spacer(Modifier.size(6.dp)); Text(stringResource(R.string.swipe_not_supported)) }
                 Button(
                     onClick = { decide(true) },
-                    modifier = Modifier.weight(1f).heightIn(min = if (oneHanded) 64.dp else 52.dp),
+                    modifier = Modifier.weight(1f).heightIn(min = if (oneHanded) 68.dp else 60.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = skin.correctSoft, contentColor = skin.correct),
                 ) { Icon(Icons.Filled.Check, null); Spacer(Modifier.size(6.dp)); Text(stringResource(R.string.swipe_supported)) }
             }

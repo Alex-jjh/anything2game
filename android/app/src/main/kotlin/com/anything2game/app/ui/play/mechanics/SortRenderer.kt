@@ -1,5 +1,8 @@
 package com.anything2game.app.ui.play.mechanics
 
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -55,7 +58,8 @@ object SortRenderer : MechanicRenderer {
         val placed = placements.associate { it.substringBefore(':') to it.substringAfter(':') }
         val unplaced = order.filter { it.id !in placed }
 
-        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(Modifier.fillMaxSize()) {
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(sort.prompt, style = MaterialTheme.typography.titleLarge, color = skin.ink)
             Text(stringResource(R.string.sort_instruction), style = MaterialTheme.typography.bodyMedium, color = skin.inkMuted)
             if (unplaced.isNotEmpty()) {
@@ -100,10 +104,12 @@ object SortRenderer : MechanicRenderer {
             if (placed.isNotEmpty() && unplaced.isNotEmpty()) {
                 Text(stringResource(R.string.sort_tap_to_return), style = MaterialTheme.typography.labelMedium, color = skin.inkMuted)
             }
+            }
+            // Docked submit: always in the thumb zone, never scrolled away.
             Button(
                 onClick = { onSubmit(SortAnswer(placed)) },
                 enabled = unplaced.isEmpty(),
-                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 10.dp).heightIn(min = 56.dp),
             ) { Text(stringResource(R.string.action_submit)) }
         }
     }
