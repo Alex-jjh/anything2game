@@ -9,6 +9,7 @@ Language: documents are in English. Some teammate design docs are in Chinese (ma
 | Folder | Lens | Document | Status |
 |---|---|---|---|
 | `product/` | **Current state: product, flow, status, video plan, open decisions** | [PRODUCT.md](product/PRODUCT.md) | living |
+| `product/` | Team review 2026-11-20: explainer as a visual-novel scene, 小精灵, themes, focus, walking pause → decisions + status | [team-review-2026-11-20.md](product/team-review-2026-11-20.md) | living |
 | `product/` | PM: why, for whom, against whom | [why-and-market.md](product/why-and-market.md) | draft; market facts to verify via web search |
 | `product/` | PM: why play at all, friction, 8 concepts as frame templates, persuasion, effects on users | [game-concepts.md](product/game-concepts.md) | proposal |
 | `product/` | Product review after the first real eval: problems ranked, principles, 19-day plan | [product-review-2026-11-18.md](product/product-review-2026-11-18.md) | 2026-11-18 |
