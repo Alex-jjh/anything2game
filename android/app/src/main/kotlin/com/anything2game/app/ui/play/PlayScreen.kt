@@ -57,6 +57,8 @@ import com.anything2game.app.ui.character.Mood
 import com.anything2game.app.ui.play.mechanics.MechanicRenderers
 import com.anything2game.app.ui.play.mechanics.RenderContext
 import com.anything2game.app.ui.theme.A2g
+import com.anything2game.app.ui.theme.castColor
+import com.anything2game.contract.CastRole
 import com.anything2game.contract.Mechanic
 import com.anything2game.engine.session.Action
 import com.anything2game.engine.session.Overlay
@@ -189,6 +191,11 @@ private fun ProgressHeader(state: PlayUiState.Ready, onAction: (Action) -> Unit,
             val bossText = bossLabel(state.frameId)
             when {
                 boss && bossText != null -> Badge(stringResource(bossText), skin.onAction, skin.wrong)
+                s.currentSlot?.kind == SlotKind.TEACH_BACK -> Badge(
+                    stringResource(R.string.badge_teach_back, rookieOf(state)?.name ?: stringResource(R.string.rookie_default_name)),
+                    skin.onAction, skin.castColor(CastRole.ROOKIE),
+                )
+                s.currentSlot?.kind == SlotKind.ROOM_CHECK -> Badge(stringResource(R.string.badge_room_lock), skin.onAction, skin.evidence)
                 state.unit != null -> Badge(stringResource(mechanicLabel(state.unit.mechanic)), skin.action, skin.card)
             }
             if (state.context.oneHanded) Badge(stringResource(R.string.one_handed_badge), skin.paused, skin.card)
@@ -209,9 +216,10 @@ private fun ProgressHeader(state: PlayUiState.Ready, onAction: (Action) -> Unit,
 @Composable
 private fun UnitBody(state: PlayUiState.Ready, onAction: (Action) -> Unit, avatarSays: (@Composable () -> Unit)? = null) {
     val skin = A2g.skin
-    val unit = state.unit ?: return
     val item = state.item ?: return
-    val renderer = MechanicRenderers.of(unit.mechanic)
+    // Derived slots (teach-back, room lock) have no unit of their own: the item alone says which renderer draws them.
+    val hints = state.unit?.hints.orEmpty()
+    val renderer = MechanicRenderers.of(item.mechanic)
     if (renderer == null) {
         Text(stringResource(R.string.unsupported_mechanic), color = skin.wrong)
         return
@@ -220,10 +228,11 @@ private fun UnitBody(state: PlayUiState.Ready, onAction: (Action) -> Unit, avata
     val ctx = RenderContext(
         oneHanded = state.context.oneHanded, chunks = state.pkg.sources, cast = state.overlay?.cast.orEmpty(),
         evidenceChunks = evidenceFor(state),
+        scenarioSpeaker = if (s.currentSlot?.kind == SlotKind.TEACH_BACK) rookieOf(state) else null,
     )
     when (val phase = s.phase) {
         Phase.Presenting -> Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            unit.hints.take(s.hintsShown).forEachIndexed { i, hint ->
+            hints.take(s.hintsShown).forEachIndexed { i, hint ->
                 Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = skin.hintSoft)) {
                     Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(stringResource(R.string.hint_label, i + 1), style = MaterialTheme.typography.labelMedium, color = skin.hint, fontWeight = FontWeight.SemiBold)
@@ -261,6 +270,9 @@ private fun UnitBody(state: PlayUiState.Ready, onAction: (Action) -> Unit, avata
         Phase.Recap, Phase.Failed -> Unit
     }
 }
+
+/** The rookie of the frame's cast (Rookie frame), who speaks the teach-back misconception. */
+private fun rookieOf(state: PlayUiState.Ready) = state.overlay?.cast?.firstOrNull { it.role == CastRole.ROOKIE }
 
 /**
  * Evidence the player can present in a cross-exam: what this level's clues cite (what they "collected"),

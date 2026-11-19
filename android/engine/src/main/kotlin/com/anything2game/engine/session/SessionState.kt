@@ -15,6 +15,10 @@ enum class SlotKind {
     SCENE,
     /** The frame's final challenge from the overlay. */
     BOSS,
+    /** Rookie: the rookie states a misconception from [Slot.unitId]'s unit; the player picks the explanation. Derived, never graded as mastery. */
+    TEACH_BACK,
+    /** Escape: a short lock built from the claims of room [Slot.roomId]'s units. Derived, never graded as mastery. */
+    ROOM_CHECK,
 }
 
 /** One step of a level: a unit's main item ([variant] = -1) or a variant, a scene, or the frame boss. */
@@ -26,6 +30,8 @@ data class Slot(
     val kind: SlotKind = SlotKind.UNIT,
     /** For [SlotKind.SCENE]: [INTRO], [OUTRO], `lead:<unitId>` or `room:<roomId>`. */
     val scene: String? = null,
+    /** For [SlotKind.ROOM_CHECK]: the room whose units the lock is built from. */
+    val roomId: String? = null,
 ) {
     val answerable: Boolean get() = kind != SlotKind.SCENE
 
