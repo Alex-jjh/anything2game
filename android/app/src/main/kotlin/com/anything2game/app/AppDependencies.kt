@@ -3,6 +3,8 @@ package com.anything2game.app
 import android.content.Context
 import com.anything2game.app.data.AssetFrameRepository
 import com.anything2game.app.data.AssetPackageRepository
+import com.anything2game.app.data.AvatarPreferences
+import com.anything2game.app.data.SharedPrefsAvatarPreferences
 import com.anything2game.app.data.FramePreferences
 import com.anything2game.app.data.SharedPrefsFramePreferences
 import com.anything2game.app.data.FileMasteryStore
@@ -27,6 +29,7 @@ interface AppDependencies {
     val packages: PackageRepository
     val frames: FrameRepository
     val framePreferences: FramePreferences
+    val avatarPreferences: AvatarPreferences
     val sessions: SessionStore
     val mastery: MasteryStore
     val grading: Grading
@@ -42,6 +45,7 @@ class AndroidAppContainer(context: Context) : AppDependencies {
     override val packages: PackageRepository = AssetPackageRepository(app.assets)
     override val frames: FrameRepository = AssetFrameRepository(app.assets, packages)
     override val framePreferences: FramePreferences = SharedPrefsFramePreferences(app)
+    override val avatarPreferences: AvatarPreferences = SharedPrefsAvatarPreferences(app)
     override val sessions: SessionStore = FileSessionStore(File(app.filesDir, "sessions"))
     override val mastery: MasteryStore = FileMasteryStore(File(app.filesDir, "mastery"))
     override val grading: Grading = GraderRegistry.default()

@@ -32,6 +32,11 @@ import java.io.File
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "w393dp-h852dp-xxhdpi")
 class DirectionsScreenshotTest {
+    /** Still characters: these captures run without a compose test rule, so looping animations would never settle. */
+    @org.junit.Before fun stillCharacters() {
+        android.provider.Settings.Global.putFloat(org.robolectric.RuntimeEnvironment.getApplication().contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 0f)
+    }
+
     private val dir = File(System.getProperty("contract.samples")!!)
     private val still = DefaultContextPolicy.decide(ContextSignals(activity = ContextSignals.Activity.STILL))
 

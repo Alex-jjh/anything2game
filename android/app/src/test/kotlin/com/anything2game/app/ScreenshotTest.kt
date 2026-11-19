@@ -52,6 +52,11 @@ import java.io.File
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "w393dp-h852dp-xxhdpi")
 class ScreenshotTest {
+    /** Still characters: these captures run without a compose test rule, so looping animations would never settle. */
+    @org.junit.Before fun stillCharacters() {
+        android.provider.Settings.Global.putFloat(org.robolectric.RuntimeEnvironment.getApplication().contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 0f)
+    }
+
     private val dir = File(System.getProperty("contract.examples")!!)
     private val en = ContractJson.decodePackage(File(dir, "package.v1.example.json").readText())
     private val zh = ContractJson.decodePackage(File(dir, "package.v1.courtyard.zh.json").readText())
@@ -102,6 +107,10 @@ class ScreenshotTest {
         LibraryContent(library(), onOpenLevel = { _, _, _ -> }, onSelectFrame = { _, _ -> }, onPickPdf = {}, footer = {
             ContextSimulator(ContextSignals(activity = ContextSignals.Activity.STILL), {}, {})
         })
+    }
+
+    @Test fun library_character_picker() = shot("01_library_picker_en") {
+        LibraryContent(library(), onOpenLevel = { _, _, _ -> }, onSelectFrame = { _, _ -> }, onPickPdf = {}, avatarId = "pip", onSelectAvatar = {})
     }
 
     @Test fun library_zh() {

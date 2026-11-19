@@ -70,6 +70,7 @@ import kotlin.math.sin
 internal fun SceneStage(
     key: String, lines: List<Line>, cast: List<CastMember>, room: Room?,
     onEvidence: (List<String>) -> Unit, onContinue: () -> Unit, modifier: Modifier = Modifier,
+    player: (@Composable (Modifier) -> Unit)? = null,
 ) {
     val skin = A2g.skin
     var index by androidx.compose.runtime.saveable.rememberSaveable(key) { androidx.compose.runtime.mutableIntStateOf(0) }
@@ -94,10 +95,12 @@ internal fun SceneStage(
         }
         // Stage: everyone in the scene; the speaker is large and lit, the others small and dimmed.
         Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-            Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.Bottom) {
+            Row(horizontalArrangement = Arrangement.spacedBy(if (player != null) 10.dp else 20.dp), verticalAlignment = Alignment.Bottom) {
+                // The player's own character stands on stage, facing whoever speaks.
+                player?.invoke(Modifier.size(104.dp))
                 cast.filter { m -> lines.any { it.speaker == m.id } }.forEach { m ->
                     val speaking = m.id == speaker?.id
-                    CastPortrait(m, size = if (speaking) 132.dp else 72.dp, dim = !speaking)
+                    CastPortrait(m, size = if (speaking) (if (player != null) 120.dp else 132.dp) else 72.dp, dim = !speaking)
                 }
             }
         }
@@ -147,7 +150,7 @@ internal fun CastPortrait(m: CastMember, size: androidx.compose.ui.unit.Dp, dim:
                 fontSize = androidx.compose.ui.unit.TextUnit(size.value * 0.42f, androidx.compose.ui.unit.TextUnitType.Sp), fontFamily = skin.headingFont)
         }
         Spacer(Modifier.size(6.dp))
-        Text(m.name, style = MaterialTheme.typography.labelLarge, color = skin.ink)
+        Text(m.name, style = MaterialTheme.typography.labelLarge, color = skin.ink, maxLines = 1, softWrap = false)
     }
 }
 

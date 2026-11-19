@@ -134,4 +134,34 @@
     <string name="scene_skip">跳过</string>
     <string name="recap_caught">抓到 %1$d / %2$d</string>
     <string name="evidence_pinned">已钉上证据板</string>
+    <!-- Player character (placeholder originals) -->
+    <string name="avatar_mochi">团子</string>
+    <string name="avatar_mochi_trait">认真暖心</string>
+    <string name="avatar_pip">皮皮</string>
+    <string name="avatar_pip_trait">毒舌吐槽</string>
+    <string name="avatar_kumo">云朵</string>
+    <string name="avatar_kumo_trait">呆萌</string>
+    <string name="avatar_pick_title">你的角色</string>
+    <string name="avatar_pick_body">陪你玩每一个案子，对你的每个操作做出反应。点一下选择，戳一戳打招呼。</string>
+    <string-array name="avatar_mochi_happy"><item>原文里确实这么写，漂亮。</item><item>核对过了，没问题。</item></string-array>
+    <string-array name="avatar_mochi_deflated"><item>差一点。原文不是这么说的，看一眼？</item><item>这次没中，明天它还会回来。</item></string-array>
+    <string-array name="avatar_mochi_doubt"><item>嗯……这句话说得太满了。</item><item>哪一句原文能证明它？</item></string-array>
+    <string-array name="avatar_mochi_thinking"><item>慢慢想。</item><item>一条线索一条线索来。</item></string-array>
+    <string-array name="avatar_mochi_object"><item>异议！把原文拿出来。</item><item>抓到了，这是夸大。</item></string-array>
+    <string-array name="avatar_mochi_celebrate"><item>结案。你是真的读懂了。</item><item>我们一起抓到它了。</item></string-array>
+    <string-array name="avatar_mochi_sleepy"><item>在走路吗？我等你，先看路。</item><item>走路时先暂停。</item></string-array>
+    <string-array name="avatar_pip_happy"><item>那当然。下一个。</item><item>行吧，你是真读了。</item></string-array>
+    <string-array name="avatar_pip_deflated"><item>猜得挺勇。原文不同意。</item><item>不对哦。明天同一题见。</item></string-array>
+    <string-array name="avatar_pip_doubt"><item>一股摘要味儿。</item><item>说得挺满，证据呢？</item></string-array>
+    <string-array name="avatar_pip_thinking"><item>慢慢来，我不评价。大概。</item><item>用了提示，记下了。</item></string-array>
+    <string-array name="avatar_pip_object"><item>异议！拿证据来。</item><item>抓到了。</item></string-array>
+    <string-array name="avatar_pip_celebrate"><item>结案。摘要：零分。</item><item>还不错嘛，人类。</item></string-array>
+    <string-array name="avatar_pip_sleepy"><item>看路，别看我。</item><item>走路模式，我先睡会。</item></string-array>
+    <string-array name="avatar_kumo_happy"><item>哇，原来是真的！</item><item>耶，你和原文想到一块了～</item></string-array>
+    <string-array name="avatar_kumo_deflated"><item>哎呀，飘错方向了。</item><item>没关系，明天它会飘回来的。</item></string-array>
+    <string-array name="avatar_kumo_doubt"><item>这句……是不是太飘了？</item><item>嗯？原文真的写了吗？</item></string-array>
+    <string-array name="avatar_kumo_thinking"><item>思考云启动。</item><item>嗯……</item></string-array>
+    <string-array name="avatar_kumo_object"><item>异议～！哼！</item><item>太飘了吧！</item></string-array>
+    <string-array name="avatar_kumo_celebrate"><item>结案啦！云朵派对！</item><item>我们做到啦～</item></string-array>
+    <string-array name="avatar_kumo_sleepy"><item>Zzz……走路小心……</item><item>等你坐下我再醒。</item></string-array>
 </resources>

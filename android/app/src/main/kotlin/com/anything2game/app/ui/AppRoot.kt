@@ -10,6 +10,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import com.anything2game.app.ui.character.Avatars
+import com.anything2game.app.ui.character.LocalAvatar
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -72,13 +75,16 @@ class Navigator(private val saved: SavedStateHandle) : ViewModel() {
 fun AppRoot(deps: AppDependencies, navigator: Navigator, onPickPdf: () -> Unit) {
     val route by navigator.route.collectAsStateWithLifecycle()
     val simulator = simulatorFor(deps)
+    var avatarId by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(deps.avatarPreferences.get() ?: Avatars.default.id) }
+    androidx.compose.runtime.CompositionLocalProvider(LocalAvatar provides Avatars.of(avatarId)) {
     when (val r = route) {
         Route.Library -> {
             val vm = viewModel { LibraryViewModel(deps) }
             LaunchedEffect(Unit) { vm.refresh() }
             val state by vm.state.collectAsStateWithLifecycle()
             Scaffold(containerColor = A2g.skin.paper) { padding ->
-                LibraryContent(state, onOpenLevel = navigator::openPlay, onSelectFrame = vm::selectFrame, onPickPdf = onPickPdf, footer = { simulator?.invoke() }, contentPadding = padding)
+                LibraryContent(state, onOpenLevel = navigator::openPlay, onSelectFrame = vm::selectFrame, onPickPdf = onPickPdf,
+                    avatarId = avatarId, onSelectAvatar = { avatarId = it; deps.avatarPreferences.set(it) }, footer = { simulator?.invoke() }, contentPadding = padding)
             }
         }
         is Route.Play -> {
@@ -97,6 +103,7 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator, onPickPdf: () -> Unit) 
             BackHandler(onBack = navigator::toLibrary)
             Scaffold(containerColor = A2g.skin.paper) { padding -> ImportContent(r.request, onCancel = navigator::toLibrary, contentPadding = padding) }
         }
+    }
     }
 }
 

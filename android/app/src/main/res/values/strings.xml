@@ -134,4 +134,34 @@
     <string name="scene_skip">Skip</string>
     <string name="recap_caught">Caught %1$d of %2$d</string>
     <string name="evidence_pinned">Pinned to the board</string>
+    <!-- Player character (placeholder originals) -->
+    <string name="avatar_mochi">Mochi</string>
+    <string name="avatar_mochi_trait">Earnest</string>
+    <string name="avatar_pip">Pip</string>
+    <string name="avatar_pip_trait">Snarky</string>
+    <string name="avatar_kumo">Kumo</string>
+    <string name="avatar_kumo_trait">Dreamy</string>
+    <string name="avatar_pick_title">Your character</string>
+    <string name="avatar_pick_body">Plays every case with you and reacts to what you do. Tap to choose; poke it to say hi.</string>
+    <string-array name="avatar_mochi_happy"><item>That’s on the page. Nice.</item><item>Checked, and true.</item></string-array>
+    <string-array name="avatar_mochi_deflated"><item>Close. The page says otherwise — worth a look.</item><item>Not this time. It comes back tomorrow.</item></string-array>
+    <string-array name="avatar_mochi_doubt"><item>Hmm. That one sounds too sure of itself.</item><item>Which line would prove it?</item></string-array>
+    <string-array name="avatar_mochi_thinking"><item>Let’s think it through.</item><item>One clue at a time.</item></string-array>
+    <string-array name="avatar_mochi_object"><item>Objection! Show them the page.</item><item>Got it — that’s an overclaim.</item></string-array>
+    <string-array name="avatar_mochi_celebrate"><item>Case closed. You actually read it.</item><item>We caught it together.</item></string-array>
+    <string-array name="avatar_mochi_sleepy"><item>Walking? I’ll wait. Eyes up.</item><item>Paused while you walk.</item></string-array>
+    <string-array name="avatar_pip_happy"><item>Obviously. Next.</item><item>Fine, you did read it.</item></string-array>
+    <string-array name="avatar_pip_deflated"><item>Bold guess. The page disagrees.</item><item>Nope. Same question tomorrow.</item></string-array>
+    <string-array name="avatar_pip_doubt"><item>Smells like a summary.</item><item>Big words, no receipts.</item></string-array>
+    <string-array name="avatar_pip_thinking"><item>Take your time. I’m not judging. Much.</item><item>Hint used. Noted.</item></string-array>
+    <string-array name="avatar_pip_object"><item>Objection! Receipts, please.</item><item>Gotcha.</item></string-array>
+    <string-array name="avatar_pip_celebrate"><item>Case closed. Summary: zero.</item><item>Not bad. For a human.</item></string-array>
+    <string-array name="avatar_pip_sleepy"><item>Watch the road, not me.</item><item>Walking mode. I’m napping.</item></string-array>
+    <string-array name="avatar_kumo_happy"><item>Ooh, it was true all along!</item><item>Yay, you and the page agree~</item></string-array>
+    <string-array name="avatar_kumo_deflated"><item>Oops, floated the wrong way.</item><item>That’s okay, it drifts back tomorrow.</item></string-array>
+    <string-array name="avatar_kumo_doubt"><item>This one feels… too fluffy?</item><item>Is that really written down?</item></string-array>
+    <string-array name="avatar_kumo_thinking"><item>Thinking cloud, activate.</item><item>Mmm…</item></string-array>
+    <string-array name="avatar_kumo_object"><item>Objection~! Hmph!</item><item>Way too fluffy!</item></string-array>
+    <string-array name="avatar_kumo_celebrate"><item>Case closed! Cloud party!</item><item>We did it~</item></string-array>
+    <string-array name="avatar_kumo_sleepy"><item>Zzz… walk safe…</item><item>Napping till you sit.</item></string-array>
 </resources>

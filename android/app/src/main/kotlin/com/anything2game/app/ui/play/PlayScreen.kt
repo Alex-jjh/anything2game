@@ -50,6 +50,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.anything2game.app.R
 import com.anything2game.app.ui.common.Badge
+import com.anything2game.app.ui.character.AvatarSignals
+import com.anything2game.app.ui.character.LocalAvatar
+import com.anything2game.app.ui.character.LocalAvatarSignals
+import com.anything2game.app.ui.character.Mood
 import com.anything2game.app.ui.play.mechanics.MechanicRenderers
 import com.anything2game.app.ui.play.mechanics.RenderContext
 import com.anything2game.app.ui.theme.A2g
@@ -79,6 +83,12 @@ fun PlayContent(
 
     BackHandler { if (showBoard) showBoard = false else if (session.overlay != null) onAction(Action.CloseOverlay) else onBack() }
 
+    // The player's character: renderers write live input into fresh signals for each slot; the mood is derived here.
+    val signals = androidx.compose.runtime.remember(session.position, session.phase::class) { AvatarSignals() }
+    val avatar = LocalAvatar.current
+    val mood = avatarMood(state, signals)
+
+    androidx.compose.runtime.CompositionLocalProvider(LocalAvatarSignals provides signals) {
     Box(Modifier.fillMaxSize()) {
     Scaffold(
         containerColor = skin.paper,
@@ -108,24 +118,29 @@ fun PlayContent(
                     FailedContent(state.frameId, onReplay = onRestart, onLibrary = onBack)
                 }
                 recap != null -> Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                    RecapContent(recap, unitCount = level?.units?.size ?: 0, title = stringResource(recapTitle(state.frameId)), frameId = state.frameId, onReplay = onRestart, onLibrary = onBack) {
+                    RecapContent(recap, unitCount = level?.units?.size ?: 0, title = stringResource(recapTitle(state.frameId)), frameId = state.frameId, onReplay = onRestart, onLibrary = onBack,
+                        hero = {
+                            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { avatar.Draw(mood, Modifier.size(150.dp)) }
+                            avatarLine(avatar, mood, session.position)?.let { SpeechBubble(avatar, it) }
+                        }) {
                         if (board != null) EvidenceBoard(board, state.solvedUnitIds)
                     }
                 }
                 // Scenes: stage on top, dialogue docked at the bottom (visual-novel layout).
                 state.scene != null -> {
-                    ProgressHeader(state, onAction)
+                    ProgressHeader(state, onAction, avatar = null)
                     SceneStage(
                         key = "${session.position}",
                         lines = state.scene, cast = state.overlay?.cast.orEmpty(), room = state.room,
                         onEvidence = { onAction(Action.OpenEvidence(it)) }, onContinue = { onAction(Action.Next) },
+                        player = { m -> avatar.Draw(Mood.IDLE, m, lookAt = androidx.compose.ui.geometry.Offset(0.9f, 0f), useTilt = true) },
                         modifier = Modifier.weight(1f),
                     )
                 }
                 // Challenges: each renderer owns its scroll and keeps its main action docked at the bottom.
                 else -> {
-                    ProgressHeader(state, onAction)
-                    Box(Modifier.weight(1f)) { UnitBody(state, onAction) }
+                    ProgressHeader(state, onAction) { avatar.Draw(mood, Modifier.size(50.dp), useTilt = true) }
+                    Box(Modifier.weight(1f)) { UnitBody(state, onAction, avatarSays = avatarLine(avatar, mood, session.position)?.let { { SpeechBubble(avatar, it) } }) }
                 }
             }
         }
@@ -144,12 +159,16 @@ fun PlayContent(
         EvidenceBoard(board, state.solvedUnitIds)
         Button(onClick = { showBoard = false }, Modifier.fillMaxWidth()) { Text(stringResource(R.string.evidence_close)) }
     }
-    if (session.isPaused) PausedOverlay(onContinue = { onAction(Action.Resume) })
+    if (session.isPaused) PausedOverlay(onContinue = { onAction(Action.Resume) }) {
+        avatar.Draw(Mood.SLEEPY, Modifier.size(150.dp))
+        avatarLine(avatar, Mood.SLEEPY, session.position)?.let { SpeechBubble(avatar, it) }
+    }
+    }
     }
 }
 
 @Composable
-private fun ProgressHeader(state: PlayUiState.Ready, onAction: (Action) -> Unit) {
+private fun ProgressHeader(state: PlayUiState.Ready, onAction: (Action) -> Unit, avatar: (@Composable () -> Unit)?) {
     val skin = A2g.skin
     val s = state.session
     // Progress counts challenges only; scenes don't make the bar move.
@@ -165,6 +184,7 @@ private fun ProgressHeader(state: PlayUiState.Ready, onAction: (Action) -> Unit)
             drawStopIndicator = {},
         )
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            avatar?.invoke()
             val boss = s.currentSlot?.kind == SlotKind.BOSS
             val bossText = bossLabel(state.frameId)
             when {
@@ -175,18 +195,19 @@ private fun ProgressHeader(state: PlayUiState.Ready, onAction: (Action) -> Unit)
             Spacer(Modifier.weight(1f))
             val hintsLeft = s.phase == Phase.Presenting && s.hintsShown < (state.unit?.hints?.size ?: 0)
             if (hintsLeft) {
-                TextButton(onClick = { onAction(Action.RevealHint) }, colors = ButtonDefaults.textButtonColors(contentColor = skin.hint)) {
-                    Icon(Icons.Filled.Lightbulb, null, Modifier.size(18.dp)); Spacer(Modifier.size(4.dp)); Text(stringResource(R.string.action_hint))
+                // Icon-only to leave room for the character; the label stays as the accessibility name.
+                IconButton(onClick = { onAction(Action.RevealHint) }) {
+                    Icon(Icons.Filled.Lightbulb, stringResource(R.string.action_hint), tint = skin.hint)
                 }
             }
             s.credibility?.let { CredibilityPips(it, FrameSpec.of(state.frameId).credibility ?: it) }
-            Text(stringResource(R.string.play_progress, current, answerable.size), style = MaterialTheme.typography.labelMedium, color = skin.inkMuted)
+            Text(stringResource(R.string.play_progress, current, answerable.size), style = MaterialTheme.typography.labelMedium, color = skin.inkMuted, maxLines = 1, softWrap = false)
         }
     }
 }
 
 @Composable
-private fun UnitBody(state: PlayUiState.Ready, onAction: (Action) -> Unit) {
+private fun UnitBody(state: PlayUiState.Ready, onAction: (Action) -> Unit, avatarSays: (@Composable () -> Unit)? = null) {
     val skin = A2g.skin
     val unit = state.unit ?: return
     val item = state.item ?: return
@@ -217,6 +238,7 @@ private fun UnitBody(state: PlayUiState.Ready, onAction: (Action) -> Unit) {
         }
         is Phase.Feedback -> Column(Modifier.fillMaxSize()) {
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                avatarSays?.invoke()
                 ResultStamp(phase, state.retryQueued, isBoss = s.currentSlot?.kind == SlotKind.BOSS)
                 renderer.Review(item, phase.answer, phase.grade, ctx)
                 Spacer(Modifier.size(4.dp))

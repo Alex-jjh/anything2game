@@ -35,6 +35,11 @@ import java.io.File
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "w393dp-h852dp-xxhdpi")
 class DemoStressScreenshotTest {
+    /** Still characters: these captures run without a compose test rule, so looping animations would never settle. */
+    @org.junit.Before fun stillCharacters() {
+        android.provider.Settings.Global.putFloat(org.robolectric.RuntimeEnvironment.getApplication().contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 0f)
+    }
+
     private val dir = File(System.getProperty("contract.samples")!!)
     private fun pkg(d: String) = ContractJson.decodePackage(File(dir, "package.demo.$d.json").readText())
     private fun frame(d: String, f: String) = ContractJson.decodeFrame(File(dir, "frame.demo.$d.$f.json").readText())

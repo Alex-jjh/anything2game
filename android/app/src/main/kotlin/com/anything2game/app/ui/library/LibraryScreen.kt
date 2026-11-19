@@ -1,5 +1,7 @@
 package com.anything2game.app.ui.library
 
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -47,6 +49,8 @@ fun LibraryContent(
     onPickPdf: () -> Unit,
     footer: @Composable () -> Unit = {},
     contentPadding: PaddingValues = PaddingValues(),
+    avatarId: String? = null,
+    onSelectAvatar: ((String) -> Unit)? = null,
 ) {
     val skin = A2g.skin
     LazyColumn(
@@ -62,6 +66,7 @@ fun LibraryContent(
             Text(stringResource(R.string.library_title), style = MaterialTheme.typography.headlineSmall, color = skin.ink)
             Text(stringResource(R.string.library_subtitle), style = MaterialTheme.typography.bodyMedium, color = skin.inkMuted)
         }
+        if (onSelectAvatar != null) item { AvatarPicker(avatarId, onSelectAvatar) }
         if (!state.loading && state.entries.isEmpty()) {
             item { Text(stringResource(R.string.empty_library), color = skin.inkMuted) }
         }
@@ -136,6 +141,35 @@ private fun ImportCard(onPickPdf: () -> Unit) {
                 Icon(Icons.Filled.FileOpen, contentDescription = null)
                 Spacer(Modifier.size(8.dp))
                 Text(stringResource(R.string.import_pick_pdf))
+            }
+        }
+    }
+}
+
+/** Pick your character. Each one plays live (breathes, blinks, reacts to a poke); the chosen one cheers. */
+@Composable
+private fun AvatarPicker(selectedId: String?, onSelect: (String) -> Unit) {
+    val skin = A2g.skin
+    val current = com.anything2game.app.ui.character.LocalAvatar.current
+    androidx.compose.material3.Card(colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = skin.card)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(stringResource(R.string.avatar_pick_title), style = MaterialTheme.typography.titleMedium, color = skin.ink)
+            Text(stringResource(R.string.avatar_pick_body), style = MaterialTheme.typography.bodySmall, color = skin.inkMuted)
+            androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                com.anything2game.app.ui.character.Avatars.all.forEach { a ->
+                    val chosen = a.id == (selectedId ?: current.id)
+                    Column(
+                        Modifier
+                            .border(if (chosen) 2.dp else 1.dp, if (chosen) skin.action else skin.outline.copy(alpha = 0.4f), androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
+                            .selectable(chosen, role = androidx.compose.ui.semantics.Role.RadioButton) { onSelect(a.id) }
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                    ) {
+                        a.Draw(if (chosen) com.anything2game.app.ui.character.Mood.HAPPY else com.anything2game.app.ui.character.Mood.IDLE, Modifier.size(78.dp))
+                        Text(stringResource(a.nameRes), style = MaterialTheme.typography.labelLarge, color = if (chosen) skin.action else skin.ink, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                        Text(stringResource(a.traitRes), style = MaterialTheme.typography.labelSmall, color = skin.inkMuted)
+                    }
+                }
             }
         }
     }

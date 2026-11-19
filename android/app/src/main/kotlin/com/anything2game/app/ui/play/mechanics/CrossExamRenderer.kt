@@ -77,6 +77,14 @@ object CrossExamRenderer : MechanicRenderer {
         var challenged by rememberSaveable(key) { mutableStateOf<String?>(null) }
         var picking by rememberSaveable(key) { mutableStateOf(false) }
 
+        val avatarSignals = com.anything2game.app.ui.character.LocalAvatarSignals.current
+        androidx.compose.runtime.SideEffect {
+            avatarSignals.focus = when {
+                picking -> com.anything2game.app.ui.character.Mood.OBJECT
+                challenged != null -> com.anything2game.app.ui.character.Mood.DOUBT
+                else -> null
+            }
+        }
         Column(Modifier.fillMaxSize()) {
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 // Testimony header: the speaker once, not on every statement.
@@ -167,6 +175,8 @@ private fun HoldToObject(enabled: Boolean, label: String, onDone: () -> Unit) {
     val haptic = LocalHapticFeedback.current
     val progress = remember { androidx.compose.animation.core.Animatable(0f) }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val avatarSignals = com.anything2game.app.ui.character.LocalAvatarSignals.current
+    androidx.compose.runtime.SideEffect { avatarSignals.charge = if (progress.value < 1f) progress.value else 0f }
     Box(
         Modifier.fillMaxWidth().padding(top = 10.dp).heightIn(min = 60.dp)
             .background(if (enabled) com.anything2game.app.ui.theme.StampRed.copy(alpha = 0.12f) else skin.outline.copy(alpha = 0.15f), androidx.compose.foundation.shape.RoundedCornerShape(30.dp))

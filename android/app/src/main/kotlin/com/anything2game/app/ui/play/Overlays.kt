@@ -120,7 +120,7 @@ internal fun AskPanel(offline: Boolean, onClose: () -> Unit) {
 
 /** Shown when the context policy pauses play (walking). The player can override a false detection. */
 @Composable
-internal fun BoxScope.PausedOverlay(onContinue: () -> Unit) {
+internal fun BoxScope.PausedOverlay(onContinue: () -> Unit, hero: @Composable () -> Unit = {}) {
     val skin = A2g.skin
     Box(Modifier.matchParentSize().background(skin.paper.copy(alpha = 0.97f)).clickable(remember { MutableInteractionSource() }, indication = null) {}) {
         Column(
@@ -128,8 +128,11 @@ internal fun BoxScope.PausedOverlay(onContinue: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Icon(Icons.AutoMirrored.Filled.DirectionsWalk, null, tint = skin.paused, modifier = Modifier.size(64.dp))
-            Text(stringResource(R.string.paused_title), style = MaterialTheme.typography.headlineSmall, color = skin.ink)
+            hero()
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.AutoMirrored.Filled.DirectionsWalk, null, tint = skin.paused, modifier = Modifier.size(28.dp))
+                Text(stringResource(R.string.paused_title), style = MaterialTheme.typography.headlineSmall, color = skin.ink)
+            }
             Text(stringResource(R.string.paused_body), style = MaterialTheme.typography.bodyLarge, color = skin.inkMuted)
             Button(onClick = onContinue) { Text(stringResource(R.string.paused_continue)) }
         }

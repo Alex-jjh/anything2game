@@ -21,7 +21,7 @@ import com.anything2game.engine.session.RecapSummary
 
 /** Closing the case: what you now know, and what is still shaky (never "100% = mastered"). */
 @Composable
-internal fun RecapContent(recap: RecapSummary, unitCount: Int, title: String, frameId: com.anything2game.contract.FrameId = com.anything2game.contract.FrameId.CLASSIC, onReplay: () -> Unit, onLibrary: () -> Unit, extra: @Composable () -> Unit = {}) {
+internal fun RecapContent(recap: RecapSummary, unitCount: Int, title: String, frameId: com.anything2game.contract.FrameId = com.anything2game.contract.FrameId.CLASSIC, onReplay: () -> Unit, onLibrary: () -> Unit, hero: @Composable () -> Unit = {}, extra: @Composable () -> Unit = {}) {
     val skin = A2g.skin
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         if (frameId == com.anything2game.contract.FrameId.CASE) {
@@ -32,6 +32,7 @@ internal fun RecapContent(recap: RecapSummary, unitCount: Int, title: String, fr
         } else {
             Text(title, style = MaterialTheme.typography.headlineSmall, color = skin.ink)
         }
+        hero()
         Text(stringResource(R.string.recap_score, recap.solidUnitIds.size, unitCount), style = MaterialTheme.typography.titleMedium, color = skin.action)
         // Outcome first (what you caught, what comes back), then the takeaways (D8).
         recap.bossCleared?.let { cleared ->

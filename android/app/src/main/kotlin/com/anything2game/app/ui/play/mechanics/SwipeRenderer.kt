@@ -85,6 +85,9 @@ object SwipeRenderer : MechanicRenderer {
             val threshold = with(LocalDensity.current) { 110.dp.toPx() }
             val lean = (offset.value / threshold).coerceIn(-1f, 1f)
             var crossed by remember(card.id) { mutableStateOf(false) }
+            // The character leans with the card (player input only, never the answer).
+            val avatarSignals = com.anything2game.app.ui.character.LocalAvatarSignals.current
+            androidx.compose.runtime.SideEffect { avatarSignals.lean = lean }
             // Card stack: the next card peeks out behind the current one.
             Box(Modifier.fillMaxWidth().heightIn(min = 300.dp)) {
                 swipe.cards.getOrNull(index + 1)?.let {
