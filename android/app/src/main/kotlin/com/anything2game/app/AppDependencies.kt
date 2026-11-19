@@ -36,6 +36,7 @@ import com.anything2game.contract.pack.PackOrigin
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.withLock
 import java.io.File
 
 /** Everything screens depend on. Screens see only interfaces, so tests and new adapters swap in freely. */
@@ -93,8 +94,9 @@ class AndroidAppContainer(context: Context) : AppDependencies {
 
     private val registry = ProfileRegistry(app).also { r ->
         // Installs from before profiles existed keep playing as the guest instead of meeting the welcome screen.
+        // Only once: the guest's own files live in the same place, so later "Switch profile → welcome" must stay on the welcome screen.
         val legacy = listOf("sessions", "mastery", "tutor-sessions").any { File(app.filesDir, it).list()?.isNotEmpty() == true }
-        if (r.active() == null && legacy) r.setActive(LocalProfile.GUEST)
+        if (!r.hasChosen() && r.active() == null && legacy) r.setActive(LocalProfile.GUEST)
     }
     @Volatile private var scope = UserScope(registry.active() ?: LocalProfile.GUEST)
 
@@ -109,7 +111,10 @@ class AndroidAppContainer(context: Context) : AppDependencies {
         private val state = MutableStateFlow(registry.active())
         override val active: StateFlow<LocalProfile?> = state.asStateFlow()
 
-        override suspend fun choose(profile: LocalProfile) {
+        // A double tap on "Continue as Lin" must not play Lin's history twice (the seed is not idempotent: it adds to mastery).
+        private val chooseLock = kotlinx.coroutines.sync.Mutex()
+
+        override suspend fun choose(profile: LocalProfile) = chooseLock.withLock {
             val next = UserScope(profile)
             if (profile.kind == ProfileKind.SAMPLE && !registry.isSeeded(profile)) {
                 SampleProfileSeeder(packages, frames, grading, masteryPolicy, next.sessions, next.mastery, next.homePreferences, next.avatarPreferences, clock)

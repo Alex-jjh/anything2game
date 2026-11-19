@@ -53,4 +53,13 @@ class ProfilesTest {
         File(app.filesDir, "sessions").apply { mkdirs() }.resolve("x.json").writeText("{}")
         assertEquals(LocalProfile.GUEST, AndroidAppContainer(app).profiles.active.value)
     }
+
+    @Test fun `leaving to the welcome screen stays there after a restart even when the guest has data`() = runBlocking {
+        val deps = AndroidAppContainer(app)
+        deps.profiles.choose(LocalProfile.GUEST)
+        deps.sessions.save(com.anything2game.engine.session.SessionState("p", "1", "L1", queue = listOf(com.anything2game.engine.session.Slot("u"))))
+        deps.profiles.leave()
+        // The guest's files sit where pre-profile installs kept theirs; that must not look like a migration the second time.
+        assertNull(AndroidAppContainer(app).profiles.active.value)
+    }
 }

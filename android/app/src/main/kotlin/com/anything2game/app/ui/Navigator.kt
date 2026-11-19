@@ -13,7 +13,8 @@ import kotlinx.coroutines.flow.asStateFlow
 sealed interface Route {
     data object Home : Route
     data class Read(val packageId: String) : Route
-    data class Play(val packageId: String, val levelId: String, val frameId: FrameId) : Route
+    /** [run] is a fresh number per tap on a level, so a finished or abandoned run's screen state is never reused for the next one. */
+    data class Play(val packageId: String, val levelId: String, val frameId: FrameId, val run: Int = 0) : Route
     data class Import(val request: ImportRequest) : Route
 }
 
@@ -21,6 +22,7 @@ sealed interface Route {
 class Navigator(private val saved: SavedStateHandle) : ViewModel() {
     private val _tab = MutableStateFlow(HomeTab.from(saved["home.tab"]))
     val tab: StateFlow<HomeTab> = _tab.asStateFlow()
+    private var plays = 0
     private val _route = MutableStateFlow(restore())
     val route: StateFlow<Route> = _route.asStateFlow()
 
@@ -53,7 +55,7 @@ class Navigator(private val saved: SavedStateHandle) : ViewModel() {
     }
     fun openPlay(packageId: String, levelId: String, frameId: FrameId) {
         clearDetail(); saved["route.pkg"] = packageId; saved["route.level"] = levelId; saved["route.frame"] = frameId.name
-        _route.value = Route.Play(packageId, levelId, frameId)
+        _route.value = Route.Play(packageId, levelId, frameId, ++plays)
     }
     fun openImport(request: ImportRequest) {
         clearDetail()

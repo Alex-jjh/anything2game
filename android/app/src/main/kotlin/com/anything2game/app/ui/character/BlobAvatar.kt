@@ -51,8 +51,8 @@ class BlobAvatar(
     @ArrayRes override fun linesFor(mood: Mood): Int? = lines[mood]
 
     @Composable
-    override fun Draw(mood: Mood, modifier: Modifier, lookAt: Offset, useTilt: Boolean) {
-        val motion = rememberAvatarMotion(mood, lookAt, useTilt)
+    override fun Draw(mood: Mood, modifier: Modifier, lookAt: Offset, useTilt: Boolean, pokeable: Boolean) {
+        val motion = rememberAvatarMotion(mood, lookAt, useTilt, pokeable)
         val measurer = rememberTextMeasurer()
         Canvas(modifier.aspectRatio(1f).then(motion.pokeModifier)) {
             // Lean tilts the whole body from the feet, like leaning with the card.

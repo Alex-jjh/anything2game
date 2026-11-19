@@ -28,8 +28,8 @@ class SpriteAvatar(
     @ArrayRes override fun linesFor(mood: Mood): Int? = lines[mood]
 
     @Composable
-    override fun Draw(mood: Mood, modifier: Modifier, lookAt: Offset, useTilt: Boolean) {
-        val m = rememberAvatarMotion(mood, lookAt, useTilt)
+    override fun Draw(mood: Mood, modifier: Modifier, lookAt: Offset, useTilt: Boolean, pokeable: Boolean) {
+        val m = rememberAvatarMotion(mood, lookAt, useTilt, pokeable)
         @DrawableRes val res = images[m.mood] ?: images.getValue(Mood.IDLE)
         Image(
             painterResource(res), contentDescription = null,

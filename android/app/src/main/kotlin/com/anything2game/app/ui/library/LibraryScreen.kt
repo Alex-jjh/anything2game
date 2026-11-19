@@ -167,7 +167,8 @@ fun AvatarPicker(selectedId: String?, onSelect: (String) -> Unit) {
                             .padding(horizontal = 10.dp, vertical = 8.dp),
                         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
                     ) {
-                        a.Draw(if (chosen) com.anything2game.app.ui.character.Mood.HAPPY else com.anything2game.app.ui.character.Mood.IDLE, Modifier.size(64.dp))
+                        // Only the chosen one can be poked; on the others a tap on the picture must choose them.
+                        a.Draw(if (chosen) com.anything2game.app.ui.character.Mood.HAPPY else com.anything2game.app.ui.character.Mood.IDLE, Modifier.size(64.dp), pokeable = chosen)
                         Text(stringResource(a.nameRes), style = MaterialTheme.typography.labelLarge, color = if (chosen) skin.action else skin.ink, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                         Text(stringResource(a.traitRes), style = MaterialTheme.typography.labelSmall, color = skin.inkMuted)
                     }

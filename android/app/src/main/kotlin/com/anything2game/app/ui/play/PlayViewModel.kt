@@ -70,9 +70,17 @@ class PlayViewModel(
     private var activeFrame: FrameId = FrameId.CLASSIC
     private var context: ContextDecision = deps.contextPolicy.decide(deps.contextSource.signals.value)
 
+    private var contextJob: kotlinx.coroutines.Job? = null
+
     init {
         viewModelScope.launch { load() }
-        viewModelScope.launch {
+        listenToContext()
+    }
+
+    /** Follows the phone's context (e.g. walking pauses the level) while this level is on screen. */
+    fun listenToContext() {
+        if (contextJob?.isActive == true) return
+        contextJob = viewModelScope.launch {
             deps.contextSource.signals.collect { signals ->
                 context = deps.contextPolicy.decide(signals)
                 val reason = context.pauseReason
@@ -80,6 +88,7 @@ class PlayViewModel(
             }
         }
     }
+    fun stopListeningToContext() { contextJob?.cancel(); contextJob = null }
 
     private suspend fun load() = mutex.withLock {
         val pkg = deps.packages.load(packageId).getOrElse {
@@ -96,6 +105,7 @@ class PlayViewModel(
         var session = saved ?: e.start(levelId)
         val reason = context.pauseReason
         if (context.pause && reason != null) session = e.reduce(session, Action.Pause(reason)).state
+        else if (session.isPaused) session = e.reduce(session, Action.Resume).state // a pause saved by an earlier run is stale once the phone is still
         deps.sessions.save(session)
         publish(pkg, e, session)
     }

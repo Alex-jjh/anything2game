@@ -80,7 +80,9 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator, onPickPdf: () -> Unit) 
             ReadingContent(deps, r.packageId, onBack = navigator::toHome)
         }
         is Route.Play -> {
-            val vm = viewModel(key = "play:${current.id}:${r.packageId}:${r.levelId}:${r.frameId}") { PlayViewModel(deps, r.packageId, r.levelId, r.frameId) }
+            val vm = viewModel(key = "play:${current.id}:${r.packageId}:${r.levelId}:${r.frameId}:${r.run}") { PlayViewModel(deps, r.packageId, r.levelId, r.frameId) }
+            // A level that is no longer on screen must not keep reacting to the phone's sensors (it would rewrite the course's one saved session).
+            androidx.compose.runtime.DisposableEffect(vm) { vm.listenToContext(); onDispose { vm.stopListeningToContext() } }
             val state by vm.state.collectAsStateWithLifecycle()
             when (val s = state) {
                 PlayUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }

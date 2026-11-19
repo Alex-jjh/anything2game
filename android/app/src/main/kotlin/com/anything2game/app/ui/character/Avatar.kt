@@ -42,9 +42,12 @@ interface AvatarCharacter {
     /** Short reaction lines for a mood (string-array resource), or null for none. */
     @ArrayRes fun linesFor(mood: Mood): Int?
 
-    /** [lookAt] in -1..1 on both axes; [useTilt] lets the eyes follow the phone's tilt (gravity sensor). */
+    /**
+     * [lookAt] in -1..1 on both axes; [useTilt] lets the eyes follow the phone's tilt (gravity sensor).
+     * [pokeable]: a tap on the picture makes the character react; turn it off where the picture sits inside something tappable (the picker).
+     */
     @Composable
-    fun Draw(mood: Mood, modifier: Modifier = Modifier, lookAt: Offset = Offset.Zero, useTilt: Boolean = false)
+    fun Draw(mood: Mood, modifier: Modifier = Modifier, lookAt: Offset = Offset.Zero, useTilt: Boolean = false, pokeable: Boolean = true)
 }
 
 val LocalAvatar = compositionLocalOf<AvatarCharacter> { Avatars.default }

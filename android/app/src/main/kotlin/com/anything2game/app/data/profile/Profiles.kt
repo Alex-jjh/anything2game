@@ -38,7 +38,9 @@ interface ProfileController {
 class ProfileRegistry(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences("profiles", Context.MODE_PRIVATE)
     fun active(): LocalProfile? = LocalProfile.of(prefs.getString("active", null))
-    fun setActive(p: LocalProfile?) { prefs.edit().apply { if (p == null) remove("active") else putString("active", p.id) }.apply() }
+    /** True once a profile was ever chosen or left on purpose; from then on "nobody chosen" means the welcome screen, never a migration. */
+    fun hasChosen(): Boolean = prefs.getBoolean("chosen", false)
+    fun setActive(p: LocalProfile?) { prefs.edit().apply { putBoolean("chosen", true); if (p == null) remove("active") else putString("active", p.id) }.apply() }
     fun isSeeded(p: LocalProfile): Boolean = prefs.getBoolean("seeded:${p.id}", false)
     fun markSeeded(p: LocalProfile) { prefs.edit().putBoolean("seeded:${p.id}", true).apply() }
 }
