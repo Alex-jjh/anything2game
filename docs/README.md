@@ -35,5 +35,6 @@ Language: documents are in English. Some teammate design docs are in Chinese (ma
 | `testing/` | A/B classic vs gate vs layered → gate adopted | [eval-2026-11-19-ab.md](testing/eval-2026-11-19-ab.md) | 2026-11-19 |
 | `testing/` | Test plan, device checklist, usability study | (to create) | empty |
 | `archive/` | Superseded versions, read-only | [2026-11-10-dev-plan-v1.1.txt](archive/2026-11-10-dev-plan-v1.1.txt) (Chinese) | frozen |
+| `archive/` | Team review chat 2026-11-20 (zh, verbatim product-relevant messages) | [2026-11-20-team-review-chat.md](archive/2026-11-20-team-review-chat.md) | record |
 
 The data contract is not in `docs/` — it is code in [`/contract`](../contract/README.md), because both sides' tests import it.

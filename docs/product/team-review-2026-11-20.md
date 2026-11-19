@@ -1,6 +1,6 @@
 # Team review, 2026-11-20: what we agreed and what we built
 
-**Scope**: the decisions from the team's late-night review (WeChat voice + text, transcript kept outside the repo), turned into product decisions with their status. People: Alyssa (product/design lead for the explainer), Ziwei (Learn tab / tutor), Jiahao (architecture). The UI design choices remain the team's own (CSI301 rule); this records them.
+**Scope**: the decisions from the team's late-night review (WeChat voice + text; the product-relevant messages are archived verbatim in [archive/2026-11-20-team-review-chat.md](../archive/2026-11-20-team-review-chat.md)), turned into product decisions with their status. People: Alyssa (product/design lead for the explainer), Ziwei (Learn tab / tutor), Jiahao (architecture). The UI design choices remain the team's own (CSI301 rule); this records them.
 
 ## 1. What the team said, in short
 
