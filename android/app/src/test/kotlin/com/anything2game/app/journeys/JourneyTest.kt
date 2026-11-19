@@ -122,7 +122,8 @@ abstract class JourneyTest {
         repeat(8) {
             val b = node.fetchSemanticsNode().boundsInRoot
             if (b.center.y < navTop - 40f && b.center.y > 0f) return
-            val down = b.center.y >= navTop - 40f
+            // Not placed yet (an unlaid-out lazy item has empty bounds): it is further down the list.
+            val down = b.height == 0f || b.center.y >= navTop - 40f
             rule.onNodeWithTag(list).performTouchInput {
                 val x = centerX; val y0 = if (down) height * 0.7f else height * 0.3f
                 swipe(Offset(x, y0), Offset(x, if (down) y0 - 400f else y0 + 400f), 200)
