@@ -24,7 +24,7 @@
     <string name="tutor_continue">Continue</string>
     <string name="tutor_input">Ask about this document</string>
     <string name="tutor_send">Send question</string>
-    <string name="tutor_script_note">Mock mode uses scripted teaching. Free-text questions are saved, but not semantically answered.</string>
+    <string name="tutor_script_note">This explainer follows a script written ahead of time. Your questions are saved, but it cannot answer them yet.</string>
     <string name="tutor_model_note">AI explanations can be wrong. Open the original passage to check important claims.</string>
     <string name="tutor_concept_count">Teaching concept %1$d of %2$d</string>
     <string name="tutor_all_introduced">All introductory concepts are covered. You can keep asking or return to your shelf.</string>

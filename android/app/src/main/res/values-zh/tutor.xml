@@ -24,7 +24,7 @@
     <string name="tutor_continue">继续讲解</string>
     <string name="tutor_input">关于这篇文档，你还想问什么？</string>
     <string name="tutor_send">发送追问</string>
-    <string name="tutor_script_note">mock 模式使用预设讲解。自由追问会保存，但不会假装已进行语义理解。</string>
+    <string name="tutor_script_note">这位讲解员按预先写好的内容讲解。你的追问会保存，但暂时不能回答。</string>
     <string name="tutor_model_note">AI 讲解可能出错。重要结论请展开原文核对。</string>
     <string name="tutor_concept_count">正在讲解第 %1$d / %2$d 个概念</string>
     <string name="tutor_all_introduced">基础概念已逐一讲解，可以继续追问，也可以返回资料页。</string>

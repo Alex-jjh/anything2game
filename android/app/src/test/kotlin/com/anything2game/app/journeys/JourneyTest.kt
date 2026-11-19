@@ -205,12 +205,27 @@ abstract class JourneyTest {
     /** A number on the Me tab ("Documents", "Practiced units", "Due for review"): the figure printed right above its label. */
     protected fun stat(@StringRes label: Int): Int {
         val l = str(label)
-        scrollMeTo(l)
-        val labelNode = rule.onNode(hasText(l)).fetchSemanticsNode().boundsInRoot
-        val numbers = rule.onAllNodes(SemanticsMatcher("number") { it.config.getOrNull(SemanticsProperties.Text)?.firstOrNull()?.text?.toIntOrNull() != null })
-            .fetchSemanticsNodes().filter { it.boundsInRoot.bottom <= labelNode.top + 1f && kotlin.math.abs(it.boundsInRoot.left - labelNode.left) < 4f }
-        val node = numbers.maxByOrNull { it.boundsInRoot.bottom } ?: throw AssertionError("No figure above \"$l\"")
-        return node.config[SemanticsProperties.Text].first().text.toInt()
+        // Scrolling a label into view can leave it on the very top edge, where the figure printed above it is clipped away
+        // (an empty rectangle): a student drags the list down a little, and so does this. Also tolerates the card being redrawn while the library loads.
+        fun figure(): Int? {
+            val labelNode = rule.onNode(hasText(l)).fetchSemanticsNode().boundsInRoot
+            val numbers = rule.onAllNodes(SemanticsMatcher("number") { it.config.getOrNull(SemanticsProperties.Text)?.firstOrNull()?.text?.toIntOrNull() != null })
+                .fetchSemanticsNodes().filter { it.boundsInRoot.bottom <= labelNode.top + 1f && kotlin.math.abs(it.boundsInRoot.left - labelNode.left) < 4f }
+            return numbers.maxByOrNull { it.boundsInRoot.bottom }?.config?.get(SemanticsProperties.Text)?.first()?.text?.toInt()
+        }
+        var last: Throwable? = null
+        repeat(20) {
+            try {
+                scrollMeTo(l)
+                figure()?.let { return it }
+                rule.onNodeWithTag("home_PROFILE").performTouchInput { swipe(Offset(centerX, centerY - 150f), Offset(centerX, centerY + 150f), 150) }
+                rule.waitForIdle()
+                figure()?.let { return it }
+                last = AssertionError("No figure above \"$l\"")
+            } catch (e: AssertionError) { last = e }
+            rule.waitForIdle(); Thread.sleep(150)
+        }
+        throw last!!
     }
 
     // ---- playing -----------------------------------------------------------------------------------------

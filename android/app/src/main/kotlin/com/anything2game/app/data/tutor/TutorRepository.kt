@@ -102,8 +102,14 @@ class AndroidTutorRepository(
             val position = if (intent == TutorIntent.CONTINUE) s.conceptPosition + 1 else s.conceptPosition
             require(position in s.questions.indices)
             val next = s.copy(conceptPosition = position)
+            // The student's own turn is logged in the course's language (an English course must not show Chinese in its Log).
+            val zh = s.language == "zh"
             val text = when (intent) {
-                TutorIntent.START -> "按我的摸底结果开始讲解"; TutorIntent.REPHRASE -> "换个说法"; TutorIntent.EXAMPLE -> "举个例子"; TutorIntent.CONTINUE -> "继续讲解"; TutorIntent.QUESTION -> question
+                TutorIntent.START -> if (zh) "按我的摸底结果开始讲解" else "Start from my results"
+                TutorIntent.REPHRASE -> if (zh) "换个说法" else "Say it another way"
+                TutorIntent.EXAMPLE -> if (zh) "举个例子" else "Give me an example"
+                TutorIntent.CONTINUE -> if (zh) "继续讲解" else "Continue"
+                TutorIntent.QUESTION -> question
             }
             return next.copy(revision = s.revision + 1, messages = s.messages + TutorMessage("m${s.revision + 1}u", "user", text) + TutorRules.scriptedReply(next, localScript(s).blueprint, intent))
         }
