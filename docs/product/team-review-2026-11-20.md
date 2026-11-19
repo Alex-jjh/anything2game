@@ -19,15 +19,19 @@
 
 | # | Decision | Status |
 |---|---|---|
-| 1 | Learn tab explanation becomes an **explainer theatre**: stage (background + explainer standee with expressions) on top, dialogue box at the bottom, pages advance on tap, choice bar (Rephrase · Example · Continue · Ask) in the thumb zone; the chat history stays one tap away (Log). Diagnostic and assessment keep their logic, restyled as part of the same scene. | building (`feat/explainer-ui`) |
-| 2 | The player's own character sits on the stage and reacts (listening, thinking while a question is answered, happy at the end of a concept); pokeable. | building (same) |
-| 3 | **Theme slot**: default "paper" theme ships; an "illustrated" theme appears only when standee art (drawables by mood) and a background are added. The team picks CC0 art; no third-party art is bundled by us. | building (same) |
-| 4 | **Portrait first**: stage ≈ 45 %, dialogue ≥ 18 sp, actions at the bottom; landscape puts the stage left and the dialogue right. | building (same) |
-| 5 | **Focus step** before the diagnostic: Quick overview / Method / Results / Limits (multi-select) + "Something else" (free text) + "Let the explainer decide" (default). Chosen facets are asked and explained first; nothing is dropped. Free text is stored and only steers the AI when online. | building (`feat/preset-tutor`) |
-| 5b | Every **preset course** gets its own pre-generated diagnostic + explanation script inside its content pack (ADR-017, additive `tutor.json`); Attention and ResNet scripts are generated (tagged by facet) and **need a person's review** before filming. | scripts done (`samples/demo/tutor.demo.*.json`); pack plumbing building |
+| 1 | Learn tab explanation becomes an **explainer theatre**: stage (background + explainer standee with expressions) on top, dialogue box at the bottom, pages advance on tap, choice bar (Rephrase · Example · Continue · Ask) in the thumb zone; the chat history stays one tap away (Log). Diagnostic and assessment keep their logic, restyled as part of the same scene. | done: `ui/reading/ExplainerTheatre.kt`; screens in `docs/design/screens/explainer/` |
+| 2 | The player's own character sits on the stage and reacts (listening, thinking while a question is answered, happy at the end of a concept); pokeable. | done |
+| 3 | **Theme slot**: default "paper" theme ships; an "illustrated" theme appears only when standee art (drawables by mood) and a background are added. The team picks CC0 art; no third-party art is bundled by us. | done |
+| 4 | **Portrait first**: stage ≈ 45 %, dialogue ≥ 18 sp, actions at the bottom; landscape puts the stage left and the dialogue right. | done |
+| 5 | **Focus step** before the diagnostic: Quick overview / Method / Results / Limits (multi-select) + "Something else" (free text) + "Let the explainer decide" (default). Chosen facets are asked and explained first; nothing is dropped. Free text is stored and only steers the AI when online. | done: `ui/reading/FocusStep.kt`; facets on questions, chosen ones first |
+| 5b | Every **preset course** gets its own pre-generated diagnostic + explanation script inside its content pack (ADR-017, additive `tutor.json`); Attention and ResNet scripts are generated (tagged by facet) and **need a person's review** before filming. | done: scripts for Attention, ResNet and the zh course travel in their packs (`tutor.json`); **review by a person before filming** |
 | 6 | Walking **no longer pauses by default**; it switches to the one-handed layout. "Pause when I'm walking" is an opt-in in Me. | done (`f741268`) |
 | 7 | Video: polish the **explainer + Case** path on the preset courses; generation shown briefly. | plan in [PRODUCT.md §5](PRODUCT.md) |
 | 8 | Positioning answer to "looks like Duolingo": Duolingo teaches a fixed course with drills; we explain *your* reading with a character and then let you prove it in a case, every line with its page ([why-and-market §5](why-and-market.md)). | doc |
+
+Notes from the build:
+- **The explainer, Aya,** is an original procedural character, coloured sky blue so it stays clearly apart from well-known round yellow mascots and from the player's three characters.
+- **Dialogue pages** fill what the box holds (≈ 170 Latin or 90 CJK characters at 19 sp), with fewer per page at larger system font sizes. Text is never clipped.
 
 ## 3. Still to decide (team)
 
