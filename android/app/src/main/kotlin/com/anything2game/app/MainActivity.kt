@@ -17,7 +17,10 @@ class MainActivity : ComponentActivity() {
     private val parser by lazy { IntentImportParser(contentResolver) }
 
     private val pickPdf = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        uri?.let { navigator.openImport(parser.pdf(it)) }
+        uri?.let {
+            runCatching { contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+            navigator.openImport(parser.pdf(it))
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

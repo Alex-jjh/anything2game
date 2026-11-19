@@ -27,6 +27,7 @@ import java.io.File
 
 /** Everything screens depend on. Screens see only interfaces, so tests and new adapters swap in freely. */
 interface AppDependencies {
+    val tutors: com.anything2game.app.data.tutor.TutorRepository
     val packages: PackageRepository
     val frames: FrameRepository
     val framePreferences: FramePreferences
@@ -49,6 +50,11 @@ class AndroidAppContainer(context: Context) : AppDependencies {
     val installedPacks = DirectoryPackSource(File(app.filesDir, "packs"))
     val content = ContentLibrary(listOf(AssetPackSource(app.assets), installedPacks))
     override val packages: PackageRepository = content
+    override val tutors = com.anything2game.app.data.tutor.AndroidTutorRepository(app, packages) { pkg ->
+        val pack = com.anything2game.contract.pack.PackCodec.build(pkg, emptyList(), com.anything2game.contract.pack.PackOrigin.SERVER)
+        installedPacks.install(com.anything2game.contract.pack.PackCodec.toBytes(pack).inputStream()).getOrThrow()
+        content.refresh()
+    }
     override val frames: FrameRepository = content
     override val framePreferences: FramePreferences = SharedPrefsFramePreferences(app)
     override val homePreferences = com.anything2game.app.data.HomePreferences(app)

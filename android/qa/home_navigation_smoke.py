@@ -107,6 +107,12 @@ passed('Cold relaunch restores tab, nickname and character')
 screenshot('05-profile-restored-zh')
 tap('讲解'); tap('选择 PDF')
 assert any(n.get('package') == 'com.google.android.documentsui' for n in nodes()), 'System PDF picker missing'
-shell('input', 'keyevent', 'KEYCODE_BACK'); find('读懂，再记住。')
+# A picker opened inside a folder handles Back by visiting its parent first.
+# Unwind only while DocumentsUI owns the screen; do not send extra Back into our app.
+for _ in range(6):
+    shell('input', 'keyevent', 'KEYCODE_BACK')
+    if not any(n.get('package') == 'com.google.android.documentsui' for n in nodes()):
+        break
+find('读懂，再记住。')
 passed('PDF picker cancellation returns to Learn')
 (args.output / 'result.json').write_text(json.dumps({'status': 'passed', 'checks': checks, 'serial': args.serial, 'api': shell('getprop', 'ro.build.version.sdk')}, ensure_ascii=False, indent=2))

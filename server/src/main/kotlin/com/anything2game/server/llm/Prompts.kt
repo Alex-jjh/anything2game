@@ -16,7 +16,7 @@ object PromptTemplates {
     private val cache = java.util.concurrent.ConcurrentHashMap<String, String>()
 
     val ALL = listOf(
-        "plan.v1", "level.v1", "level.v2", "repair.v1", "ask.v1",
+        "plan.v1", "level.v1", "level.v2", "repair.v1", "ask.v1", "diagnostic.v1", "tutor.v1",
         "frame-case.v1", "frame-escape.v1", "frame-rookie.v1", "frame-companion.v1",
     )
 

@@ -22,6 +22,27 @@ import java.util.concurrent.atomic.AtomicInteger
  */
 abstract class RepositoryContractTest : StoreBackendTest() {
 
+    @Test fun `tutor snapshots are versioned atomically and cascade with their document`() {
+        val doc = newDocument()
+        val source = doc.chunks.first()
+        val q = com.anything2game.contract.tutor.TutorQuestion("q", "c", "Concept", "Question", listOf(
+            com.anything2game.contract.tutor.TutorOption("a", "A"), com.anything2game.contract.tutor.TutorOption("b", "B")),
+            listOf(com.anything2game.contract.SourceRef(source.chunkId, source.text.take(80))))
+        val blueprint = com.anything2game.contract.tutor.TutorBlueprint(concepts = listOf(com.anything2game.contract.tutor.TutorConcept(q, "a", "Explanation", "Simple", "Example")))
+        val session = com.anything2game.contract.tutor.TutorSession(sessionId = "tut_test", documentId = doc.documentId, documentVersion = doc.documentVersion,
+            title = doc.title, language = "en", mode = "mock", questions = listOf(q), sources = doc.chunks)
+        val first = com.anything2game.server.tutor.TutorRecord(doc.ownerId, blueprint, session)
+        assertEquals(first, store.createTutor(first))
+        assertEquals(first, anotherInstance().createTutor(first.copy(session = session.copy(title = "must not replace"))))
+        val next = first.copy(session = session.copy(revision = 1))
+        assertTrue(store.saveTutorIfRevision(next, 0))
+        assertFalse(anotherInstance().saveTutorIfRevision(first, 0))
+        assertEquals(next, anotherInstance().getTutor("tut_test"))
+        store.deleteDocument(doc.documentId)
+        assertNull(store.getTutor("tut_test"))
+        assertNull(store.createTutor(first))
+    }
+
     // ---- installs and counters --------------------------------------------------------------------------------
 
     @Test fun `installs are found by token hash`() {

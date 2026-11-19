@@ -1,0 +1,93 @@
+{
+  "date": "2026-11-19",
+  "baselineCommit": "8cf2582",
+  "buildResult": "BUILD SUCCESSFUL in 59s",
+  "tests": {
+    "android/app": {
+      "tests": 74,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 74
+    },
+    "android/engine": {
+      "tests": 27,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 27
+    },
+    "contract": {
+      "tests": 35,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 35
+    },
+    "server": {
+      "tests": 177,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 27,
+      "passed": 150
+    }
+  },
+  "lint": {
+    "errors": 0,
+    "warnings": 22
+  },
+  "apk": {
+    "path": "android/app/build/outputs/apk/debug/app-debug.apk",
+    "bytes": 20284940,
+    "sha256": "2f7b099d7a610f88ad916107f63be54e18d375d2e5ada1ffd3189d3b1a34ef93"
+  },
+  "finalDeviceChecks": {
+    "apkSha256": "2f7b099d7a610f88ad916107f63be54e18d375d2e5ada1ffd3189d3b1a34ef93",
+    "crashBuffer": "empty",
+    "fontScale": "1.0",
+    "serial": "emulator-5578",
+    "finalViewportChecks": "passed"
+  },
+  "homeNavigationSmoke": {
+    "status": "passed",
+    "checks": [
+      "All three tabs open the expected screen",
+      "Native keyboard nickname save",
+      "Cancel keeps saved nickname",
+      "Character persisted",
+      "Configuration change retains profile",
+      "Cold relaunch restores tab, nickname and character",
+      "PDF picker cancellation returns to Learn"
+    ],
+    "serial": "emulator-5578",
+    "api": "37"
+  },
+  "modes": {
+    "pdfExtraction": "real PDFBox extraction on local server",
+    "modelProviders": "fake only; no real model invocation"
+  },
+  "notVerified": [
+    "PostgreSQL/Testcontainers (27 skipped)",
+    "real model semantic quality",
+    "physical Android phone",
+    "OS low-memory reclamation"
+  ],
+  "screenshots": {
+    "01-home.png": "tutor-01-home-final.png",
+    "02-practice.png": "tutor-home-smoke-final/02-practice-zh.png",
+    "03-profile.png": "tutor-21-profile-final.png",
+    "04-fixed-question.png": "tutor-02-question.png",
+    "05-assessment.png": "tutor-03-assessment.png",
+    "06-chat.png": "tutor-04-chat-final.png",
+    "07-source.png": "tutor-05-source-final.png",
+    "08-confirm.png": "tutor-09-import-final.png",
+    "09-retry.png": "tutor-10-retry-final.png",
+    "10-uploaded-question.png": "tutor-11-uploaded-question-final.png",
+    "11-uploaded-chat.png": "tutor-13-uploaded-chat.png",
+    "12-game.png": "tutor-18-game-answer.png",
+    "13-offline.png": "tutor-19-offline-history.png",
+    "14-large-text.png": "tutor-20-large-text-final.png",
+    "15-landscape.png": "tutor-08-landscape-final.png",
+    "16-keyboard.png": "tutor-07-keyboard-final.png"
+  }
+}

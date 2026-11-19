@@ -17,10 +17,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -32,14 +28,14 @@ import com.anything2game.app.ui.common.Badge
 import com.anything2game.app.ui.theme.A2g
 
 /**
- * Confirms what was shared before anything leaves the phone. Until the server is connected,
- * the generation information action only says so — it never pretends to generate.
+ * Confirms the material and server destination before upload. Generation and retries are owned
+ * by ImportViewModel; the fixed example is explicitly a separate document.
  */
 @Composable
-fun ImportContent(request: ImportRequest, onCancel: () -> Unit, contentPadding: PaddingValues = PaddingValues()) {
+fun ImportContent(request: ImportRequest, onCancel: () -> Unit, contentPadding: PaddingValues = PaddingValues(),
+    endpoint: String = "", state: ImportUiState = ImportUiState(), onStart: () -> Unit = {}, onDemo: (() -> Unit)? = null) {
     val skin = A2g.skin
     val context = LocalContext.current
-    var attempted by rememberSaveable(request) { mutableStateOf(false) }
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(contentPadding).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -65,15 +61,22 @@ fun ImportContent(request: ImportRequest, onCancel: () -> Unit, contentPadding: 
                 }
             }
         }
-        Text(stringResource(R.string.import_consent), style = MaterialTheme.typography.bodyMedium, color = skin.inkMuted)
-        if (attempted) {
-            Card(colors = CardDefaults.cardColors(containerColor = skin.evidenceSoft)) {
-                Text(stringResource(R.string.import_not_connected), Modifier.padding(16.dp), color = skin.ink)
-            }
+        Text(stringResource(R.string.tutor_upload_consent), style = MaterialTheme.typography.bodyMedium, color = skin.inkMuted)
+        Text(endpoint.ifBlank { stringResource(R.string.tutor_no_endpoint) }, style = MaterialTheme.typography.bodySmall, color = skin.action)
+        if (state.uploaded) Text(stringResource(R.string.tutor_uploaded), color = skin.action)
+        if (state.busy) {
+            androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth())
+            Text(stringResource(if (state.uploaded) R.string.tutor_preparing else R.string.tutor_uploading), color = skin.inkMuted)
         }
+        state.error?.let { Text(stringResource(R.string.tutor_import_error, it), color = skin.wrong) }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedButton(onClick = onCancel) { Text(stringResource(R.string.import_cancel)) }
-            Button(onClick = { attempted = true }, enabled = !attempted) { Text(stringResource(R.string.import_start)) }
+            Button(onClick = onStart, enabled = !state.busy && endpoint.isNotBlank()) { Text(stringResource(if (state.error == null) R.string.tutor_upload_start else R.string.home_retry)) }
+        }
+        Text(stringResource(R.string.tutor_import_cancel_note), style = MaterialTheme.typography.bodySmall, color = skin.inkMuted)
+        if (onDemo != null) {
+            Text(stringResource(R.string.tutor_separate_example), color = skin.inkMuted)
+            OutlinedButton(onClick = onDemo, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.tutor_demo_action)) }
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.anything2game.server.store
 
+import com.anything2game.server.tutor.TutorRecord
 import com.anything2game.contract.ApiError
 import com.anything2game.contract.CompileJobState
 import com.anything2game.contract.CompileOptions
@@ -76,6 +77,31 @@ class PostgresStore private constructor(private val ds: DataSource, private val 
 
     private fun <T> encode(serializer: KSerializer<T>, value: T): String = jsonbSafe(json.encodeToString(serializer, value))
     private fun <T> decode(serializer: KSerializer<T>, text: String): T = json.decodeFromString(serializer, text)
+
+    override fun getTutor(id: String): TutorRecord? = withConnection { c ->
+        c.query("SELECT body FROM tutors WHERE session_id = ?", { setString(1, id) }) {
+            decode(TutorRecord.serializer(), it.getString(1))
+        }.firstOrNull()
+    }
+
+    override fun createTutor(record: TutorRecord): TutorRecord? = transaction { c ->
+        // Lock the document while inserting, so concurrent deletion cannot resurrect a tutor.
+        if (c.query("SELECT document_id FROM documents WHERE document_id = ? FOR KEY SHARE", {
+            setString(1, record.session.documentId)
+        }) { it.getString(1) }.isEmpty()) return@transaction null
+        c.update("INSERT INTO tutors (session_id, document_id, revision, body) VALUES (?, ?, ?, ?::jsonb) ON CONFLICT DO NOTHING") {
+            setString(1, record.session.sessionId); setString(2, record.session.documentId)
+            setInt(3, record.session.revision); setString(4, encode(TutorRecord.serializer(), record))
+        }
+        getTutor(record.session.sessionId)
+    }
+
+    override fun saveTutorIfRevision(record: TutorRecord, expectedRevision: Int): Boolean = withConnection { c ->
+        c.update("UPDATE tutors SET revision = ?, body = ?::jsonb WHERE session_id = ? AND revision = ?") {
+            setInt(1, record.session.revision); setString(2, encode(TutorRecord.serializer(), record))
+            setString(3, record.session.sessionId); setInt(4, expectedRevision)
+        } == 1
+    }
 
     // ---- installs and counters ------------------------------------------------------------------------------
 

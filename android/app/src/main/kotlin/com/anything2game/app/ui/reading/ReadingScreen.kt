@@ -1,114 +1,158 @@
 package com.anything2game.app.ui.reading
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anything2game.app.AppDependencies
 import com.anything2game.app.R
-import com.anything2game.app.data.Familiarity
 import com.anything2game.app.ui.common.Badge
 import com.anything2game.app.ui.home.PaperCard
 import com.anything2game.app.ui.theme.A2g
 import com.anything2game.contract.*
-import com.anything2game.engine.session.SessionState
-import kotlinx.coroutines.CancellationException
+import com.anything2game.contract.tutor.*
 
-/** A reading surface over the existing package. No term extraction or AI personalization is implied. */
+/** Middle-tab teaching surface. Practice has its own tab and never launches from this flow. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ReadingContent(deps: AppDependencies, packageId: String, onBack: () -> Unit, onPractice: (String, String, FrameId) -> Unit) {
-    var pkg by remember(packageId) { mutableStateOf<LearningPackage?>(null) }
-    var savedSession by remember(packageId) { mutableStateOf<SessionState?>(null) }
-    var failed by remember(packageId) { mutableStateOf(false) }
-    var attempt by remember { mutableIntStateOf(0) }
-    var reading by rememberSaveable(packageId) { mutableStateOf(false) }
-    LaunchedEffect(packageId, attempt) {
-        failed = false
-        try {
-            pkg = deps.packages.load(packageId).getOrThrow()
-            savedSession = deps.sessions.load(packageId)
-        } catch (e: CancellationException) { throw e }
-        catch (_: Exception) { failed = true }
-    }
-    val listState = rememberLazyListState()
-    LaunchedEffect(packageId, reading) { listState.scrollToItem(0) }
+fun ReadingContent(deps: AppDependencies, packageId: String, onBack: () -> Unit) {
+    val vm = viewModel(key = "tutor:$packageId") { TutorViewModel(deps.tutors, packageId) }
+    val state by vm.state.collectAsStateWithLifecycle()
+    androidx.activity.compose.BackHandler { if (state.busy) vm.cancelPending(); onBack() }
+    val c = state.cache
+    val s = c?.session
     val skin = A2g.skin
+    val list = rememberLazyListState()
+    var input by rememberSaveable(packageId) { mutableStateOf("") }
+    var sourceRefs by remember { mutableStateOf<List<SourceRef>>(emptyList()) }
+    var unsupported by remember { mutableStateOf<LearningPackage?>(null) }
+    LaunchedEffect(state.unsupported) {
+        if (state.unsupported) unsupported = deps.packages.load(packageId).getOrNull()
+    }
+    val phase = when { s == null -> 0; s.assessment.isEmpty() -> 1; s.messages.isEmpty() -> 2; else -> 3 }
+    LaunchedEffect(phase, c?.questionIndex) { list.scrollToItem(0) }
+    LaunchedEffect(s?.messages?.size) {
+        if (phase == 3) { input = ""; if (list.layoutInfo.totalItemsCount > 0) list.animateScrollToItem((list.layoutInfo.totalItemsCount - 1).coerceAtLeast(0)) }
+    }
     Scaffold(containerColor = skin.paper) { padding ->
-        LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(
-            start = 20.dp, end = 20.dp, top = padding.calculateTopPadding() + 12.dp, bottom = padding.calculateBottomPadding() + 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            item { TextButton(onClick = onBack) { Text(stringResource(R.string.action_back)) } }
-            if (failed) item {
+        LazyColumn(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding().testTag("tutor_list"), state = list,
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            item {
+                TextButton(onClick = { if (state.busy) vm.cancelPending(); onBack() }) { Text(stringResource(R.string.action_back)) }
+                Text(stringResource(when (phase) { 2 -> R.string.tutor_assessment_title; 3 -> R.string.tutor_chat_title; else -> R.string.tutor_diagnostic_title }), style = MaterialTheme.typography.headlineMedium, color = skin.ink)
+            }
+            if (s != null) item {
+                Text(s.title, style = MaterialTheme.typography.titleMedium, color = skin.inkMuted)
+                Badge(stringResource(when (s.mode) { "local-mock" -> R.string.tutor_fixed_badge; "mock" -> R.string.tutor_server_mock_badge; else -> R.string.tutor_model_badge }), skin.evidence, skin.evidenceSoft)
+                Text(stringResource(if (s.mode == "local-mock") R.string.tutor_fixed_note else R.string.tutor_coverage_note), style = MaterialTheme.typography.bodySmall, color = skin.inkMuted)
+            }
+            if (state.offline) item { Text(stringResource(R.string.tutor_offline), color = skin.hint) }
+            if (state.busy) item {
+                LinearProgressIndicator(Modifier.fillMaxWidth())
+                if (s != null) TextButton(onClick = vm::cancelPending) { Text(stringResource(R.string.tutor_cancel)) }
+            }
+            if (state.problem != null && !state.unsupported) item {
                 PaperCard {
-                    Text(stringResource(R.string.home_load_error), color = skin.wrong)
-                    Button(onClick = { attempt++ }) { Text(stringResource(R.string.home_retry)) }
+                    Text(stringResource(R.string.tutor_error, state.problem!!), color = skin.wrong)
+                    Row { TextButton(onClick = vm::retry, enabled = !state.busy) { Text(stringResource(R.string.home_retry)) }; TextButton(onClick = vm::reload, enabled = !state.busy) { Text(stringResource(R.string.tutor_reload)) } }
                 }
             }
-            val p = pkg
-            if (p == null && !failed) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
-            if (p != null && !failed) {
-                item {
-                    Text(stringResource(if (reading) R.string.reading_title else R.string.preflight_title), style = MaterialTheme.typography.headlineMedium, color = skin.ink)
-                    Text(p.title, style = MaterialTheme.typography.titleMedium, color = skin.inkMuted)
-                    if (p.generation.mode == GenerationMode.PRE_GENERATED) Badge(stringResource(R.string.badge_pre_generated), skin.evidence, skin.evidenceSoft)
-                }
-                item {
-                    Text(stringResource(if (reading) R.string.reading_note else R.string.preflight_note), color = skin.inkMuted)
-                }
-                items(p.levels, key = { it.levelId }) { level ->
-                    var familiarity by remember(packageId, p.contentVersion, level.levelId) {
-                        mutableStateOf(deps.homePreferences.familiarity(packageId, p.contentVersion, level.levelId))
+            if (state.unsupported) {
+                item { Text(stringResource(R.string.tutor_unavailable), color = skin.inkMuted) }
+                items(unsupported?.sources.orEmpty()) { chunk -> PaperCard { Text("${chunk.pageLabel ?: (chunk.pageIndex + 1)} · ${chunk.chunkId}", color = skin.evidence); Text(chunk.text, color = skin.ink) } }
+            }
+            val enabled = !state.busy && state.problem == null
+            if (s != null) when (phase) {
+                1 -> {
+                    val q = s.questions[c.questionIndex]
+                    item {
+                        Text(stringResource(R.string.tutor_question_count, c.questionIndex + 1, s.questions.size), style = MaterialTheme.typography.labelLarge, color = skin.action)
+                        LinearProgressIndicator(progress = { (c.questionIndex + 1f) / s.questions.size }, modifier = Modifier.fillMaxWidth())
+                        Text(stringResource(R.string.tutor_diagnostic_note), color = skin.inkMuted, style = MaterialTheme.typography.bodySmall)
                     }
-                    PaperCard {
-                        Text(level.title, style = MaterialTheme.typography.titleLarge, color = skin.ink)
-                        Text(level.goal, color = skin.inkMuted)
-                        if (!reading) {
-                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Familiarity.entries.forEach { value ->
-                                    FilterChip(selected = familiarity == value, onClick = {
-                                        familiarity = value
-                                        deps.homePreferences.setFamiliarity(packageId, p.contentVersion, level.levelId, value)
-                                    }, label = { Text(stringResource(when (value) {
-                                        Familiarity.KNOWN -> R.string.preflight_known
-                                        Familiarity.UNSURE -> R.string.preflight_unsure
-                                        Familiarity.NEW -> R.string.preflight_new
-                                    })) })
+                    item { PaperCard {
+                        Text(q.concept, color = skin.action, style = MaterialTheme.typography.labelLarge)
+                        Text(q.prompt, color = skin.ink, style = MaterialTheme.typography.titleLarge)
+                        (q.options + TutorOption(UNKNOWN_ANSWER, stringResource(R.string.tutor_unknown))).forEach { option ->
+                            val selected = c.draftAnswers[q.id] == option.id
+                            OutlinedButton(onClick = { vm.choose(option.id) }, enabled = enabled,
+                                modifier = Modifier.fillMaxWidth().testTag(if (option.id == UNKNOWN_ANSWER) "answer_unknown" else "answer_choice_${option.id}"),
+                                colors = ButtonDefaults.outlinedButtonColors(containerColor = if (selected) skin.evidenceSoft else skin.card)) {
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    RadioButton(selected = selected, onClick = null)
+                                    Spacer(Modifier.width(8.dp)); Text(option.text, Modifier.weight(1f), color = skin.ink)
                                 }
                             }
-                        } else {
-                            if (familiarity == Familiarity.NEW || familiarity == Familiarity.UNSURE) {
-                                Badge(stringResource(R.string.reading_focus), skin.hint, skin.hintSoft)
-                            }
-                            level.recap.points.forEach { Text("• $it", color = skin.ink) }
-                            var showSources by rememberSaveable(packageId, level.levelId) { mutableStateOf(false) }
-                            TextButton(onClick = { showSources = !showSources }) { Text(stringResource(if (showSources) R.string.reading_hide_source else R.string.reading_source)) }
-                            if (showSources) {
-                                val chunkIds = level.units.flatMap { it.item.allSourceRefs }.map { it.chunkId }.distinct()
-                                chunkIds.mapNotNull(p::chunk).forEach { chunk ->
-                                    HorizontalDivider(color = skin.outline)
-                                    Text(stringResource(R.string.evidence_page, chunk.pageLabel ?: (chunk.pageIndex + 1).toString()), style = MaterialTheme.typography.labelMedium, color = skin.evidence)
-                                    Text(chunk.text, color = skin.ink, style = MaterialTheme.typography.bodyMedium)
-                                }
-                            }
-                            Button(onClick = {
-                                val resume = savedSession?.takeIf { it.contentVersion == p.contentVersion && it.levelId == level.levelId && !it.isFinished }
-                                onPractice(packageId, level.levelId, resume?.frameId ?: FrameId.CLASSIC)
-                            }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.home_practice_action)) }
+                        }
+                    } }
+                    item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (c.questionIndex > 0) OutlinedButton(onClick = vm::previous, enabled = enabled) { Text(stringResource(R.string.tutor_previous)) }
+                        Button(onClick = vm::next, enabled = enabled && q.id in c.draftAnswers,
+                            modifier = Modifier.weight(1f).testTag("diagnostic_next")) { Text(stringResource(if (c.questionIndex == s.questions.lastIndex) R.string.tutor_evaluate else R.string.tutor_next)) }
+                    } }
+                }
+                2 -> {
+                    item { Text(stringResource(R.string.tutor_assessment_note), color = skin.inkMuted) }
+                    items(s.questions) { q ->
+                        val evidence = s.assessment.first { it.questionId == q.id }.evidence
+                        PaperCard {
+                            Text(q.concept, style = MaterialTheme.typography.titleMedium, color = skin.ink)
+                            Badge(stringResource(when (evidence) { Understanding.DEMONSTRATED -> R.string.tutor_correct; Understanding.NEEDS_CLARIFICATION -> R.string.tutor_clarify; Understanding.NOT_YET_ASSESSED -> R.string.tutor_not_assessed }), skin.action, skin.evidenceSoft)
                         }
                     }
+                    item { Button(onClick = { vm.turn(TutorIntent.START) }, enabled = enabled, modifier = Modifier.fillMaxWidth().testTag("start_tutor")) { Text(stringResource(R.string.tutor_start)) } }
                 }
-                item {
-                    if (!reading) Button(onClick = { deps.homePreferences.markPrepared(p.packageId, p.contentVersion); reading = true }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.preflight_continue)) }
-                    else TextButton(onClick = { reading = false }) { Text(stringResource(R.string.preflight_edit)) }
+                3 -> {
+                    items(s.messages, key = { it.id }) { message ->
+                        val user = message.role == "user"
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = if (user) Arrangement.End else Arrangement.Start) {
+                            Column(Modifier.widthIn(max = 520.dp).fillMaxWidth(if (user) .9f else 1f)
+                                .background(if (user) skin.evidenceSoft else skin.card, RoundedCornerShape(18.dp)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(stringResource(if (user) R.string.tutor_you else R.string.tutor_teacher), style = MaterialTheme.typography.labelMedium, color = skin.action)
+                                Text(message.text, color = skin.ink, style = MaterialTheme.typography.bodyLarge)
+                                if (message.sourceRefs.isNotEmpty()) TextButton(onClick = { sourceRefs = message.sourceRefs }, modifier = Modifier.testTag("message_source")) { Text(stringResource(R.string.reading_source)) }
+                            }
+                        }
+                    }
+                    item {
+                        Text(stringResource(R.string.tutor_concept_count, s.conceptPosition + 1, s.questions.size), color = skin.inkMuted, style = MaterialTheme.typography.labelMedium)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = { vm.turn(TutorIntent.REPHRASE) }, enabled = enabled && s.messages.size < 80, modifier = Modifier.testTag("tutor_rephrase")) { Text(stringResource(R.string.tutor_rephrase)) }
+                            OutlinedButton(onClick = { vm.turn(TutorIntent.EXAMPLE) }, enabled = enabled && s.messages.size < 80, modifier = Modifier.testTag("tutor_example")) { Text(stringResource(R.string.tutor_example)) }
+                            Button(onClick = { vm.turn(TutorIntent.CONTINUE) }, enabled = enabled && s.messages.size < 80 && s.conceptPosition < s.questions.lastIndex) { Text(stringResource(R.string.tutor_continue)) }
+                        }
+                        if (s.conceptPosition == s.questions.lastIndex) Text(stringResource(R.string.tutor_all_introduced), color = skin.inkMuted)
+                        OutlinedTextField(value = input, onValueChange = { input = it.take(1000) }, modifier = Modifier.fillMaxWidth().testTag("tutor_input"),
+                            label = { Text(stringResource(R.string.tutor_input)) }, minLines = 2, maxLines = 5, enabled = enabled)
+                        Button(onClick = { vm.turn(TutorIntent.QUESTION, input) }, modifier = Modifier.fillMaxWidth(), enabled = enabled && input.isNotBlank() && s.messages.size < 80) { Text(stringResource(R.string.tutor_send)) }
+                        Text(stringResource(if (s.mode == "model") R.string.tutor_model_note else R.string.tutor_script_note), color = skin.inkMuted, style = MaterialTheme.typography.bodySmall)
+                        if (s.messages.size >= 80) Text(stringResource(R.string.tutor_limit), color = skin.hint)
+                    }
                 }
             }
         }
     }
+    if (sourceRefs.isNotEmpty() && s != null) AlertDialog(onDismissRequest = { sourceRefs = emptyList() },
+        title = { Text(stringResource(R.string.tutor_source_title)) },
+        text = { LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) { items(sourceRefs) { ref ->
+            val chunk = s.sources.first { it.chunkId == ref.chunkId }
+            Text(stringResource(R.string.evidence_page, chunk.pageLabel ?: (chunk.pageIndex + 1).toString()), color = skin.evidence)
+            Text(ref.quote, style = MaterialTheme.typography.bodyLarge)
+            HorizontalDivider()
+            Text(chunk.text, style = MaterialTheme.typography.bodySmall)
+        }; item { Text(stringResource(R.string.tutor_source_note), style = MaterialTheme.typography.bodySmall) } } },
+        confirmButton = { TextButton(onClick = { sourceRefs = emptyList() }) { Text(stringResource(R.string.tutor_close)) } })
 }

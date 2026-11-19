@@ -26,14 +26,17 @@ class HomeFlowTest {
     private var nickname by mutableStateOf("")
     private var avatar by mutableStateOf("mochi")
     private var picks = 0
+    private var library by mutableStateOf(LibraryUiState(false))
+    private var played: String? = null
+    private var reads = 0
     @Before fun setup() {
         android.provider.Settings.Global.putFloat(RuntimeEnvironment.getApplication().contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 0f)
         rule.setContent {
             A2gTheme {
                 Scaffold(bottomBar = { HomeNavigation(tab) { tab = it } }) { padding ->
-                    HomeContent(tab, LibraryUiState(false), avatar, nickname,
+                    HomeContent(tab, library, avatar, nickname,
                         onSelectAvatar = { avatar = it }, onRename = { nickname = it }, onPickPdf = { picks++ },
-                        onRead = {}, onPlay = { _, _, _ -> }, onSelectTab = { tab = it }, onRetry = {}, padding = padding)
+                        onRead = { reads++ }, onPlay = { id, _, _ -> played = id }, onSelectTab = { tab = it }, onRetry = {}, padding = padding)
                 }
             }
         }
@@ -57,4 +60,14 @@ class HomeFlowTest {
         rule.onNodeWithText("Go to practice").performScrollTo().performClick()
         rule.onNodeWithTag("tab_PRACTICE").assertIsSelected()
     }
+    @Test fun new_practice_does_not_require_the_old_self_rating() {
+        library = LibraryUiState(false, listOf(com.anything2game.app.ui.library.LibraryEntry(
+            com.anything2game.engine.ports.PackageSummary("practice", "A document", "en", 1, true),
+            listOf(com.anything2game.app.ui.library.LevelEntry("L1", 1, "First level", com.anything2game.app.ui.library.LevelStatus.New)), prepared = false)))
+        rule.onNodeWithTag("tab_PRACTICE").performClick()
+        rule.onNodeWithText("Start practice").performScrollTo().performClick()
+        assertEquals("practice", played)
+        assertEquals(0, reads)
+    }
+
 }

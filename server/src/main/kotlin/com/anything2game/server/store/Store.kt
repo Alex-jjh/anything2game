@@ -155,7 +155,7 @@ interface PackageRepository {
  * Everything the server persists, as one object to wire up. Callers should depend on the narrow repository they use,
  * not on this interface. Implementations: [FileStore] (local development and tests) and [PostgresStore] (cloud).
  */
-interface Store : InstallRepository, DocumentRepository, JobRepository, PackageRepository, AutoCloseable {
+interface Store : com.anything2game.server.tutor.TutorStore, InstallRepository, DocumentRepository, JobRepository, PackageRepository, AutoCloseable {
     /** Throws if the backend cannot be reached (readiness probe). */
     fun ping()
 

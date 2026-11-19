@@ -1,5 +1,6 @@
 package com.anything2game.server.store
 
+import com.anything2game.server.tutor.TutorRecord
 import com.anything2game.contract.ContractJson
 import com.anything2game.contract.FrameId
 import com.anything2game.contract.FrameOverlay
@@ -33,6 +34,7 @@ class FileStore(private val root: Path) : Store {
     private val packagesDir = dir("packages")
     private val framesDir = dir("frames")
     private val jobsDir = dir("jobs")
+    private val tutorsDir = dir("tutors")
 
     private val countersFile = root.resolve("counters.json")
 
@@ -59,6 +61,22 @@ class FileStore(private val root: Path) : Store {
     }
 
     private fun dir(name: String): Path = Files.createDirectories(root.resolve(name))
+
+    override fun getTutor(id: String): TutorRecord? = read(file(tutorsDir, id), TutorRecord.serializer())
+
+    override fun createTutor(record: TutorRecord): TutorRecord? = lock.withLock {
+        if (getDocument(record.session.documentId) == null) return@withLock null
+        getTutor(record.session.sessionId)?.let { return@withLock it }
+        write(file(tutorsDir, record.session.sessionId), TutorRecord.serializer(), record)
+        record
+    }
+
+    override fun saveTutorIfRevision(record: TutorRecord, expectedRevision: Int): Boolean = lock.withLock {
+        val current = getTutor(record.session.sessionId) ?: return@withLock false
+        if (current.session.revision != expectedRevision || getDocument(current.session.documentId) == null) return@withLock false
+        write(file(tutorsDir, record.session.sessionId), TutorRecord.serializer(), record)
+        true
+    }
 
     // ---- installs -------------------------------------------------------------------------------------------
 
@@ -102,6 +120,9 @@ class FileStore(private val root: Path) : Store {
         for (path in listPaths(packagesDir)) {
             val stored = read(path, StoredPackage.serializer()) ?: continue
             if (stored.pkg.documentId == documentId) deletePackageFiles(stored.pkg.packageId)
+        }
+        for (path in listPaths(tutorsDir)) {
+            if (read(path, TutorRecord.serializer())?.session?.documentId == documentId) Files.deleteIfExists(path)
         }
         Files.deleteIfExists(file(documentsDir, documentId))
         Unit

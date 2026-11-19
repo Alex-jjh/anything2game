@@ -169,7 +169,7 @@ class ConfigAndLlmTest {
             // every declared variable is used and nothing else is needed
             assertTrue(PromptTemplates.placeholders(name).isNotEmpty())
         }
-        assertEquals(9, PromptTemplates.ALL.size) // + level.v2 (experiment, 2026-11-19)
+        assertEquals(11, PromptTemplates.ALL.size) // includes diagnostic and conversational tutor prompts
         assertTrue(File("src/main/resources/prompts").listFiles()!!.map { it.name.removeSuffix(".md") }.toSet().containsAll(PromptTemplates.ALL))
     }
 

@@ -18,6 +18,9 @@ data class LibraryUiState(
     val loading: Boolean = true,
     val entries: List<LibraryEntry> = emptyList(),
     val hasError: Boolean = false,
+    val tutorials: List<com.anything2game.contract.tutor.TutorSession> = emptyList(),
+    val preparingPractice: String? = null,
+    val practiceError: String? = null,
 )
 
 data class LibraryEntry(
@@ -30,6 +33,8 @@ data class LibraryEntry(
     val dueUnits: Int = 0,
     val resumableLevelId: String? = null,
     val resumeFrame: FrameId = FrameId.CLASSIC,
+    val documentId: String = "",
+    val mock: Boolean = false,
 ) {
     fun frameFor(levelId: String): FrameId = if (levelId == resumableLevelId) resumeFrame else FrameId.CLASSIC
 }
@@ -54,6 +59,24 @@ class LibraryViewModel(private val deps: AppDependencies) : ViewModel() {
         refresh()
     }
 
+    fun preparePractice(sessionId: String) {
+        if (_state.value.preparingPractice != null) return
+        val session = _state.value.tutorials.firstOrNull { it.sessionId == sessionId } ?: return
+        _state.value = _state.value.copy(preparingPractice = sessionId, practiceError = null)
+        viewModelScope.launch {
+            try {
+                deps.tutors.preparePractice(session)
+                _state.value = _state.value.copy(preparingPractice = null)
+                refresh()
+            } catch (e: CancellationException) {
+                _state.value = _state.value.copy(preparingPractice = null, practiceError = "TIMEOUT_OR_CANCELLED")
+                throw e
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(preparingPractice = null, practiceError = (e as? com.anything2game.app.data.tutor.TutorApiException)?.code ?: "CONNECTION_OR_STORAGE")
+            }
+        }
+    }
+
     fun refresh() = viewModelScope.launch {
         var failed = false
         val entries = try {
@@ -67,7 +90,9 @@ class LibraryViewModel(private val deps: AppDependencies) : ViewModel() {
             }
         } catch (e: CancellationException) { throw e }
         catch (_: Exception) { failed = true; emptyList() }
-        _state.value = LibraryUiState(loading = false, entries = entries, hasError = failed)
+        val tutorials = try { deps.tutors.list() } catch (e: CancellationException) { throw e }
+            catch (_: Exception) { failed = true; emptyList() }
+        _state.value = LibraryUiState(loading = false, entries = entries, hasError = failed, tutorials = tutorials, preparingPractice = _state.value.preparingPractice, practiceError = _state.value.practiceError)
     }
 }
 
@@ -90,5 +115,5 @@ internal fun libraryEntry(
     }
     return LibraryEntry(summary, levels, practicedUnits = records.size,
         dueUnits = records.count { !it.isSolid && it.dueAt <= now },
-        resumableLevelId = session?.levelId, resumeFrame = session?.frameId ?: FrameId.CLASSIC)
+        resumableLevelId = session?.levelId, resumeFrame = session?.frameId ?: FrameId.CLASSIC, documentId = pkg.documentId, mock = pkg.generation.model.contains("fake"))
 }

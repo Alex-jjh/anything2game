@@ -68,7 +68,7 @@ fun HomeContent(
     onSelectAvatar: (String) -> Unit, onRename: (String) -> Unit,
     onPickPdf: () -> Unit, onRead: (String) -> Unit,
     onPlay: (String, String, FrameId) -> Unit, onSelectTab: (HomeTab) -> Unit, onRetry: () -> Unit,
-    padding: PaddingValues = PaddingValues(), simulator: (@Composable () -> Unit)? = null,
+    padding: PaddingValues = PaddingValues(), simulator: (@Composable () -> Unit)? = null, onPreparePractice: (String) -> Unit = {},
 ) {
     val skin = A2g.skin
     LazyColumn(
@@ -113,6 +113,17 @@ fun HomeContent(
                         }
                     }
                 }
+                item { PaperCard {
+                    Badge(stringResource(R.string.tutor_fixed_badge), skin.evidence, skin.evidenceSoft)
+                    Text(stringResource(R.string.tutor_demo_title), style = MaterialTheme.typography.titleLarge, color = skin.ink)
+                    Text(stringResource(R.string.tutor_demo_body), color = skin.inkMuted)
+                    OutlinedButton(onClick = { onRead(com.anything2game.app.data.tutor.FIXED_TUTOR_PACKAGE) }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.tutor_demo_action)) }
+                } }
+                items(state.tutorials, key = { "tutor:${it.sessionId}" }) { tutorial -> PaperCard {
+                    Text(tutorial.title, style = MaterialTheme.typography.titleLarge, color = skin.ink)
+                    Badge(stringResource(if (tutorial.mode == "model") R.string.tutor_model_badge else R.string.tutor_server_mock_badge), skin.action, skin.evidenceSoft)
+                    OutlinedButton(onClick = { onRead(tutorial.sessionId) }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.tutor_resume)) }
+                } }
                 item { Text(stringResource(R.string.home_library), style = MaterialTheme.typography.titleLarge, color = skin.ink) }
                 items(state.entries, key = { it.summary.packageId }) { entry ->
                     PaperCard {
@@ -126,6 +137,14 @@ fun HomeContent(
             }
             HomeTab.PRACTICE -> {
                 item { Badge(stringResource(R.string.home_classic), skin.action, skin.evidenceSoft) }
+                state.practiceError?.let { error -> item { Text(stringResource(R.string.tutor_error, error), color = skin.wrong) } }
+                items(state.tutorials.filter { t -> state.entries.none { it.documentId == t.documentId } }, key = { "practice:${it.sessionId}" }) { tutorial -> PaperCard {
+                    Text(tutorial.title, style = MaterialTheme.typography.titleLarge, color = skin.ink)
+                    Text(stringResource(R.string.tutor_practice_separate), color = skin.inkMuted)
+                    if (tutorial.mode == "mock") Badge(stringResource(R.string.tutor_server_mock_badge), skin.evidence, skin.evidenceSoft)
+                    if (state.preparingPractice == tutorial.sessionId) LinearProgressIndicator(Modifier.fillMaxWidth())
+                    Button(onClick = { onPreparePractice(tutorial.sessionId) }, enabled = state.preparingPractice == null, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.tutor_prepare_practice)) }
+                } }
                 items(state.entries, key = { it.summary.packageId }) { entry ->
                     PaperCard {
                         PackageHeading(entry)
@@ -141,8 +160,7 @@ fun HomeContent(
                                 is LevelStatus.InProgress -> stringResource(R.string.level_status_in_progress, progress.position, progress.total)
                             }, color = skin.inkMuted, style = MaterialTheme.typography.bodySmall)
                             Button(onClick = {
-                                if (!entry.prepared && progress !is LevelStatus.InProgress) onRead(entry.summary.packageId)
-                                else onPlay(entry.summary.packageId, level.levelId, entry.frameFor(level.levelId))
+                                onPlay(entry.summary.packageId, level.levelId, entry.frameFor(level.levelId))
                             }, modifier = Modifier.fillMaxWidth()) {
                                 Text(stringResource(if (progress is LevelStatus.InProgress) R.string.home_resume else R.string.home_practice_action))
                             }
@@ -155,7 +173,7 @@ fun HomeContent(
                     PaperCard {
                         Text(stringResource(R.string.home_progress), style = MaterialTheme.typography.titleLarge, color = skin.ink)
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Stat(state.entries.size, R.string.home_stat_documents, Modifier.weight(1f))
+                            Stat((state.entries.map { it.documentId.ifBlank { it.summary.packageId } } + state.tutorials.map { it.documentId }).distinct().size, R.string.home_stat_documents, Modifier.weight(1f))
                             Stat(state.entries.sumOf { it.practicedUnits }, R.string.home_stat_practiced, Modifier.weight(1f))
                             Stat(state.entries.sumOf { it.dueUnits }, R.string.home_stat_review, Modifier.weight(1f))
                         }
@@ -204,7 +222,8 @@ private fun PackageHeading(entry: LibraryEntry) {
     val skin = A2g.skin
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Badge(languageName(entry.summary.language), skin.action, skin.paper)
-        if (entry.summary.preGenerated) Badge(stringResource(R.string.badge_pre_generated), skin.evidence, skin.evidenceSoft)
+        if (entry.mock) Badge(stringResource(R.string.tutor_server_mock_badge), skin.evidence, skin.evidenceSoft)
+        else if (entry.summary.preGenerated) Badge(stringResource(R.string.badge_pre_generated), skin.evidence, skin.evidenceSoft)
     }
     Text(entry.summary.title, style = MaterialTheme.typography.titleLarge, color = skin.ink)
 }

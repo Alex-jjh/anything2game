@@ -1,0 +1,106 @@
+{
+  "packageId": "pkg_demo_retrieval",
+  "contentVersion": "1",
+  "documentVersion": "sha256:demo-retrieval-notes-v1",
+  "blueprint": {
+    "schema": "a2g.tutor/draft-v1",
+    "concepts": [
+      {
+        "question": {
+          "id": "foundation-1",
+          "conceptId": "retrieval",
+          "concept": "检索练习",
+          "prompt": "文中的 retrieval practice（检索练习）指哪一种学习动作？",
+          "options": [
+            {
+              "id": "recall",
+              "text": "合上材料，从记忆中说出或写出内容"
+            },
+            {
+              "id": "reread",
+              "text": "一直看着材料，再读一遍"
+            },
+            {
+              "id": "highlight",
+              "text": "只给材料划重点"
+            }
+          ],
+          "sourceRefs": [
+            {
+              "chunkId": "c2",
+              "quote": "Retrieval practice means pulling information out of memory, for example by answering a question or writing what you remember."
+            }
+          ]
+        },
+        "correctOptionId": "recall",
+        "explanation": "检索练习的关键是“从记忆中提取”。文章把它与重读、划线等再次看到内容的动作区分开来。重点不在有没有做题，而在是否需要回想。",
+        "simpler": "把资料合起来，再说出你记得什么，就是这里所说的检索。资料一直摆在眼前、只是再看一遍，是另一种动作。",
+        "example": "举个自拟的小例子：读完一段后，盖住文字，写下两个要点，再打开核对。这演示的是检索动作；并不表示这篇材料研究过这个具体例子。"
+      },
+      {
+        "question": {
+          "id": "foundation-2",
+          "conceptId": "delay",
+          "concept": "即时与延迟测验",
+          "prompt": "这段示例为什么同时提到“五分钟后”和“一周后”？",
+          "options": [
+            {
+              "id": "same",
+              "text": "说明两次测验的结果完全一样"
+            },
+            {
+              "id": "timing",
+              "text": "因为不同时间点，表现较好的组可能不同"
+            },
+            {
+              "id": "transfer",
+              "text": "因为一周后的题必然是全新的问题"
+            }
+          ],
+          "sourceRefs": [
+            {
+              "chunkId": "c1",
+              "quote": "Five minutes later the re-reading group did slightly better. One week later the recall group remembered clearly more."
+            }
+          ]
+        },
+        "correctOptionId": "timing",
+        "explanation": "文中五分钟后重读组稍好，一周后回想组记得更多。理解结论时，要把“在哪个时间点测量”一起带上，不能把一周后的优势扩展成所有时间都更好。",
+        "simpler": "刚读完时熟悉，不等于过一周还记得。这个示例告诉我们：比较学习效果时，要先问“什么时候测的”。",
+        "example": "自拟阅读例子：看到“方法 A 更有效”，在旁边写下“多久之后？”再找测量时间。这是读文方法示例，不是新的实验结果。"
+      },
+      {
+        "question": {
+          "id": "foundation-3",
+          "conceptId": "scope",
+          "concept": "结论的适用范围",
+          "prompt": "材料说“是否能迁移到新问题尚未测试”，我们应怎样理解？",
+          "options": [
+            {
+              "id": "yes",
+              "text": "已经证明能够解决任何新问题"
+            },
+            {
+              "id": "no",
+              "text": "已经证明对新问题完全无效"
+            },
+            {
+              "id": "unknown",
+              "text": "对新问题的效果，这段材料还不能给出结论"
+            }
+          ],
+          "sourceRefs": [
+            {
+              "chunkId": "c3",
+              "quote": "Whether it transfers to new problems was not tested in this study."
+            }
+          ]
+        },
+        "correctOptionId": "unknown",
+        "explanation": "“没有测试”表示证据暂时空缺，不等于有效，也不等于无效。这里测量的是对同一段材料的记忆，因此讲解结论时必须保留这个范围。",
+        "simpler": "把证据想成一盏灯：它照到了“同一段材料”，还没有照到“全新的问题”。没照到的地方，先不下结论。这个比喻仅用于帮助理解。",
+        "example": "自拟例子：记住了一段学习笔记，能否解决一个新案例？仅凭本文还不能回答，需要专门测试迁移。不要把“还不知道”说成“肯定不行”。"
+      }
+    ]
+  }
+}

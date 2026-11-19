@@ -16,7 +16,13 @@ android {
         versionCode = 1
         versionName = "0.2.0"
     }
-    buildFeatures { compose = true }
+    buildFeatures { compose = true; buildConfig = true }
+    val tutorApi = providers.gradleProperty("a2gApiBaseUrl").orElse("").get()
+    require(tutorApi.isEmpty() || tutorApi.matches(Regex("https://[A-Za-z0-9._:/-]+"))) { "a2gApiBaseUrl must be an HTTPS URL" }
+    defaultConfig { buildConfigField("String", "TUTOR_API", "\"$tutorApi\"") }
+    buildTypes {
+        getByName("debug") { buildConfigField("String", "TUTOR_API", "\"${tutorApi.ifEmpty { "http://127.0.0.1:18080" }}\"") }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

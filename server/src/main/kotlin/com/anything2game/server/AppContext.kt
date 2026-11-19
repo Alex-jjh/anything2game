@@ -53,6 +53,9 @@ class AppContext(
     val quotas = Quotas(store, config.limits)
     val frames = FrameService(store, FrameNodeRegistry.default(router.client(Tier.FRAME), citedOnly = config.frameInput == "cited"))
     val ask = AskService(router.client(Tier.FLASH), config.askTimeoutMillis)
+    val tutor = com.anything2game.server.tutor.TutorService(store, router.client(Tier.COMPILE), router.client(Tier.FLASH),
+        config.compileProvider == com.anything2game.server.config.Provider.FAKE || config.flashProvider == com.anything2game.server.config.Provider.FAKE,
+        minOf(config.llmTimeoutSeconds * 1000L, 60_000L))
     val runner: CompileJobRunner
 
     init {

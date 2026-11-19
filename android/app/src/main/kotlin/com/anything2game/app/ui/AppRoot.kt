@@ -19,6 +19,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.createSavedStateHandle
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.anything2game.app.ui.importing.ImportViewModel
 import com.anything2game.app.AppDependencies
 import com.anything2game.app.R
 import com.anything2game.app.platform.SimulatedContextSource
@@ -57,15 +61,12 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator, onPickPdf: () -> Unit) 
                         onSelectAvatar = { avatarId = it; deps.avatarPreferences.set(it) },
                         onRename = { nickname = it; deps.homePreferences.nickname = it },
                         onPickPdf = onPickPdf, onRead = navigator::openRead, onPlay = navigator::openPlay,
-                        onSelectTab = selectTab, onRetry = { vm.refresh() }, padding = padding, simulator = simulator)
+                        onSelectTab = selectTab, onRetry = { vm.refresh() }, padding = padding, simulator = simulator, onPreparePractice = vm::preparePractice)
                 }
             }
         }
         is Route.Read -> {
-            BackHandler(onBack = navigator::toHome)
-            ReadingContent(deps, r.packageId, onBack = navigator::toHome, onPractice = { pkg, level, frame ->
-                selectTab(HomeTab.PRACTICE); navigator.openPlay(pkg, level, frame)
-            })
+            ReadingContent(deps, r.packageId, onBack = navigator::toHome)
         }
         is Route.Play -> {
             val vm = viewModel(key = "play:${r.packageId}:${r.levelId}:${r.frameId}") { PlayViewModel(deps, r.packageId, r.levelId, r.frameId) }
@@ -80,8 +81,17 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator, onPickPdf: () -> Unit) 
             }
         }
         is Route.Import -> {
-            BackHandler(onBack = navigator::toHome)
-            Scaffold(containerColor = A2g.skin.paper) { padding -> ImportContent(r.request, onCancel = navigator::toHome, contentPadding = padding) }
+            val vm: ImportViewModel = viewModel(key = "import:" + java.security.MessageDigest.getInstance("SHA-256").digest(r.request.toString().toByteArray()).joinToString("") { "%02x".format(it) }, factory = viewModelFactory {
+                initializer { ImportViewModel(deps.tutors, r.request, createSavedStateHandle()) }
+            })
+            val state by vm.state.collectAsStateWithLifecycle()
+            val cancel = { vm.cancel(); navigator.toHome() }
+            BackHandler(onBack = cancel)
+            LaunchedEffect(state.ready) { state.ready?.let(navigator::openRead) }
+            Scaffold(containerColor = A2g.skin.paper) { padding ->
+                ImportContent(r.request, onCancel = cancel, contentPadding = padding, endpoint = deps.tutors.endpoint,
+                    state = state, onStart = vm::start, onDemo = { vm.cancel(); navigator.openRead(com.anything2game.app.data.tutor.FIXED_TUTOR_PACKAGE) })
+            }
         }
     }
     }

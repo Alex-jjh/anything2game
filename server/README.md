@@ -410,3 +410,7 @@ curl -s -X DELETE $B/documents/$DID -H "$AUTH"      # 204
 - Signed-in users need no contract change: the same routes, a different bearer token. The app cannot yet obtain or send such a token.
 - `contentVersion` is the number of published levels, so it changes as levels are published; frames bind to it and a frame
   generated for an earlier version is not served for a later one.
+
+## Document tutor (draft integration, 2026-11-19)
+
+The Android middle tab now has dedicated diagnostic, concept-assessment and conversational-teaching endpoints, separate from `/ask` and practice compilation. See [document-tutor.md](../docs/design/document-tutor.md) for the route table, JSON examples, revision/idempotency/cancellation semantics, A/B change boundaries and local startup. Persistence includes the additive `V2__document_tutors.sql` migration. Provider-fake sessions are explicitly labelled and remain mock even if server configuration later changes. Real provider wiring is covered by test doubles only; live model quality and the PostgreSQL migration still need environment-specific validation.

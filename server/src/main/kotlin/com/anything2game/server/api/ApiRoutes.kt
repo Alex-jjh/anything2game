@@ -1,5 +1,6 @@
 package com.anything2game.server.api
 
+import com.anything2game.contract.tutor.*
 import com.anything2game.contract.AskRequest
 import com.anything2game.contract.ApiError
 import com.anything2game.contract.CompileJobRequest
@@ -120,6 +121,27 @@ fun Route.apiRoutes(ctx: AppContext) {
                 store.deleteDocument(doc.documentId)
                 log.info("document {} deleted", doc.documentId)
                 call.respond(HttpStatusCode.NoContent)
+            }
+
+            // Draft document tutor: separate from compile/practice and protected by the same owner token.
+            post("/documents/{documentId}/tutor") {
+                val doc = ownedDocument(call)
+                val req = call.receiveJson(CreateTutorRequest.serializer(), limits.maxSmallJsonBytes)
+                call.respond(HttpStatusCode.Created, ctx.tutor.create(doc, req) { ctx.quotas.consumeCompile(doc.ownerId) })
+            }
+            get("/tutors/{tutorId}") { call.respond(ctx.tutor.owned(call.pathId("tutorId"), call.principal.ownerId).session) }
+            post("/tutors/{tutorId}/assessment") {
+                val req = call.receiveJson(AssessTutorRequest.serializer(), limits.maxSmallJsonBytes)
+                call.respond(ctx.tutor.assess(call.pathId("tutorId"), call.principal.ownerId, req))
+            }
+            post("/tutors/{tutorId}/turns") {
+                val owner = call.principal.ownerId
+                val req = call.receiveJson(TutorTurnRequest.serializer(), limits.maxSmallJsonBytes)
+                call.respond(ctx.tutor.turn(call.pathId("tutorId"), owner, req) { ctx.quotas.consumeAsk(owner) })
+            }
+            post("/tutors/{tutorId}/cancel") {
+                val req = call.receiveJson(CreateTutorRequest.serializer(), limits.maxSmallJsonBytes)
+                call.respond(ctx.tutor.cancel(call.pathId("tutorId"), call.principal.ownerId, req.clientRequestId))
             }
 
             // ---- compile jobs ------------------------------------------------------------------------------------
