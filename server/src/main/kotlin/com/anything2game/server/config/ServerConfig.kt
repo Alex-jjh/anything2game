@@ -94,9 +94,9 @@ data class ServerConfig(
     val workerLeaseMillis: Long = 30_000,
     val workerPollMillis: Long = 1_000,
     val workerConcurrency: Int = 2,
-    /** Experiment flags (`A2G_PIPELINE`, `A2G_SUPPORT_GATE`). The defaults are today's pipeline without the gate. */
+    /** `A2G_PIPELINE` (classic | layered, experiment) and `A2G_SUPPORT_GATE`. The gate is ON by default since the 2026-11-19 A/B (wrong answer parts 2.7 % → 0.7 %; docs/testing/eval-2026-11-19-ab.md). */
     val pipeline: PipelineKind = PipelineKind.CLASSIC,
-    val supportGate: Boolean = false,
+    val supportGate: Boolean = true,
     /** Layered pipeline: how many unit (and claim batch) calls run at once (`A2G_LAYERED_PARALLELISM`). */
     val layeredParallelism: Int = 6,
 ) {
@@ -176,7 +176,7 @@ data class ServerConfig(
                     "layered" -> PipelineKind.LAYERED
                     else -> throw ConfigException("A2G_PIPELINE must be classic | layered (got '$v')")
                 },
-                supportGate = when (val v = get("A2G_SUPPORT_GATE")?.lowercase() ?: "off") {
+                supportGate = when (val v = get("A2G_SUPPORT_GATE")?.lowercase() ?: "on") {
                     "off" -> false
                     "on" -> true
                     else -> throw ConfigException("A2G_SUPPORT_GATE must be off | on (got '$v')")

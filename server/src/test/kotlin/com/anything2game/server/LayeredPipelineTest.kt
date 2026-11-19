@@ -57,7 +57,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 /** The layered-generation experiment (A2G_PIPELINE=layered) and the support gate (A2G_SUPPORT_GATE=on). All offline, with the fake model. */
 class LayeredPipelineTest {
-    private val layered: (ServerConfig) -> ServerConfig = { it.copy(pipeline = PipelineKind.LAYERED) }
+    private val layered: (ServerConfig) -> ServerConfig = { it.copy(pipeline = PipelineKind.LAYERED, supportGate = false) }
     private val layeredGate: (ServerConfig) -> ServerConfig = { it.copy(pipeline = PipelineKind.LAYERED, supportGate = true) }
     private val classicGate: (ServerConfig) -> ServerConfig = { it.copy(supportGate = true) }
     private val retrieval get() = pagesOf(Examples.retrieval)
@@ -135,7 +135,7 @@ class LayeredPipelineTest {
 
     @Test fun `the default pipeline is the classic one and sends exactly the same calls as before`() {
         val llm = RecordingLlm()
-        TestEnv(llm = llm).use { env ->
+        TestEnv(llm = llm, configure = { it.copy(supportGate = false) }).use { env ->
             env.run {
                 val (job, pkg) = compileEn()
                 assertEquals(CompileJobState.READY, job.state)
@@ -153,7 +153,8 @@ class LayeredPipelineTest {
 
     @Test fun `the flags are read from the environment and refuse unknown values`() {
         val d = ServerConfig.fromEnv(emptyMap())
-        assertEquals(PipelineKind.CLASSIC, d.pipeline); assertFalse(d.supportGate)
+        assertEquals(PipelineKind.CLASSIC, d.pipeline); assertTrue(d.supportGate) // gate on by default since the 2026-11-19 A/B
+        assertFalse(ServerConfig.fromEnv(mapOf("A2G_SUPPORT_GATE" to "off")).supportGate)
         val c = ServerConfig.fromEnv(mapOf("A2G_PIPELINE" to "layered", "A2G_SUPPORT_GATE" to "on"))
         assertEquals(PipelineKind.LAYERED, c.pipeline); assertTrue(c.supportGate)
         try { ServerConfig.fromEnv(mapOf("A2G_PIPELINE" to "turbo")); fail() } catch (e: ConfigException) { assertTrue(e.message!!.contains("A2G_PIPELINE")) }
@@ -676,7 +677,7 @@ class LayeredPipelineTest {
 
     @Test fun `the gate does not run when it is off and classic still sends no gate or claim calls`() {
         val llm = RecordingLlm()
-        TestEnv(llm = llm).use { env -> env.run { compileEn() } }
+        TestEnv(llm = llm, configure = { it.copy(supportGate = false) }).use { env -> env.run { compileEn() } }
         assertTrue(llm.requests.none { it.label.startsWith("support") || it.label.startsWith("claim") || it.label.startsWith("unit") })
     }
 

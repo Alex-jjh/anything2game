@@ -224,7 +224,7 @@ class PipelineTest {
             val api = api()
             val (_, token) = api.install()
             val (_, _, pkg) = api.compiled(token, retrieval)
-            assertEquals("plan.v1+level.v1", pkg!!.generation.promptVersion)
+            assertEquals("plan.v1+level.v1+support.v1", pkg!!.generation.promptVersion) // the support gate is on by default
             assertNotNull(env.store.getPackage(pkg.packageId))
         }
     }

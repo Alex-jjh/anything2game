@@ -18,6 +18,7 @@
 | 012 | Cloud-portable server + Terraform/OpenTofu, one module per cloud behind the same inputs/outputs | proposed |
 | 013 | The app never calls an AI provider; phone → our server → provider (build-enforced) | **accepted** |
 | 014 | Infrastructure on AWS (ECS Fargate, RDS, CloudFront VPC origin, Cognito); model endpoints swappable per tier | **accepted** |
+| 015 | Support gate on by default; layered pipeline stays an experiment (A/B 2026-11-19) | **accepted** |
 
 ---
 
@@ -109,3 +110,9 @@
 - **Cognito, but as standard OIDC and optional**: anonymous play stays the default (removing access friction is a product principle — game-concepts §2); signed-in users get cross-device sync later. The server verifies Cognito JWTs via JWKS (no AWS SDK), so Google Identity Platform/Firebase Auth could replace Cognito by changing two env vars. The app will use plain OIDC (AppAuth + PKCE), not the Amplify SDK, so the client stays cloud-neutral.
 **Why**: the marker can follow the architecture; Alex holds the AWS SA certification; AWS regions near China are reachable from campus; the cloud choice does not leak into code (ADR-012).
 **Cost**: ≈ USD 60/month while running (infra/README.md); `running = false` between demos.
+
+### 015 Support gate on by default; layered pipeline stays behind a flag
+**Context**: pre-registered A/B of today's pipeline (A), A + support gate (A+G), and the layered pipeline (B) on 6 real documents — [eval-2026-11-19-ab.md](../testing/eval-2026-11-19-ab.md).
+**Decision**: `A2G_SUPPORT_GATE` defaults to **on** (wrong answer parts 2.7 % → 0.7 % for +10 % cost and ~50 s). `A2G_PIPELINE=layered` remains an experiment: it improved grounding and feedback but missed the bar (2.1 % wrong parts vs A+G's 0.7 %, 3 × the answer leaks, 2.4 × cost).
+**Why**: precision over recall (product-review §3) at acceptable cost; the layered design's wins (feedback naming the misconception) can be ported one variable at a time.
+**Revisit**: after the blind human check, and after B v2 (no-leak hints, claim groups, cheaper frames).
