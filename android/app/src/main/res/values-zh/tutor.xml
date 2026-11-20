@@ -21,7 +21,7 @@
     <string name="tutor_teacher">文档讲解</string>
     <string name="tutor_rephrase">换个说法</string>
     <string name="tutor_example">举个例子</string>
-    <string name="tutor_continue">继续讲解</string>
+    <string name="tutor_continue">下一个概念</string>
     <string name="tutor_input">关于这篇文档，你还想问什么？</string>
     <string name="tutor_send">发送追问</string>
     <string name="tutor_script_note">这位讲解员按预先写好的内容讲解。你的追问会保存，但暂时不能回答。</string>

@@ -70,6 +70,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -164,8 +166,9 @@ internal fun ExplainerTheatre(
 
     BoxWithConstraints(modifier.fillMaxSize()) {
         val landscape = maxWidth > maxHeight
-        // Large text needs the room for the dialogue: the stage gets smaller.
-        val stageHeight = (maxHeight - 48.dp) * (if (scale >= 1.3f) 0.32f else 0.45f)
+        // Reserve more of the screen for reading, including when the choice bar is visible.
+        // Cap the decorative stage; larger system text gives the dialogue still more room.
+        val stageHeight = ((maxHeight - 48.dp) * (if (scale >= 1.3f) 0.18f else 0.28f)).coerceAtMost(240.dp)
         val topBar = 48.dp
         val stageModifier = Modifier.then(tap).testTag("explainer_stage")
         val stage: @Composable (Modifier) -> Unit = { m ->
@@ -174,7 +177,7 @@ internal fun ExplainerTheatre(
         val dialogue: @Composable (Modifier) -> Unit = { m ->
             DialogueBox(
                 beat, index, beats.size, last, busy, if (beat.player) playerName else explainer, atLastConcept && last && !beat.player,
-                onSkip = { page = beats.lastIndex }, onSource = onSource, session = session, tap = tap.then(m),
+                intent = lastIntent, onNext = advance, onSkip = { page = beats.lastIndex }, onSource = onSource, session = session, tap = tap.then(m),
             )
         }
         val bottom: @Composable () -> Unit = {
@@ -188,8 +191,8 @@ internal fun ExplainerTheatre(
             TopBar(onBack, onLog = { logOpen = true }, height = topBar)
             if (landscape) {
                 Row(Modifier.weight(1f).fillMaxWidth()) {
-                    stage(Modifier.weight(0.46f).fillMaxHeight())
-                    Column(Modifier.weight(0.54f).fillMaxHeight().padding(end = 12.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    stage(Modifier.weight(0.32f).fillMaxHeight())
+                    Column(Modifier.weight(0.68f).fillMaxHeight().padding(end = 12.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         dialogue(Modifier.weight(1f).fillMaxWidth())
                         bottom()
                     }
@@ -248,7 +251,7 @@ private fun Stage(
 @Composable
 private fun DialogueBox(
     beat: Beat, index: Int, total: Int, last: Boolean, busy: Boolean, speaker: String, closing: Boolean,
-    onSkip: () -> Unit, onSource: (List<SourceRef>) -> Unit, session: TutorSession, tap: Modifier,
+    intent: TutorIntent?, onNext: () -> Unit, onSkip: () -> Unit, onSource: (List<SourceRef>) -> Unit, session: TutorSession, tap: Modifier,
 ) {
     val skin = A2g.skin
     val reduced = rememberReducedMotion()
@@ -263,37 +266,58 @@ private fun DialogueBox(
         border = BorderStroke(1.5.dp, accent),
         elevation = CardDefaults.cardElevation(3.dp),
     ) {
-        Column(Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(speaker, style = MaterialTheme.typography.titleMedium, color = accent, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).testTag("dialogue_speaker"))
-                Text(stringResource(R.string.explainer_concept, session.conceptPosition + 1, session.questions.size), style = MaterialTheme.typography.labelMedium, color = skin.inkMuted, modifier = Modifier.testTag("concept_count"))
-            }
-            if (!busy && beat.title != null) Text(beat.title, style = MaterialTheme.typography.titleMedium, color = skin.ink, fontWeight = FontWeight.SemiBold, modifier = Modifier.testTag("dialogue_title"))
-            if (!busy && beat.leadIn != null) Text(beat.leadIn, style = MaterialTheme.typography.bodySmall, color = skin.inkMuted, modifier = Modifier.testTag("dialogue_lead_in"))
-            Box(Modifier.weight(1f, fill = true).verticalScroll(rememberScrollState())) {
-                if (busy) TypingIndicator(speaker)
-                else Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.graphicsLayer { alpha = fade.value }) {
-                    Text(beat.text, style = MaterialTheme.typography.bodyLarge.copy(fontSize = 19.sp, lineHeight = 28.sp), color = skin.ink, modifier = Modifier.testTag("dialogue_text"))
-                    if (closing) Text(stringResource(R.string.tutor_all_introduced), style = MaterialTheme.typography.bodyMedium, color = skin.inkMuted)
+        BoxWithConstraints {
+            // On short screens, keep the concept and body prominent; the full lead-in remains in Log.
+            val compact = maxHeight < 320.dp
+            Column(Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(speaker, style = MaterialTheme.typography.titleMedium, color = accent, fontWeight = FontWeight.Bold, modifier = Modifier.testTag("dialogue_speaker"))
+                    val mode = if (busy || beat.player) null else when (intent) {
+                        TutorIntent.EXAMPLE -> R.string.explainer_mode_example
+                        TutorIntent.REPHRASE -> R.string.explainer_mode_rephrase
+                        TutorIntent.QUESTION -> R.string.explainer_mode_answer
+                        else -> null
+                    }
+                    if (mode != null) Text(stringResource(mode), style = MaterialTheme.typography.labelMedium, color = skin.action,
+                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp).testTag("dialogue_mode").semantics { liveRegion = LiveRegionMode.Polite })
+                    else Spacer(Modifier.weight(1f))
+                    Text(stringResource(R.string.explainer_concept, session.conceptPosition + 1, session.questions.size), style = MaterialTheme.typography.labelMedium, color = skin.inkMuted, modifier = Modifier.testTag("concept_count"))
                 }
-            }
-            if (!busy && beat.refs.isNotEmpty()) {
-                AssistChip(
-                    onClick = { onSource(beat.refs) },
-                    label = { Text(sourceLabel(session, beat.refs)) },
-                    leadingIcon = { Icon(Icons.Filled.Description, null, Modifier.size(16.dp)) },
-                    colors = AssistChipDefaults.assistChipColors(labelColor = skin.evidence, leadingIconContentColor = skin.evidence),
-                    border = BorderStroke(1.dp, skin.evidence),
-                    modifier = Modifier.testTag("message_source"),
-                )
-            }
-            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-                PageDots(index, total, Modifier.weight(1f))
-                if (!last && !busy) TextButton(onClick = onSkip, modifier = Modifier.testTag("dialogue_skip")) { Text(stringResource(R.string.scene_skip), color = skin.inkMuted) }
-                if (!last && !busy) Text(stringResource(R.string.scene_tap) + "  ▸", style = MaterialTheme.typography.labelLarge, color = skin.action, fontWeight = FontWeight.SemiBold)
+                if (!busy && beat.title != null) Text(beat.title, style = MaterialTheme.typography.titleMedium, color = skin.ink, fontWeight = FontWeight.SemiBold, modifier = Modifier.testTag("dialogue_title"))
+                if (!busy && !compact && beat.leadIn != null) Text(beat.leadIn, style = MaterialTheme.typography.bodySmall, color = skin.inkMuted, modifier = Modifier.testTag("dialogue_lead_in"))
+                Box(Modifier.weight(1f, fill = true).verticalScroll(rememberScrollState())) {
+                    if (busy) TypingIndicator(speaker, intent)
+                    else Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.graphicsLayer { alpha = fade.value }) {
+                        Text(beat.text, style = MaterialTheme.typography.bodyLarge.copy(fontSize = 19.sp, lineHeight = 28.sp), color = skin.ink, modifier = Modifier.testTag("dialogue_text"))
+                        if (closing) Text(stringResource(R.string.tutor_all_introduced), style = MaterialTheme.typography.bodyMedium, color = skin.inkMuted)
+                    }
+                }
+                if (!busy && !compact && beat.refs.isNotEmpty()) SourceButton(session, beat.refs, false, onSource)
+                Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (!busy && compact && beat.refs.isNotEmpty()) SourceButton(session, beat.refs, true, onSource)
+                    PageDots(index, total, Modifier.weight(1f).testTag("dialogue_page"))
+                    if (index < total - 2 && !busy) TextButton(onClick = onSkip, modifier = Modifier.testTag("dialogue_skip")) { Text(stringResource(R.string.explainer_last_page), color = skin.inkMuted) }
+                    if (!last && !busy) TextButton(onClick = onNext, modifier = Modifier.testTag("dialogue_next")) {
+                        Text(stringResource(R.string.explainer_tap_next) + "  ▸", color = skin.action, fontWeight = FontWeight.SemiBold)
+                    }
+                }
             }
         }
     }
+}
+
+@Composable
+private fun SourceButton(session: TutorSession, refs: List<SourceRef>, compact: Boolean, onSource: (List<SourceRef>) -> Unit) {
+    val skin = A2g.skin
+    val description = sourceLabel(session, refs)
+    AssistChip(
+        onClick = { onSource(refs) },
+        label = { Text(if (compact) stringResource(R.string.explainer_source_short) else description) },
+        leadingIcon = { Icon(Icons.Filled.Description, null, Modifier.size(16.dp)) },
+        colors = AssistChipDefaults.assistChipColors(labelColor = skin.evidence, leadingIconContentColor = skin.evidence),
+        border = BorderStroke(1.dp, skin.evidence),
+        modifier = Modifier.testTag("message_source").then(if (compact) Modifier.semantics { contentDescription = description } else Modifier),
+    )
 }
 
 @Composable
@@ -307,10 +331,10 @@ private fun PageDots(index: Int, total: Int, modifier: Modifier) {
 }
 
 @Composable
-private fun TypingIndicator(who: String) {
+private fun TypingIndicator(who: String, intent: TutorIntent?) {
     val skin = A2g.skin
     val reduced = rememberReducedMotion()
-    val label = stringResource(R.string.explainer_thinking, who)
+    val label = if (intent == TutorIntent.EXAMPLE) stringResource(R.string.explainer_preparing_example) else stringResource(R.string.explainer_thinking, who)
     val phase = if (reduced) 0f else rememberInfiniteTransition(label = "typing").animateFloat(0f, 3f, infiniteRepeatable(tween(1200, easing = LinearEasing), RepeatMode.Restart), label = "dots").value
     Row(Modifier.semantics { contentDescription = label }.testTag("typing_indicator"), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         repeat(3) { i ->

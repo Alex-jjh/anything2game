@@ -60,7 +60,13 @@ class TutorViewModel(private val repository: TutorRepository, private val id: St
     }
     fun turn(intent: TutorIntent, question: String = "") {
         if (intent == TutorIntent.QUESTION && (question.isBlank() || question.length > 1000)) return
-        execute { c, requestId -> c.copy(session = repository.turn(c, intent, question.trim(), requestId)) }
+        execute { c, requestId ->
+            val session = repository.turn(c, intent, question.trim(), requestId)
+            val reply = session.messages.lastOrNull { it.role == "tutor" }
+            val presentation = reply?.takeIf { it.id != c.session.messages.lastOrNull { m -> m.role == "tutor" }?.id }
+                ?.let { TutorReplyPresentation(it.id, intent) } ?: c.lastReply
+            c.copy(session = session, lastReply = presentation)
+        }
     }
     fun retry() {
         val p = pending

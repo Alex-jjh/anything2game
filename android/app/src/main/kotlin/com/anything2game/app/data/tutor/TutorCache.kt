@@ -9,11 +9,19 @@ import kotlinx.serialization.Serializable
 import java.io.File
 import java.security.MessageDigest
 
+/** Local display metadata, bound to a reply so a refreshed server message cannot inherit the wrong label. */
+@Serializable data class TutorReplyPresentation(val messageId: String, val intent: TutorIntent)
+
 @Serializable data class TutorCache(
     val session: TutorSession, val draftAnswers: Map<String, String> = emptyMap(), val questionIndex: Int = 0,
     /** The reader has been asked what they want out of the reading (even if they let the explainer decide). */
     val focusChosen: Boolean = false,
+    val lastReply: TutorReplyPresentation? = null,
 ) {
+    // Older caches have no presentation metadata; show no specific mode rather than guessing from prose.
+    val replyIntent: TutorIntent?
+        get() = lastReply?.takeIf { it.messageId == session.messages.lastOrNull { m -> m.role == "tutor" }?.id }?.intent
+
     /** Records the reader's focus and moves the chosen facets' questions first. Only before the diagnostic is assessed. */
     fun withFocus(facets: Collection<Facet>, note: String): TutorCache {
         require(session.assessment.isEmpty()) { "Focus is chosen before the diagnostic" }

@@ -7,7 +7,13 @@
     <string name="explainer_diag_line">%1$d quick questions first. “I do not know yet” is a fine answer.</string>
     <string name="explainer_assess_line">Here is where each idea stands. We will start with the ones that are still fuzzy.</string>
     <string name="explainer_stage_desc">%1$s is explaining the document. Tap to continue.</string>
-    <string name="explainer_tap_next">Next</string>
+    <string name="explainer_tap_next">Next page</string>
+    <string name="explainer_last_page">Last page</string>
+    <string name="explainer_source_short">Source</string>
+    <string name="explainer_mode_example">Example</string>
+    <string name="explainer_mode_rephrase">Rephrased</string>
+    <string name="explainer_mode_answer">Answer</string>
+    <string name="explainer_preparing_example">Preparing an example…</string>
     <string name="explainer_log">Log</string>
     <string name="explainer_log_title">Conversation so far</string>
     <string name="explainer_ask">Ask</string>

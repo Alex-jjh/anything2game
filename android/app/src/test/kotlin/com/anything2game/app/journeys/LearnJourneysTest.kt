@@ -272,13 +272,13 @@ class LearnJourneysTest : LearnJourneyBase() {
     @Test fun poking_the_players_sidekick_does_not_turn_the_page_but_tapping_the_stage_does() {
         reachScene(attention, listOf("focus_result"), right(attention))
         sceneReady()
-        assertTrue("the first message has more than one page", has("dialogue_skip"))
+        assertTrue("the first message has more than one page", has("dialogue_next"))
         val first = textOf("dialogue_text")
         rule.onNodeWithTag("explainer_stage").performTouchInput { click(androidx.compose.ui.geometry.Offset(width * 0.92f, height * 0.04f)) }   // the bare backdrop: Aya herself is pokeable too
         rule.waitForIdle()
         val page = textOf("dialogue_text")
         assertNotEquals("a tap on the stage backdrop turns the page", first, page)
-        if (has("dialogue_skip")) {
+        if (has("dialogue_next")) {
             rule.onNodeWithTag("player_avatar").performClick(); rule.waitForIdle()
             rule.onNodeWithTag("player_avatar").performClick(); rule.waitForIdle()
             assertEquals("a poke is not a page turn", page, textOf("dialogue_text"))
@@ -516,7 +516,7 @@ class LearnJourneysTest : LearnJourneyBase() {
         reachScene(attention, listOf("focus_result"), right(attention))
         // Every control a student must press is a real button with a name and a click action.
         sceneReady()
-        if (!has("tutor_rephrase")) rule.onNodeWithTag("dialogue_skip").assertHasClickAction()   // a first page that is not the last has a Skip button
+        if (!has("tutor_rephrase")) rule.onNodeWithTag("dialogue_next").assertHasClickAction()   // a page before the last has a Next page button
         val pages = readPages("c1", viaSemantics = true)
         assertTrue("the box can be advanced by a screen reader (it is a click action with a label)",
             rule.onNodeWithTag("dialogue_box").fetchSemanticsNode().config.getOrNull(SemanticsActions.OnClick) != null)

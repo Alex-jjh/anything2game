@@ -46,11 +46,11 @@ fun ReadingContent(deps: AppDependencies, packageId: String, onBack: () -> Unit)
     val list = rememberLazyListState()
     var input by rememberSaveable(packageId) { mutableStateOf("") }
     var sourceRefs by remember { mutableStateOf<List<SourceRef>>(emptyList()) }
-    // What the player last asked of the explainer: it decides the explainer's expression and whether the question is shown as a line.
-    var lastIntent by rememberSaveable(packageId) { mutableStateOf<TutorIntent?>(null) }
+    // Pending intent is only for loading feedback; the displayed reply's mode comes from its saved metadata.
+    var requestedIntent by rememberSaveable(packageId) { mutableStateOf<TutorIntent?>(null) }
     val context = LocalContext.current
     val theme = remember(profileId, context) { ExplainerThemes.resolve(context, deps.explainerPreferences.get()) }
-    val turn: (TutorIntent, String) -> Unit = { intent, question -> lastIntent = intent; vm.turn(intent, question) }
+    val turn: (TutorIntent, String) -> Unit = { intent, question -> requestedIntent = intent; vm.turn(intent, question) }
     var unsupported by remember { mutableStateOf<LearningPackage?>(null) }
     LaunchedEffect(state.unsupported) {
         if (state.unsupported) unsupported = deps.packages.load(packageId).getOrNull()
@@ -62,7 +62,7 @@ fun ReadingContent(deps: AppDependencies, packageId: String, onBack: () -> Unit)
     Scaffold(containerColor = skin.paper) { padding ->
         if (phase == 3 && s != null) ExplainerTheatre(
             s, theme, busy = state.busy, enabled = !state.busy && state.problem == null, offline = state.offline, problem = state.problem,
-            lastIntent = lastIntent, input = input, onInput = { input = it }, onTurn = turn, onSource = { sourceRefs = it },
+            lastIntent = if (state.busy) requestedIntent else c.replyIntent, input = input, onInput = { input = it }, onTurn = turn, onSource = { sourceRefs = it },
             onRetry = vm::retry, onReload = vm::reload, onCancel = vm::cancelPending, onBack = { if (state.busy) vm.cancelPending(); onBack() },
             modifier = Modifier.padding(padding).consumeWindowInsets(padding),
         ) else LazyColumn(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding().testTag("tutor_list"), state = list,

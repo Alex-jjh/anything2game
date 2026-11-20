@@ -7,7 +7,13 @@
     <string name="explainer_diag_line">先来 %1$d 道小问题。不知道也没关系。</string>
     <string name="explainer_assess_line">这是每个概念目前的位置。我们先从还模糊的讲起。</string>
     <string name="explainer_stage_desc">%1$s 正在讲解这篇文档。点一下继续。</string>
-    <string name="explainer_tap_next">下一句</string>
+    <string name="explainer_tap_next">下一页</string>
+    <string name="explainer_last_page">跳到末页</string>
+    <string name="explainer_source_short">原文</string>
+    <string name="explainer_mode_example">举例说明</string>
+    <string name="explainer_mode_rephrase">换种说法</string>
+    <string name="explainer_mode_answer">追问回复</string>
+    <string name="explainer_preparing_example">正在准备例子…</string>
     <string name="explainer_log">记录</string>
     <string name="explainer_log_title">到目前为止的对话</string>
     <string name="explainer_ask">追问</string>

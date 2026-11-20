@@ -21,7 +21,7 @@
     <string name="tutor_teacher">DOCUMENT GUIDE</string>
     <string name="tutor_rephrase">Rephrase</string>
     <string name="tutor_example">Give an example</string>
-    <string name="tutor_continue">Continue</string>
+    <string name="tutor_continue">Next concept</string>
     <string name="tutor_input">Ask about this document</string>
     <string name="tutor_send">Send question</string>
     <string name="tutor_script_note">This explainer follows a script written ahead of time. Your questions are saved, but it cannot answer them yet.</string>

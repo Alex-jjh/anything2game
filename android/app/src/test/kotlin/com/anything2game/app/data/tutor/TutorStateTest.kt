@@ -52,6 +52,36 @@ class TutorStateTest {
             assertTrue(vm.state.value.cache!!.session.messages.isEmpty())
             assertEquals(base.session.assessment, vm.state.value.cache!!.session.assessment)
             assertFalse(repo.saved.any { it.session.messages.any { m -> m.id == "late" } })
+            assertNull(vm.state.value.cache!!.replyIntent)
+        } finally { Dispatchers.resetMain() }
+    }
+    @Test fun `failed example keeps the previous reply label and retry labels only the saved new reply`() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        try {
+            val base = initial().let { it.copy(
+                session = it.session.copy(answers = mapOf("q" to UNKNOWN_ANSWER),
+                    assessment = listOf(ConceptAssessment("q", "c", Understanding.NOT_YET_ASSESSED)),
+                    messages = listOf(TutorMessage("old", "tutor", "Previous rephrase"))),
+                lastReply = TutorReplyPresentation("old", TutorIntent.REPHRASE),
+            ) }
+            var fail = true
+            val repo = object : Repository(base) {
+                override suspend fun turn(cache: TutorCache, intent: TutorIntent, question: String, requestId: String): TutorSession {
+                    if (fail) throw java.io.IOException("offline")
+                    return super.turn(cache, intent, question, requestId)
+                }
+            }
+            val vm = TutorViewModel(repo, "tut_test"); runCurrent()
+            vm.turn(TutorIntent.EXAMPLE); advanceUntilIdle()
+            assertEquals("CONNECTION_OR_STORAGE", vm.state.value.problem)
+            assertEquals(TutorIntent.REPHRASE, vm.state.value.cache!!.replyIntent)
+            assertEquals(base, repo.cache)
+            fail = false; vm.retry(); advanceUntilIdle()
+            assertNull(vm.state.value.problem)
+            assertEquals(TutorIntent.EXAMPLE, vm.state.value.cache!!.replyIntent)
+            assertEquals(TutorIntent.EXAMPLE, repo.cache.replyIntent)
+            vm.reload(); advanceUntilIdle()
+            assertEquals(TutorIntent.EXAMPLE, vm.state.value.cache!!.replyIntent)
         } finally { Dispatchers.resetMain() }
     }
     @Test fun `answer choice is persisted and incomplete diagnostic cannot advance`() = runTest {

@@ -6,6 +6,8 @@ import com.anything2game.app.data.Familiarity
 import com.anything2game.contract.ContractJson
 import com.anything2game.contract.tutor.*
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -18,6 +20,29 @@ import java.io.File
 @Config(sdk = [35])
 class TutorPersistenceTest {
     private val context: Context get() = RuntimeEnvironment.getApplication()
+    @Test fun `reply labels survive storage while old caches and refreshed replies remain unlabelled`() = runBlocking {
+        val repo = AndroidAppContainer(context).tutors
+        var cache = repo.open(EXAMPLE_TUTOR_PACKAGE).cache
+        cache = cache.copy(draftAnswers = cache.session.questions.associate { it.id to UNKNOWN_ANSWER })
+        cache = cache.copy(session = repo.assess(cache, "a"))
+        cache = cache.copy(session = repo.turn(cache, TutorIntent.EXAMPLE, "", "x"))
+        cache = cache.copy(lastReply = TutorReplyPresentation(cache.session.messages.last().id, TutorIntent.EXAMPLE))
+        val dir = File(context.cacheDir, "reply-presentation-test")
+        val store = TutorCacheStore(dir)
+        store.write(cache)
+        val reopened = TutorCacheStore(dir).read(cache.session.sessionId)!!
+        assertEquals(cache.session, reopened.session)
+        assertEquals(TutorIntent.EXAMPLE, reopened.replyIntent)
+        val newer = reopened.copy(session = reopened.session.copy(messages = reopened.session.messages + TutorMessage("new-server-reply", "tutor", "New content")))
+        assertNull("an old label must not describe a refreshed reply", newer.replyIntent)
+        val legacyJson = JsonObject(ContractJson.json.encodeToJsonElement(TutorCache.serializer(), cache).jsonObject - "lastReply").toString()
+        val file = dir.listFiles()!!.single { it.extension == "json" }
+        file.writeText(legacyJson)
+        val legacy = store.read(cache.session.sessionId)!!
+        assertEquals(cache.session, legacy.session)
+        assertNull(legacy.replyIntent)
+        assertEquals("reading old data never rewrites it", legacyJson, file.readText())
+    }
     @Test fun `answers and conversation survive repository recreation and preserve old preferences`() = runBlocking {
         val deps = AndroidAppContainer(context)
         deps.homePreferences.setFamiliarity(EXAMPLE_TUTOR_PACKAGE, "1", "L1", Familiarity.KNOWN)
