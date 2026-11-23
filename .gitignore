@@ -10,3 +10,6 @@ local.properties
 
 # Kotlin incremental compiler state
 .kotlin/
+
+# Agent worktrees (temporary)
+.claude/worktrees/
