@@ -75,6 +75,8 @@ fun PlayContent(
     onBack: () -> Unit,
     onRestart: () -> Unit,
     simulator: (@Composable () -> Unit)? = null,
+    /** The course's own PDF (imported, attached or bundled): evidence then opens on the real page, as Show source does. */
+    sourcePdf: com.anything2game.app.data.tutor.SourceDocument? = null,
 ) {
     val skin = A2g.skin
     val session = state.session
@@ -148,12 +150,18 @@ fun PlayContent(
         }
     }
     when (val overlay = session.overlay) {
-        is Overlay.Evidence -> EvidencePanel(
-            chunks = overlay.chunkIds.mapNotNull(state.pkg::chunk),
-            refs = state.item?.allSourceRefs.orEmpty(),
-            documentTitle = state.pkg.title,
-            onClose = { onAction(Action.CloseOverlay) },
-        )
+        is Overlay.Evidence -> {
+            val refs = state.item?.allSourceRefs.orEmpty()
+            val pdf = sourcePdf?.takeIf { it.documentId == state.pkg.documentId && it.documentVersion == state.pkg.documentVersion }
+            if (pdf != null) com.anything2game.app.ui.reading.SourceViewer(state.pkg.sources, refs.filter { it.chunkId in overlay.chunkIds }.ifEmpty { refs }, pdf,
+                onDismiss = { onAction(Action.CloseOverlay) })
+            else EvidencePanel(
+                chunks = overlay.chunkIds.mapNotNull(state.pkg::chunk),
+                refs = refs,
+                documentTitle = state.pkg.title,
+                onClose = { onAction(Action.CloseOverlay) },
+            )
+        }
         Overlay.Asking -> AskPanel(offline = !state.context.askAvailable, onClose = { onAction(Action.CloseOverlay) })
         null -> Unit
     }

@@ -1,3 +1,6 @@
+import java.net.HttpURLConnection
+import java.net.URI
+import java.security.MessageDigest
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -82,11 +85,68 @@ val packPresets by tasks.registering(PackPresetsTask::class) {
     outputDir.set(layout.buildDirectory.dir("generated/presetPacks"))
 }
 
+// The demo courses' papers, bundled so Show source opens the real page with no setup (ADR-019). They are fetched from
+// each layout's pdfSource at build time, checked against the sha256 the layout was measured on, and cached in the Gradle
+// user home; they never enter git. Offline or a changed file: a warning, and the app falls back to "attach your PDF".
+// -Pa2g.samplePdfs=false leaves them out (e.g. for any build shared outside the team: the papers are third-party).
+abstract class FetchSamplePdfsTask : DefaultTask() {
+    @get:InputFiles @get:PathSensitive(PathSensitivity.RELATIVE) abstract val layouts: ConfigurableFileCollection
+    @get:Input abstract val bundle: Property<Boolean>
+    @get:Internal abstract val cacheDir: DirectoryProperty
+    @get:OutputDirectory abstract val outputDir: DirectoryProperty
+
+    @TaskAction fun fetch() {
+        val out = outputDir.get().dir("sample-pdfs").asFile
+        out.deleteRecursively(); out.mkdirs()
+        if (!bundle.get()) return
+        val cache = cacheDir.get().asFile.apply { mkdirs() }
+        layouts.files.sorted().forEach { file ->
+            @Suppress("UNCHECKED_CAST")
+            val l = groovy.json.JsonSlurper().parse(file) as Map<String, Any?>
+            val id = l["packageId"] as String; val sha = l["pdfSha256"] as String; val url = l["pdfSource"] as? String
+            val cached = File(cache, "$sha.pdf")
+            if (!cached.isFile || sha256(cached.readBytes()) != sha) {
+                if (url == null) { logger.warn("a2g: $id has no pdfSource; not bundled"); return@forEach }
+                val bytes = try { download(url) } catch (e: Exception) { logger.warn("a2g: could not fetch $url (${e.message}); $id not bundled"); return@forEach }
+                if (sha256(bytes) != sha) { logger.warn("a2g: $url is not the file $id was measured on (sha256 differs); not bundled. Re-measure with :server:presetLayout."); return@forEach }
+                cached.writeBytes(bytes)
+            }
+            cached.copyTo(File(out, "$id.pdf"), overwrite = true)
+        }
+    }
+    private fun download(url: String): ByteArray {
+        var target = URI(url).toURL()
+        repeat(5) {
+            val c = target.openConnection() as HttpURLConnection
+            c.connectTimeout = 15_000; c.readTimeout = 60_000; c.instanceFollowRedirects = false
+            c.setRequestProperty("User-Agent", "anything2game-build")
+            when (c.responseCode) {
+                in 300..399 -> { target = URI(url).resolve(c.getHeaderField("Location")).toURL(); c.disconnect() }
+                200 -> return c.inputStream.use { it.readBytes() }
+                else -> error("HTTP ${c.responseCode}")
+            }
+        }
+        error("too many redirects")
+    }
+    private fun sha256(b: ByteArray) = MessageDigest.getInstance("SHA-256").digest(b).joinToString("") { "%02x".format(it) }
+}
+
+val fetchSamplePdfs by tasks.registering(FetchSamplePdfsTask::class) {
+    layouts.from(rootProject.fileTree("samples/demo") { include("layout.demo.*.json") })
+    bundle.set(providers.gradleProperty("a2g.samplePdfs").map { it != "false" }.orElse(true))
+    cacheDir.set(layout.dir(providers.provider { File(gradle.gradleUserHomeDir, "caches/a2g-sample-pdfs") }))
+    outputDir.set(layout.buildDirectory.dir("generated/samplePdfs"))
+}
+
 androidComponents {
-    onVariants { variant -> variant.sources.assets?.addGeneratedSourceDirectory(packPresets, PackPresetsTask::outputDir) }
+    onVariants { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(packPresets, PackPresetsTask::outputDir)
+        variant.sources.assets?.addGeneratedSourceDirectory(fetchSamplePdfs, FetchSamplePdfsTask::outputDir)
+    }
 }
 
 tasks.withType<Test>().configureEach {
+    systemProperty("a2g.bundledPdfs", "off")
     systemProperty("contract.examples", rootProject.file("contract/examples").absolutePath)
     systemProperty("contract.samples", rootProject.file("samples/demo").absolutePath)
     systemProperty("robolectric.pixelCopyRenderMode", "hardware")

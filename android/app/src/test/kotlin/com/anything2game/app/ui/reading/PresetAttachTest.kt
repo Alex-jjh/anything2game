@@ -236,6 +236,23 @@ class PresetAttachTest {
         assertNull(runBlocking { presets.load("demo_tiny", "doc_demo_tiny", "sha256:tiny") })
     }
 
+    @Test fun `a demo build's bundled paper is used with no attaching, and a bundled copy that does not match is not`() {
+        val l = presetLayout()
+        val good = PresetSources(SourceLayouts { id -> presetLayout().takeIf { id == "demo_tiny" } }, SourceDocumentStore(File(tmp.root, "bundled"))) { bytes.inputStream() }
+        val first = runBlocking { good.load("demo_tiny", l.documentId, l.documentVersion) }
+        assertNotNull("the bundled paper opens the real page on the first visit", first)
+        assertEquals(sha(bytes), first!!.pdfSha256)
+        assertTrue("and is kept as an ordinary file for the renderer", first.file.isFile)
+        // A build that bundled another file (the source changed after measuring): never drawn on, and nothing kept.
+        val other = bytes.copyOf().also { it[it.lastIndex - 1] = (it[it.lastIndex - 1] + 1).toByte() }
+        val dir = File(tmp.root, "bundled-other")
+        val bad = PresetSources(SourceLayouts { presetLayout() }, SourceDocumentStore(dir)) { other.inputStream() }
+        assertNull(runBlocking { bad.load("demo_tiny", l.documentId, l.documentVersion) })
+        assertNull(runBlocking { SourceDocumentStore(dir).load(l.documentId, l.documentVersion) })
+        // A course with no packed layout gets nothing from a bundle either.
+        assertNull(runBlocking { good.load("demo_other", l.documentId, l.documentVersion) })
+    }
+
     @Test fun `a record under the preset's ids with another hash or none is never shown as the preset's page`() {
         val dir = File(tmp.root, "foreign")
         val store = SourceDocumentStore(dir)

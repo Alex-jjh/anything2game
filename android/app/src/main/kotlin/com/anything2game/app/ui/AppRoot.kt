@@ -92,7 +92,15 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator, onPickPdf: () -> Unit) 
                     BackHandler(onBack = navigator::toHome)
                     Text(stringResource(R.string.load_failed, s.reason), Modifier.padding(24.dp))
                 }
-                is PlayUiState.Ready -> PlayContent(s, onAction = vm::dispatch, onBack = navigator::toHome, onRestart = vm::restart, simulator = simulator)
+                is PlayUiState.Ready -> {
+                    // The same file Show source uses: a preset's attached or bundled paper, else a PDF the reader imported.
+                    val pkg = s.pkg
+                    val pdf by androidx.compose.runtime.produceState<com.anything2game.app.data.tutor.SourceDocument?>(null, current.id, pkg.packageId, pkg.documentVersion) {
+                        value = deps.presetSources?.load(pkg.packageId, pkg.documentId, pkg.documentVersion)
+                            ?: runCatching { deps.tutors.sourceDocument(pkg.documentId, pkg.documentVersion) }.getOrNull()
+                    }
+                    PlayContent(s, onAction = vm::dispatch, onBack = navigator::toHome, onRestart = vm::restart, simulator = simulator, sourcePdf = pdf)
+                }
             }
         }
         is Route.Import -> {

@@ -94,7 +94,11 @@ class AndroidAppContainer(context: Context) : AppDependencies {
         val explainerPreferences: ExplainerPreferences = SharedPrefsExplainerPreferences(app, profile.prefs("explainer"))
         val tutors = AndroidTutorRepository(app, packages, tutorScripts, ::installServerPackage, File(dir, "tutor-sessions"), profile.prefs("tutor_connection"), File(dir, "source-documents"))
         // Same per-profile directory as the imported PDFs, so a lookup by the session's ids finds an attached preset PDF too.
-        val presetSources = PresetSources(content, SourceDocumentStore(File(dir, "source-documents")))
+        // Unit tests run with the papers left out (-Da2g.bundledPdfs=off): they exercise "nothing attached", and
+        // Robolectric cannot render a PDF page anyway; the bundled path has its own test on PresetSources.
+        val presetSources = PresetSources(content, SourceDocumentStore(File(dir, "source-documents"))) { id ->
+            if (System.getProperty("a2g.bundledPdfs") == "off") null else runCatching { app.assets.open("sample-pdfs/$id.pdf") }.getOrNull()
+        }
     }
 
     private suspend fun installServerPackage(pkg: com.anything2game.contract.LearningPackage) {
