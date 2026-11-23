@@ -74,7 +74,7 @@ class PdfImportQueue(private val dir: File, private val read: suspend (ImportReq
                 val doc = try {
                     tutors.upload(ImportRequest.PdfFile(row.title, Uri.fromFile(file), file.length()))
                 } catch (e: TutorApiException) {
-                    if (e.definiteRejection) return save(row.copy(error = e.code))
+                    if (e.beforeDispatch || e.definiteRejection) return save(row.copy(error = e.code))
                     throw e
                 }
                 row = save(row.copy(document = doc, error = null))

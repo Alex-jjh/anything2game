@@ -97,30 +97,38 @@ class PlayViewModel(
     fun stopListeningToContext() { contextJob?.cancel(); contextJob = null }
 
     private suspend fun load() = mutex.withLock {
-        val prior = sessions.load(packageId)
-        val version = contentVersion ?: prior?.takeIf { !it.isFinished && it.levelId == levelId && it.frameId == frameId }?.contentVersion
-        val pinned = version?.let { deps.packages.load(packageId, it) }
-        val loaded = if (contentVersion != null || pinned?.isSuccess == true) requireNotNull(pinned) else deps.packages.load(packageId)
-        val pkg = loaded.getOrElse {
-            _state.value = PlayUiState.Failed(it.message ?: it::class.simpleName.orEmpty())
-            return@withLock
+        while (true) {
+            val prior = sessions.load(packageId)
+            val version = contentVersion ?: prior?.takeIf { !it.isFinished && it.levelId == levelId && it.frameId == frameId }?.contentVersion
+            val pinned = version?.let { deps.packages.load(packageId, it) }
+            val loaded = if (contentVersion != null || pinned?.isSuccess == true) requireNotNull(pinned) else deps.packages.load(packageId)
+            val pkg = loaded.getOrElse {
+                _state.value = PlayUiState.Failed(it.message ?: it::class.simpleName.orEmpty())
+                return@withLock
+            }
+            // A frame whose overlay is missing falls back to Classic, so the level always plays.
+            val priorVersion = sessions.load(packageId, pkg.contentVersion)
+            val checkpoint = priorVersion?.takeIf { it.levelId == levelId && !it.isFinished }
+            val requestedFrame = if (resumeSavedFrame) checkpoint?.frameId ?: frameId else frameId
+            val overlay = deps.frames.load(packageId, pkg.contentVersion, requestedFrame)
+            val frame = Frames.of(requestedFrame).takeIf { it.isPlayable(overlay) } ?: Frames.CLASSIC
+            val e = LevelSession(pkg, deps.grading, deps.masteryPolicy, deps.clock, frame = frame, overlay = overlay?.takeIf { frame.id == requestedFrame })
+            val saved = checkpoint?.takeIf(e::canResume)
+            var session = saved ?: e.start(levelId)
+            if (session.attemptId.isEmpty()) session = session.copy(attemptId = java.util.UUID.randomUUID().toString())
+            val reason = context.pauseReason
+            if (context.pause && reason != null) session = e.reduce(session, Action.Pause(reason)).state
+            else if (session.isPaused) session = e.reduce(session, Action.Resume).state // a pause saved by an earlier run is stale once the phone is still
+            val records = if (practiceCommits != null) practiceCommits.initialize(priorVersion, session) ?: continue
+                else masteryStore.all(packageId, pkg.contentVersion).also { sessions.save(session) }
+            engine = e
+            this.overlay = overlay?.takeIf { frame.id == requestedFrame }
+            activeFrame = frame.id
+            mastery.clear()
+            mastery.putAll(records)
+            publish(pkg, e, session)
+            break
         }
-        // A frame whose overlay is missing falls back to Classic, so the level always plays.
-        val checkpoint = sessions.load(packageId, pkg.contentVersion)?.takeIf { it.levelId == levelId && !it.isFinished }
-        val requestedFrame = if (resumeSavedFrame) checkpoint?.frameId ?: frameId else frameId
-        val overlay = deps.frames.load(packageId, pkg.contentVersion, requestedFrame)
-        val frame = Frames.of(requestedFrame).takeIf { it.isPlayable(overlay) } ?: Frames.CLASSIC
-        val e = LevelSession(pkg, deps.grading, deps.masteryPolicy, deps.clock, frame = frame, overlay = overlay?.takeIf { frame.id == requestedFrame })
-            .also { engine = it; this.overlay = overlay?.takeIf { frame.id == requestedFrame }; activeFrame = frame.id }
-        mastery.clear(); mastery.putAll(masteryStore.all(packageId, pkg.contentVersion))
-        val saved = checkpoint?.takeIf(e::canResume)
-        var session = saved ?: e.start(levelId)
-        if (session.attemptId.isEmpty()) session = session.copy(attemptId = java.util.UUID.randomUUID().toString())
-        val reason = context.pauseReason
-        if (context.pause && reason != null) session = e.reduce(session, Action.Pause(reason)).state
-        else if (session.isPaused) session = e.reduce(session, Action.Resume).state // a pause saved by an earlier run is stale once the phone is still
-        sessions.save(session)
-        publish(pkg, e, session)
     }
 
     fun dispatch(action: Action) {

@@ -1,6 +1,8 @@
 package com.anything2game.app.data
 
 import android.net.Uri
+import com.anything2game.app.AppDependencies
+import com.anything2game.app.data.content.*
 import com.anything2game.app.AndroidAppContainer
 import com.anything2game.app.data.api.*
 import com.anything2game.app.data.learning.*
@@ -71,6 +73,40 @@ class LearningRecoveryTest {
         }
     }
 
+    @Test fun `parallel player initialization cannot roll an answered checkpoint back to its prompt`() {
+        val deps = AndroidAppContainer(app)
+        val pkg = runBlocking { deps.packages.load(EXAMPLE_TUTOR_PACKAGE).getOrThrow() }
+        val level = pkg.levels.first().levelId
+        val active = PlayViewModel(deps, pkg.packageId, level, FrameId.CLASSIC)
+        val initial = ready(active)
+        val blocked = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        val slow = object : AppDependencies by deps {
+            override val frames = object : com.anything2game.engine.ports.FrameRepository by deps.frames {
+                override suspend fun load(packageId: String, version: String, frameId: FrameId): FrameOverlay? {
+                    blocked.complete(Unit)
+                    release.await()
+                    return deps.frames.load(packageId, version, frameId)
+                }
+            }
+        }
+        val opening = PlayViewModel(slow, pkg.packageId, level, FrameId.CLASSIC, pkg.contentVersion)
+        val end = System.nanoTime() + 10_000_000_000L
+        while (!blocked.isCompleted && System.nanoTime() < end) { ShadowLooper.idleMainLooper(); Thread.sleep(5) }
+        assertTrue(blocked.isCompleted)
+        val action = Action.Submit(ScriptedPlayer.correctAnswer(initial.item!!))
+        active.dispatch(action)
+        val answered = ready(active) { it.session.phase is Phase.Feedback }.session
+        release.complete(Unit)
+        assertEquals(answered, ready(opening).session)
+        opening.dispatch(action)
+        ShadowLooper.idleMainLooper()
+        assertEquals(answered, runBlocking { deps.sessions.load(pkg.packageId, pkg.contentVersion) })
+        assertEquals(1, runBlocking { deps.mastery.all(pkg.packageId, pkg.contentVersion).getValue(initial.unit!!.unitId).attempts })
+        active.stopListeningToContext()
+        opening.stopListeningToContext()
+    }
+
     @Test fun `interrupted real answer recovers feedback and promotes its unit once`() {
         val deps = AndroidAppContainer(app)
         val pkg = runBlocking { deps.packages.load(EXAMPLE_TUTOR_PACKAGE).getOrThrow() }
@@ -113,43 +149,65 @@ class LearningRecoveryTest {
         val reply = repo.turn(cache, TutorIntent.START, "", "first-teaching-turn")
         val actual = TutorRules.orderedQuestions(reply)[reply.conceptPosition]
         assertNotEquals(reply.questions.first().conceptId, actual.conceptId)
+        deps.learningProgress.start(com.anything2game.contract.game.ReviewedGames.partition("en"), 27L)
         val ledger = File(app.filesDir, "learning.json")
-        require(ledger.mkdir())
+        val backup = File(app.filesDir, "healthy-learning.bak")
+        require(ledger.renameTo(backup) && ledger.mkdir())
         assertTrue(runCatching { repo.save(cache.copy(session = reply)) }.isFailure)
-        require(ledger.delete())
+        val damaged = File(app.filesDir, "tutor-sessions/unreadable.json").apply { writeText("broken historical cache") }
+        assertTrue(runCatching { AndroidAppContainer(app).learningProgress.projection() }.exceptionOrNull() is java.io.IOException)
+        require(ledger.delete() && backup.renameTo(ledger))
         val after = AndroidAppContainer(app)
         assertEquals(actual.conceptId, after.learningProgress.projection().completed.single().activityId)
         assertEquals(reply.messages, after.tutors.open(EXAMPLE_TUTOR_PACKAGE).cache.session.messages)
         assertTrue(after.learningProgress.projection().mastery.isEmpty())
+        assertTrue(after.learningProgress.projection().played.any { it.contentId == "locker-search-en" })
+        assertEquals("broken historical cache", damaged.readText())
     }
 
     @Test fun `sideload sharing document labels stays separate from owned tutor and its server practice`() = runBlocking {
-        val deps = AndroidAppContainer(app)
-        val pkg = deps.packages.load(EXAMPLE_TUTOR_PACKAGE).getOrThrow()
-        val tutor = deps.tutors.open(pkg.packageId).cache.session.copy(sessionId = "tut_owned", mode = "mock")
-        deps.tutors.save(TutorCache(tutor))
+        val initial = AndroidAppContainer(app)
+        val pkg = initial.packages.load(EXAMPLE_TUTOR_PACKAGE).getOrThrow()
+        val tutor = initial.tutors.open(pkg.packageId).cache.session.copy(sessionId = "tut_owned", mode = "mock")
         val compiled = pkg.copy(packageId = "server-practice")
         val sideload = pkg.copy(packageId = "unrelated-pack", title = "Independent handout")
-        deps.content.install(PackCodec.toBytes(PackCodec.build(compiled, emptyList(), PackOrigin.SERVER)).inputStream())
-        deps.content.install(PackCodec.toBytes(PackCodec.build(sideload, emptyList(), PackOrigin.IMPORT)).inputStream())
-        val mislabeled = pkg.copy(packageId = "different-source", sources = pkg.sources.map { it.copy(text = "Different source. " + it.text) })
-        deps.content.install(PackCodec.toBytes(PackCodec.build(mislabeled, emptyList(), PackOrigin.SERVER)).inputStream())
-        val spaces = deps.spaces.list()
-        val remote = SpaceMember.ServerDocumentRef(tutor.documentId, tutor.documentVersion)
-        val local = SpaceMember.LocalPackRef(sideload.packageId, sideload.contentVersion)
-        val serverSpace = spaces.single { remote in it.members }
-        assertFalse(local in serverSpace.members)
-        val nodes = deps.spaces.route(serverSpace.spaceId, "en")!!.nodes
-        assertTrue(nodes.any { it.activity.contentId == compiled.packageId })
-        assertFalse(nodes.any { it.activity.contentId == sideload.packageId })
-        assertFalse(nodes.any { it.activity.contentId == mislabeled.packageId })
+        val mislabeled = pkg.copy(packageId = "different-source", sources = pkg.sources.map { it.copy(text = it.text + " Different material follows.") })
+        server({ path, _, _ -> when (path) {
+            "/v1/compile-jobs" -> 202 to json.encodeToString(CompileJobStatus("owned-job", tutor.documentId,
+                CompileJobState.READY, packageId = compiled.packageId))
+            "/v1/packages/server-practice" -> 200 to ContractJson.encodePackage(compiled)
+            else -> errorResponse(404, "NOT_FOUND")
+        } }) { transport ->
+            val live = AndroidAppContainer(app, transport.endpoint)
+            live.tutors.save(TutorCache(tutor))
+            assertEquals(compiled, live.tutors.preparePractice(tutor))
+            live.content.install(PackCodec.toBytes(PackCodec.build(sideload, emptyList(), PackOrigin.IMPORT)).inputStream())
+            live.content.install(PackCodec.toBytes(PackCodec.build(mislabeled, emptyList(), PackOrigin.SERVER)).inputStream())
+
+            val reopened = AndroidAppContainer(app, transport.endpoint)
+            val remote = SpaceMember.ServerDocumentRef(tutor.documentId, tutor.documentVersion)
+            val serverSpace = reopened.spaces.list().single { remote in it.members }
+            val nodes = reopened.spaces.route(serverSpace.spaceId, "en")!!.nodes
+            assertTrue(nodes.any { it.activity.contentId == compiled.packageId })
+            assertFalse(nodes.any { it.activity.contentId in setOf(sideload.packageId, mislabeled.packageId) })
+            reopened.profiles.choose(LocalProfile.SAMPLE)
+            reopened.tutors.save(TutorCache(tutor))
+            assertTrue(reopened.materials.materials().any { it.member == SpaceMember.LocalPackRef(compiled.packageId, compiled.contentVersion) })
+            reopened.profiles.choose(LocalProfile.GUEST)
+            val script = reopened.tutorScripts.scriptFor(EXAMPLE_TUTOR_PACKAGE)!!.copy(packageId = compiled.packageId)
+            reopened.content.install(PackCodec.toBytes(PackCodec.build(compiled, emptyList(), PackOrigin.SERVER, tutor = script)).inputStream())
+            assertTrue(reopened.materials.materials().any { it.member == SpaceMember.LocalPackRef(compiled.packageId, compiled.contentVersion) })
+        }
     }
 
-    private suspend fun server(handler: (String, String, String) -> Pair<Int, String>, use: suspend (ApiTransport) -> Unit) {
+    private suspend fun server(handler: (String, String, String) -> Pair<Int, String>,
+        install: () -> Pair<Int, String> = { 201 to json.encodeToString(InstallResponse("test", "sample")) },
+        use: suspend (ApiTransport) -> Unit) {
         val http = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
         http.createContext("/") { ex ->
             val path = ex.requestURI.path
-            val reply = if (path == "/v1/installs") 201 to json.encodeToString(InstallResponse("test", "sample"))
+            val reply = if (path == "/v1/installs") install()
+                else if (ex.requestHeaders.getFirst("Authorization") != "Bearer sample") errorResponse(401, "UNAUTHORIZED")
                 else handler(path, ex.requestMethod, ex.requestBody.bufferedReader().readText())
             if (reply.first == -1) {
                 ex.close() // Listener accepted the payload, but the connection closes before an HTTP acknowledgement.
@@ -299,6 +357,54 @@ class LearningRecoveryTest {
         val citation = mat.nodes.first().evidence.single()
         val target = catalog.source(citation) as SourceTarget.Pdf
         assertArrayEquals(bytes, requireNotNull(target.document).file.readBytes())
+    }
+
+    @Test fun `matching editions with identical document versions can use geometry in the second pack`() = runBlocking {
+        val deps = AndroidAppContainer(app)
+        val original = deps.packages.load("demo_attention").getOrThrow()
+        val pkg = original.copy(packageId = "retained-edition", documentId = "retained-source", contentVersion = "1")
+        val bytes = "%PDF-retained".toByteArray()
+        val layout = requireNotNull(deps.content.sourceLayoutFor(original.packageId)).copy(packageId = pkg.packageId,
+            documentId = pkg.documentId, pdfBytes = bytes.size.toLong(), pdfSha256 = PdfBytes.sha256(bytes))
+        val first = DirectoryPackSource(tmp.newFolder())
+        val second = DirectoryPackSource(tmp.newFolder())
+        first.install(PackCodec.toBytes(PackCodec.build(pkg, emptyList(), PackOrigin.PRESET)).inputStream()).getOrThrow()
+        second.install(PackCodec.toBytes(PackCodec.build(pkg.copy(contentVersion = "2"), emptyList(), PackOrigin.PRESET,
+            sourceLayout = layout)).inputStream()).getOrThrow()
+        val library = ContentLibrary(listOf(first, second))
+        val sources = PresetSources(library, SourceDocumentStore(tmp.newFolder())) { bytes.inputStream() }
+        val catalog = MaterialCatalog(library, deps.tutors, sources)
+        val evidence = catalog.materials().first().nodes.first().evidence.single()
+        assertArrayEquals(bytes, requireNotNull((catalog.source(evidence) as SourceTarget.Pdf).document).file.readBytes())
+    }
+
+    @Test fun `configuration failure before PDF dispatch supports ordinary retry`() = runBlocking {
+        val deps = AndroidAppContainer(app)
+        val space = deps.spaces.create("Selected")
+        val root = tmp.newFolder()
+        val seed = deps.tutors.open(EXAMPLE_TUTOR_PACKAGE).cache.session
+        fun queue(transport: ApiTransport): PdfImportQueue {
+            val tutor = AndroidTutorRepository(app, deps.packages, deps.tutorScripts, {}, File(root, "tutors"), http = TutorHttpClient(app, transport))
+            return PdfImportQueue(File(root, "queue"), { "%PDF-review".toByteArray() }, tutor, deps.spaces)
+        }
+        val offline = queue(ApiTransport(app, ""))
+        val row = offline.enqueue(space.spaceId, listOf(ImportRequest.PdfFile("One", Uri.parse("content://qa/one"), null))).single()
+        assertEquals("NOT_CONFIGURED", offline.process(row.id).error)
+        var posts = 0
+        var installs = 0
+        server({ path, _, _ -> when (path) {
+            "/v1/documents" -> { posts++; 201 to json.encodeToString(DocumentResponse("doc", "1", 1, "One")) }
+            "/v1/documents/doc/tutor" -> 201 to json.encodeToString(seed.copy(sessionId = "tut_ok", mode = "mock", documentId = "doc", documentVersion = "1"))
+            else -> errorResponse(404, "NOT_FOUND")
+        } }, install = {
+            installs++
+            if (installs == 1) errorResponse(503, "INSTALL_TEMPORARY_FAILURE") else 201 to json.encodeToString(InstallResponse("test", "sample"))
+        }) { transport ->
+            assertEquals("INSTALL_TEMPORARY_FAILURE", queue(transport).process(row.id).error)
+            assertEquals(0, posts)
+            assertEquals("tut_ok", queue(transport).process(row.id).sessionId)
+            assertEquals(1, posts)
+        }
     }
 
     @Test fun `ambiguous PDF upload cannot repeat until deliberate retry after restart`() = runBlocking {

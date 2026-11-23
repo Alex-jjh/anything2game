@@ -34,6 +34,14 @@ class PracticeStore(file: File, private val sessions: SessionStore, private val 
         }
     }
     suspend fun recover() = afterRecovery { Unit }
+    /** Accept an initialization calculated outside the lock only if its checkpoint is still current. */
+    suspend fun initialize(previous: SessionState?, candidate: SessionState): Map<String, MasteryRecord>? = afterRecovery {
+        val current = sessions.load(candidate.packageId, candidate.contentVersion)
+        if (current != previous) return@afterRecovery null
+        val records = units.all(candidate.packageId, candidate.contentVersion)
+        if (candidate != current) sessions.save(candidate)
+        records
+    }
     suspend fun commit(previous: SessionState, next: SessionState, changed: List<MasteryRecord>) = afterRecovery {
         val saved = sessions.load(previous.packageId, previous.contentVersion)
         if (saved == next) return@afterRecovery

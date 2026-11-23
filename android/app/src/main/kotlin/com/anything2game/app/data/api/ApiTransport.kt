@@ -12,9 +12,22 @@ import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URI
 
-class ApiException(val code: String, val retryable: Boolean, val detail: String? = null, val httpStatus: Int? = null) : Exception(detail ?: code) {
+class ApiException(val code: String, val retryable: Boolean, val detail: String? = null, val httpStatus: Int? = null,
+    val beforeDispatch: Boolean = false) : Exception(detail ?: code) {
     val definiteRejection get() = httpStatus != null && httpStatus in 400..499 && httpStatus != 408
     fun error() = ApiError(code, detail ?: code, retryable)
+}
+
+/** Local preparation failed before any part of the caller's request could be sent. */
+internal suspend fun <T> beforeApiDispatch(fallbackCode: String, action: suspend () -> T): T = try {
+    action()
+} catch (e: kotlinx.coroutines.CancellationException) {
+    throw e
+} catch (e: ApiException) {
+    if (e.beforeDispatch) throw e
+    throw ApiException(e.code, e.retryable, e.detail, e.httpStatus, beforeDispatch = true).also { it.initCause(e) }
+} catch (e: Exception) {
+    throw ApiException(fallbackCode, true, beforeDispatch = true).also { it.initCause(e) }
 }
 
 class ApiTransport(context: Context, private val baseUrl: String = BuildConfig.TUTOR_API, prefsName: String = "tutor_connection",
@@ -25,6 +38,7 @@ class ApiTransport(context: Context, private val baseUrl: String = BuildConfig.T
     val configured: Boolean get() = baseUrl.isNotBlank()
     val local: Boolean get() = configured && URI(baseUrl).host in setOf("127.0.0.1", "localhost")
     val endpoint: String get() = baseUrl
+    internal fun localOwnerKey(): String? = auth.getString(baseUrl, null)?.let { com.anything2game.app.data.stableId(baseUrl, it) }
     private fun validateUrl() {
         if (!configured) throw ApiException("NOT_CONFIGURED", false)
         val u = URI(baseUrl)
@@ -47,24 +61,28 @@ class ApiTransport(context: Context, private val baseUrl: String = BuildConfig.T
     suspend fun archive(path: String) = raw("GET", path, "application/json", null, token(), 40 shl 20)
 
     suspend fun post(path: String, type: String, bytes: ByteArray, limit: Int) =
-        raw("POST", path, type, bytes, token(), limit).decodeToString()
+        raw("POST", path, type, bytes, beforeApiDispatch("INSTALL_UNAVAILABLE") { token() }, limit).decodeToString()
 
     private suspend fun raw(method: String, path: String, type: String, body: ByteArray?, token: String?, limit: Int = MAX_RESPONSE): ByteArray = withContext(Dispatchers.IO) {
-        validateUrl()
-        val connection = openConnection(URI(baseUrl.trimEnd('/') + path).toURL())
+        val connection = beforeApiDispatch("CONNECTION_OR_FILE_ERROR") {
+            validateUrl()
+            openConnection(URI(baseUrl.trimEnd('/') + path).toURL())
+        }
         try {
-            connection.requestMethod = method
-            connection.instanceFollowRedirects = false
-            connection.connectTimeout = 10000
-            connection.readTimeout = 90000
-            connection.setRequestProperty("Accept", if (path.startsWith("/v1/content/")) "application/vnd.anything2game.pack+zip" else "application/json")
-            token?.let { connection.setRequestProperty("Authorization", "Bearer $it") }
-            if (body != null) {
-                connection.doOutput = true
-                connection.setRequestProperty("Content-Type", type)
-                connection.setFixedLengthStreamingMode(body.size)
-                connection.outputStream.use { it.write(body) }
+            beforeApiDispatch("CONNECTION_OR_FILE_ERROR") {
+                connection.requestMethod = method
+                connection.instanceFollowRedirects = false
+                connection.connectTimeout = 10000
+                connection.readTimeout = 90000
+                connection.setRequestProperty("Accept", if (path.startsWith("/v1/content/")) "application/vnd.anything2game.pack+zip" else "application/json")
+                token?.let { connection.setRequestProperty("Authorization", "Bearer $it") }
+                if (body != null) {
+                    connection.doOutput = true
+                    connection.setRequestProperty("Content-Type", type)
+                    connection.setFixedLengthStreamingMode(body.size)
+                }
             }
+            if (body != null) connection.outputStream.use { it.write(body) }
             val status = connection.responseCode
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
             val data = stream?.use { PdfBytes.readBounded(it, limit + 1) } ?: byteArrayOf()

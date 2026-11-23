@@ -118,18 +118,21 @@ class TutorCacheStore(private val directory: File,
         f.extension == "json" -> f
         else -> null
     } }.distinct()
+    // Direct opens still report corrupt records. Inventory scans isolate damaged historical files in place.
+    private fun historical(file: File): TutorCache? = try { load(file) } catch (_: java.io.IOException) { null }
+        catch (_: IllegalArgumentException) { null } catch (_: IllegalStateException) { null }
     private var checkedPending = false
     suspend fun recoverPendingReads() = withContext(Dispatchers.IO) {
         lock.withLock {
             if (!checkedPending) {
-                for (file in targets()) load(file)?.let { recover(it) }
+                for (file in targets()) historical(file)?.let { recover(it) }
                 checkedPending = true
             }
         }
     }
     suspend fun list(): List<TutorSession> = withContext(Dispatchers.IO) {
         lock.withLock {
-            targets().mapNotNull { load(it)?.let { cache -> recover(cache).session } }
+            targets().mapNotNull { historical(it)?.let { cache -> recover(cache).session } }
                 .filter { it.mode != "local-mock" }.sortedBy { it.title }
         }
     }

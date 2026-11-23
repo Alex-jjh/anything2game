@@ -5,6 +5,7 @@ import com.anything2game.app.data.api.ApiTransport
 import com.anything2game.app.data.api.ActivityApi
 import com.anything2game.app.data.learning.*
 import com.anything2game.app.data.tutor.TutorHttpClient
+import com.anything2game.app.data.content.AuthenticatedCourses
 import com.anything2game.app.data.content.AssetPackSource
 import com.anything2game.app.data.content.ContentLibrary
 import com.anything2game.app.data.content.DirectoryPackSource
@@ -38,8 +39,6 @@ import com.anything2game.app.data.tutor.AndroidTutorRepository
 import com.anything2game.app.data.tutor.PresetSources
 import com.anything2game.app.data.tutor.SourceDocumentStore
 import com.anything2game.app.data.tutor.TutorRepository
-import com.anything2game.contract.pack.PackCodec
-import com.anything2game.contract.pack.PackOrigin
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -77,7 +76,7 @@ interface AppDependencies {
 }
 
 /** Composition root: the only place that picks concrete implementations. */
-class AndroidAppContainer(context: Context) : AppDependencies {
+class AndroidAppContainer(context: Context, private val apiBaseUrl: String = BuildConfig.TUTOR_API) : AppDependencies {
     private val app = context.applicationContext
     // One content library over every pack source: bundled presets first, then packs installed on the device
     // (from our server or imported). Same file format everywhere; the engine sees only the two ports.
@@ -106,30 +105,26 @@ class AndroidAppContainer(context: Context) : AppDependencies {
             FileMasteryStore(File(dir, "mastery")) { content.load(it).getOrNull()?.contentVersion }, progress, clock)
         val sessions: SessionStore = practice
         val mastery: MasteryStore = practice
-        private val transport = ApiTransport(app, prefsName = profile.prefs("tutor_connection"))
+        private val transport = ApiTransport(app, apiBaseUrl, profile.prefs("tutor_connection"))
         private val http = TutorHttpClient(app, transport)
         private val api = ActivityApi(transport)
+        private val authenticated = AuthenticatedCourses(File(dir, "owned-courses.json"), content, transport::localOwnerKey)
         val framePreferences: FramePreferences = SharedPrefsFramePreferences(app, profile.prefs("frames"))
         val homePreferences = HomePreferences(app, profile.prefs("home"))
         val avatarPreferences: AvatarPreferences = SharedPrefsAvatarPreferences(app, profile.prefs("avatar"))
         val explainerPreferences: ExplainerPreferences = SharedPrefsExplainerPreferences(app, profile.prefs("explainer"))
-        val tutors = AndroidTutorRepository(app, packages, tutorScripts, ::installServerPackage, File(dir, "tutor-sessions"), profile.prefs("tutor_connection"), File(dir, "source-documents"), http, progress::tutorRead)
+        val tutors = AndroidTutorRepository(app, packages, tutorScripts, authenticated::install, File(dir, "tutor-sessions"), profile.prefs("tutor_connection"), File(dir, "source-documents"), http, progress::tutorRead)
         // Same per-profile directory as the imported PDFs, so a lookup by the session's ids finds an attached preset PDF too.
         // Unit tests run with the papers left out (-Da2g.bundledPdfs=off): they exercise "nothing attached", and
         // Robolectric cannot render a PDF page anyway; the bundled path has its own test on PresetSources.
         val presetSources = PresetSources(content, SourceDocumentStore(File(dir, "source-documents"))) { id ->
             if (System.getProperty("a2g.bundledPdfs") == "off") null else runCatching { app.assets.open("sample-pdfs/$id.pdf") }.getOrNull()
         }
-        val materials = MaterialCatalog(content, tutors, presetSources, sessions)
+        val materials = MaterialCatalog(content, tutors, presetSources, sessions, authenticated::owns)
         val spaces = SpaceRepository(File(dir, "spaces.json"), materials::materials, api, content::path)
         val generation = GenerationRepository(File(dir, "generation.json"), api, content, materials, spaces)
         val imports = PdfImportQueue(File(dir, "pdf-imports"), http::readPdf, tutors, spaces)
 
-    }
-
-    private suspend fun installServerPackage(pkg: com.anything2game.contract.LearningPackage) {
-        val pack = PackCodec.build(pkg, emptyList(), PackOrigin.SERVER)
-        content.install(PackCodec.toBytes(pack).inputStream())
     }
 
     private val registry = ProfileRegistry(app).also { r ->

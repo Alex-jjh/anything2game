@@ -26,7 +26,7 @@ sealed interface SourceTarget {
 }
 
 class MaterialCatalog(private val content: ContentLibrary, private val tutors: TutorRepository, private val presets: PresetSources? = null,
-    private val sessions: com.anything2game.engine.ports.SessionStore? = null) {
+    private val sessions: com.anything2game.engine.ports.SessionStore? = null, private val authenticated: suspend (ContentPack) -> Boolean = { false }) {
     suspend fun materials(): List<Material> {
         val saved = tutors.list()
         val result = mutableListOf<Material>()
@@ -40,15 +40,7 @@ class MaterialCatalog(private val content: ContentLibrary, private val tutors: T
             val pack = content.course(version) ?: continue
             val pkg = pack.pkg
             val source = ContentVersion(pkg.documentId, pkg.documentVersion)
-            // An owned cached tutor confirms this server document identity. A package alone never proves ownership.
-            val owned = manifest.origin == PackOrigin.SERVER && saved.any { session ->
-                session.documentId == pkg.documentId && session.documentVersion == pkg.documentVersion &&
-                    session.sources.isNotEmpty() && session.sources.all { excerpt ->
-                        val full = pkg.chunk(excerpt.chunkId)
-                        full != null && full.pageIndex == excerpt.pageIndex && full.pageLabel == excerpt.pageLabel &&
-                            full.text.startsWith(excerpt.text)
-                    }
-            }
+            val owned = authenticated(pack)
             val member = if (owned) SpaceMember.ServerDocumentRef(pkg.documentId, pkg.documentVersion)
                 else SpaceMember.LocalPackRef(pkg.packageId, pkg.contentVersion)
             val questions = pack.tutor?.blueprint?.concepts.orEmpty().map { it.question }
@@ -127,11 +119,15 @@ class MaterialCatalog(private val content: ContentLibrary, private val tutors: T
             is EvidenceRef.Reviewed -> SourceTarget.Card(evidence)
             is EvidenceRef.External -> SourceTarget.External(evidence)
             is EvidenceRef.Pdf -> {
-                val material = materials().firstOrNull { it.matches(evidence) } ?: return null
-                val local = material.member as? SpaceMember.LocalPackRef
-                val document = tutors.sourceDocument(evidence.documentId, evidence.documentVersion) ?:
-                    local?.let { presets?.load(it.packageId, evidence.documentId, evidence.documentVersion, it.contentVersion) }
-                SourceTarget.Pdf(material.chunks, SourceRef(evidence.chunkId, evidence.quote), document)
+                val matches = materials().filter { it.matches(evidence) }
+                if (matches.isEmpty()) return null
+                val reference = SourceRef(evidence.chunkId, evidence.quote)
+                for (material in matches) {
+                    val local = material.member as? SpaceMember.LocalPackRef ?: continue
+                    val pdf = presets?.load(local.packageId, evidence.documentId, evidence.documentVersion, local.contentVersion)
+                    if (pdf != null) return SourceTarget.Pdf(material.chunks, reference, pdf)
+                }
+                SourceTarget.Pdf(matches.first().chunks, reference, tutors.sourceDocument(evidence.documentId, evidence.documentVersion))
             }
         }
     }
