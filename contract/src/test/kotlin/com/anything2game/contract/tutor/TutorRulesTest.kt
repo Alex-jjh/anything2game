@@ -44,6 +44,29 @@ class TutorRulesTest {
         // Content written before scenes existed still decodes.
         assertTrue(ContractJson.json.decodeFromString(TutorMessage.serializer(), "{\"id\":\"m\",\"role\":\"tutor\",\"text\":\"x\"}").beats.isEmpty())
     }
+    @Test fun `a concept can be explained again, but only one that was already introduced`() {
+        val q2 = q.copy(id = "q2", conceptId = "c2")
+        val q3 = q.copy(id = "q3", conceptId = "c3")
+        val s = TutorSession(sessionId = "t", documentId = "d", documentVersion = "v", title = "T", language = "en", mode = "local-mock",
+            questions = listOf(q, q2, q3), sources = source, conceptPosition = 1, conceptsIntroduced = 2,
+            assessment = listOf(q, q2, q3).map { ConceptAssessment(it.id, it.conceptId, Understanding.NOT_YET_ASSESSED) })
+        assertEquals(2, TutorRules.positionAfter(s, TutorIntent.CONTINUE))
+        assertEquals(0, TutorRules.positionAfter(s, TutorIntent.REVISIT, 0))
+        assertEquals(1, TutorRules.positionAfter(s, TutorIntent.REVISIT, 1))
+        assertEquals("staying put needs no target", 1, TutorRules.positionAfter(s, TutorIntent.REPHRASE))
+        // Not yet introduced, off the end, no target, or a target on an intent that does not take one.
+        for (bad in listOf({ TutorRules.positionAfter(s, TutorIntent.REVISIT, 2) }, { TutorRules.positionAfter(s, TutorIntent.REVISIT, 3) },
+            { TutorRules.positionAfter(s, TutorIntent.REVISIT, -1) }, { TutorRules.positionAfter(s, TutorIntent.REVISIT) },
+            { TutorRules.positionAfter(s, TutorIntent.CONTINUE, 0) }, { TutorRules.positionAfter(s.copy(conceptPosition = 2), TutorIntent.CONTINUE) }))
+            assertThrows(IllegalArgumentException::class.java) { bad() }
+        // A session saved before revisiting existed: its position is still the furthest point reached.
+        assertEquals(3, TutorRules.introduced(s.copy(conceptPosition = 2, conceptsIntroduced = 0)))
+        assertEquals(0, TutorRules.positionAfter(s.copy(conceptPosition = 2, conceptsIntroduced = 0), TutorIntent.REVISIT, 0))
+        // Revisiting explains that concept, scene lines and all; it is not the shorter Rephrase answer.
+        val again = TutorRules.scriptedReply(s.copy(conceptPosition = 0), bp.copy(concepts = listOf(q, q2, q3).map { bp.concepts.single().copy(question = it) }), TutorIntent.REVISIT)
+        assertTrue(again.text.contains("Explanation"))
+    }
+
     @Test fun `missing fields and broken JSON fail safely`() {
         for (raw in listOf("{", "{}", "{\"concepts\":[{}]}")) {
             assertTrue(runCatching { ContractJson.json.decodeFromString(TutorBlueprint.serializer(), raw).also { TutorRules.validate(it, source) } }.isFailure)

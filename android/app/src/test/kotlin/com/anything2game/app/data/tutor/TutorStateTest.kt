@@ -26,7 +26,7 @@ class TutorStateTest {
         override suspend fun save(cache: TutorCache) { this.cache = cache; saved += cache }
         override suspend fun list() = listOf(cache.session)
         override suspend fun assess(cache: TutorCache, requestId: String) = cache.session.copy(revision = 1, answers = cache.draftAnswers, assessment = listOf(ConceptAssessment("q", "c", Understanding.NOT_YET_ASSESSED)))
-        override suspend fun turn(cache: TutorCache, intent: TutorIntent, question: String, requestId: String) = cache.session.copy(revision = cache.session.revision + 1, messages = listOf(TutorMessage("late", "tutor", "Late result")))
+        override suspend fun turn(cache: TutorCache, intent: TutorIntent, question: String, requestId: String, targetPosition: Int?) = cache.session.copy(revision = cache.session.revision + 1, messages = listOf(TutorMessage("late", "tutor", "Late result")))
         override suspend fun cancel(cache: TutorCache, requestId: String) = cache.session.copy(revision = cache.session.revision + 1)
         override suspend fun upload(request: ImportRequest): DocumentResponse { uploads++; return DocumentResponse("doc", "v", 1, "Title") }
         override suspend fun create(document: DocumentResponse, requestId: String): TutorSession { creates++; return cache.session }
@@ -38,9 +38,9 @@ class TutorStateTest {
             val base = initial().let { it.copy(session = it.session.copy(answers = mapOf("q" to UNKNOWN_ANSWER), assessment = listOf(ConceptAssessment("q", "c", Understanding.NOT_YET_ASSESSED)))) }
             val gate = CompletableDeferred<Unit>()
             val repo = object : Repository(base) {
-                override suspend fun turn(cache: TutorCache, intent: TutorIntent, question: String, requestId: String): TutorSession {
+                override suspend fun turn(cache: TutorCache, intent: TutorIntent, question: String, requestId: String, targetPosition: Int?): TutorSession {
                     withContext(NonCancellable) { gate.await() }
-                    return super.turn(cache, intent, question, requestId)
+                    return super.turn(cache, intent, question, requestId, targetPosition)
                 }
             }
             val vm = TutorViewModel(repo, "tut_test"); runCurrent()
@@ -66,9 +66,9 @@ class TutorStateTest {
             ) }
             var fail = true
             val repo = object : Repository(base) {
-                override suspend fun turn(cache: TutorCache, intent: TutorIntent, question: String, requestId: String): TutorSession {
+                override suspend fun turn(cache: TutorCache, intent: TutorIntent, question: String, requestId: String, targetPosition: Int?): TutorSession {
                     if (fail) throw java.io.IOException("offline")
-                    return super.turn(cache, intent, question, requestId)
+                    return super.turn(cache, intent, question, requestId, targetPosition)
                 }
             }
             val vm = TutorViewModel(repo, "tut_test"); runCurrent()

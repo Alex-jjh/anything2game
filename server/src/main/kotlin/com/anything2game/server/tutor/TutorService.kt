@@ -74,10 +74,14 @@ class TutorService(
         if (req.intent == TutorIntent.QUESTION && (req.question.isBlank() || req.question.length > 1000)) throw ApiException.badRequest("question must be 1 to 1000 characters")
         if (req.intent != TutorIntent.QUESTION && req.question.isNotEmpty()) throw ApiException.badRequest("Only QUESTION accepts text")
         if ((req.intent == TutorIntent.START) != s.messages.isEmpty()) throw ApiException.badRequest("START is only valid for the first turn.")
-        val nextPosition = if (req.intent == TutorIntent.CONTINUE) s.conceptPosition + 1 else s.conceptPosition
-        if (nextPosition >= s.questions.size) throw ApiException.badRequest("All concepts have been introduced. Ask a follow-up instead.")
+        val nextPosition = try { TutorRules.positionAfter(s, req.intent, req.targetPosition) }
+        catch (e: IllegalArgumentException) {
+            if (req.intent == TutorIntent.CONTINUE) throw ApiException.badRequest("All concepts have been introduced. Ask a follow-up instead.")
+            throw ApiException.badRequest(e.message ?: "That concept cannot be explained again.")
+        }
         consume()
-        val next = s.copy(conceptPosition = nextPosition)
+        // Going back does not undo the walk: the furthest point reached is kept.
+        val next = s.copy(conceptPosition = nextPosition, conceptsIntroduced = maxOf(TutorRules.introduced(s), nextPosition + 1))
         val user = TutorMessage("m${s.revision + 1}u", "user", if (req.intent == TutorIntent.QUESTION) req.question.trim() else label(req.intent, s.language))
         if (s.mode == "model" && mock) throw conflict("TUTOR_MODE_CHANGED")
         val answer = if (s.mode == "mock") TutorRules.scriptedReply(next, current.blueprint, req.intent) else reply(next, req)
@@ -146,9 +150,9 @@ class TutorService(
     }
 
     private fun label(intent: TutorIntent, language: String): String = if (language == "zh") when (intent) {
-        TutorIntent.START -> "按我的摸底结果开始讲解"; TutorIntent.REPHRASE -> "换个说法"; TutorIntent.EXAMPLE -> "举个例子"; TutorIntent.CONTINUE -> "继续讲解"; else -> "追问"
+        TutorIntent.START -> "按我的摸底结果开始讲解"; TutorIntent.REPHRASE -> "换个说法"; TutorIntent.EXAMPLE -> "举个例子"; TutorIntent.CONTINUE -> "继续讲解"; TutorIntent.REVISIT -> "再讲一遍这个概念"; else -> "追问"
     } else when (intent) {
-        TutorIntent.START -> "Start with my results"; TutorIntent.REPHRASE -> "Rephrase"; TutorIntent.EXAMPLE -> "Give an example"; TutorIntent.CONTINUE -> "Continue"; else -> "Ask"
+        TutorIntent.START -> "Start with my results"; TutorIntent.REPHRASE -> "Rephrase"; TutorIntent.EXAMPLE -> "Give an example"; TutorIntent.CONTINUE -> "Continue"; TutorIntent.REVISIT -> "Explain that one again"; else -> "Ask"
     }
 
     private fun fakeBlueprint(sources: List<SourceChunk>, language: String): TutorBlueprint {

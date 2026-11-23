@@ -111,7 +111,7 @@ private data class Beat(
 internal fun ExplainerTheatre(
     session: TutorSession, theme: ExplainerTheme, busy: Boolean, enabled: Boolean, offline: Boolean, problem: String?,
     lastIntent: TutorIntent?, input: String, onInput: (String) -> Unit,
-    onTurn: (TutorIntent, String) -> Unit, onSource: (List<SourceRef>) -> Unit,
+    onTurn: (TutorIntent, String, Int?) -> Unit, onSource: (List<SourceRef>) -> Unit,
     onRetry: () -> Unit, onReload: () -> Unit, onCancel: () -> Unit, onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -190,8 +190,12 @@ internal fun ExplainerTheatre(
     var logOpen by rememberSaveable { mutableStateOf(false) }
     // The end of the walk is a screen of its own: what was covered, where each idea stood, and the pages to go back to.
     var wrapOpen by rememberSaveable { mutableStateOf(false) }
+    // The concept list: where the walk is, and a way back to anything it has already introduced.
+    var conceptsOpen by rememberSaveable { mutableStateOf(false) }
     androidx.activity.compose.BackHandler(enabled = wrapOpen) { wrapOpen = false }
+    val revisit = { target: Int -> conceptsOpen = false; wrapOpen = false; onTurn(TutorIntent.REVISIT, "", target) }
     val advance = { if (!last && !busy) page = index + 1 }
+    val back = { if (index > 0 && !busy) page = index - 1 }
     // A tap turns the page. Not `clickable`: that would merge the box's texts and chips into one accessibility node.
     val nextLabel = stringResource(R.string.explainer_tap_next)
     val tap = Modifier.pointerInput(index, last, busy) { detectTapGestures { advance() } }.semantics { onClick(label = nextLabel) { advance(); true } }
@@ -209,7 +213,7 @@ internal fun ExplainerTheatre(
         val dialogue: @Composable (Modifier) -> Unit = { m ->
             DialogueBox(
                 beat, index, beats.size, last, busy, if (beat.player) playerName else explainer, atLastConcept && last && !beat.player,
-                intent = lastIntent, onNext = advance, onSkip = { page = beats.lastIndex }, onSource = onSource, session = session, tap = tap.then(m),
+                intent = lastIntent, onNext = advance, onBack = back, onSkip = { page = beats.lastIndex }, onSource = onSource, session = session, tap = tap.then(m),
                 chosen = checked[index], onCheck = { option -> checked = checked + (index to option) },
             )
         }
@@ -217,12 +221,13 @@ internal fun ExplainerTheatre(
             Notices(offline, problem, busy, onRetry, onReload)
             ChoiceBar(
                 visible = last || busy, busy = busy, enabled = enabled && !full, atLastConcept = atLastConcept, full = full,
-                onTurn = { intent -> onTurn(intent, "") }, onAsk = { askOpen = true }, onCancel = onCancel, onFinish = { wrapOpen = true },
+                onTurn = { intent -> onTurn(intent, "", null) }, onAsk = { askOpen = true }, onCancel = onCancel, onFinish = { wrapOpen = true },
             )
         }
         Column(Modifier.fillMaxSize()) {
             TopBar(onBack, onLog = { logOpen = true }, height = topBar) {
-                Progress(session.conceptPosition, session.questions.size, (index + 1f) / beats.size, finished = atLastConcept && last, Modifier.weight(1f))
+                Progress(session.conceptPosition, session.questions.size, (index + 1f) / beats.size, finished = atLastConcept && last,
+                    onOpen = { conceptsOpen = true }.takeIf { !busy }, modifier = Modifier.weight(1f))
             }
             if (landscape) {
                 Row(Modifier.weight(1f).fillMaxWidth()) {
@@ -240,15 +245,17 @@ internal fun ExplainerTheatre(
                 }
             }
         }
-        if (wrapOpen) WrapUp(session, theme, explainer, onSource, onShelf = onBack, onStay = { wrapOpen = false }, Modifier.fillMaxSize())
+        if (wrapOpen) WrapUp(session, theme, explainer, onSource, onShelf = onBack, onStay = { wrapOpen = false },
+            onRestart = { revisit(0) }, modifier = Modifier.fillMaxSize())
     }
 
     if (askOpen) AskSheet(
         name = explainer, session = session, input = input, onInput = onInput,
         canSend = enabled && !full && input.isNotBlank(),
-        onSend = { onTurn(TutorIntent.QUESTION, input); onInput(""); askOpen = false },
+        onSend = { onTurn(TutorIntent.QUESTION, input, null); onInput(""); askOpen = false },
         onDismiss = { askOpen = false },
     )
+    if (conceptsOpen) ConceptSheet(session, onJump = revisit, onDismiss = { conceptsOpen = false })
     if (logOpen) LogSheet(session, explainer, playerName, onSource = { refs -> onSource(refs) }, onDismiss = { logOpen = false })
 }
 
@@ -286,7 +293,7 @@ private fun Stage(
 @Composable
 private fun DialogueBox(
     beat: Beat, index: Int, total: Int, last: Boolean, busy: Boolean, speaker: String, closing: Boolean,
-    intent: TutorIntent?, onNext: () -> Unit, onSkip: () -> Unit, onSource: (List<SourceRef>) -> Unit, session: TutorSession, tap: Modifier,
+    intent: TutorIntent?, onNext: () -> Unit, onBack: () -> Unit, onSkip: () -> Unit, onSource: (List<SourceRef>) -> Unit, session: TutorSession, tap: Modifier,
     chosen: String? = null, onCheck: (String) -> Unit = {},
 ) {
     val skin = A2g.skin
@@ -313,6 +320,7 @@ private fun DialogueBox(
                         TutorIntent.EXAMPLE -> R.string.explainer_mode_example
                         TutorIntent.REPHRASE -> R.string.explainer_mode_rephrase
                         TutorIntent.QUESTION -> R.string.explainer_mode_answer
+                        TutorIntent.REVISIT -> R.string.explainer_mode_again
                         else -> null
                     }
                     if (mode != null) Text(stringResource(mode), style = MaterialTheme.typography.labelMedium, color = skin.action,
@@ -334,6 +342,9 @@ private fun DialogueBox(
                 if (!busy && !compact && beat.refs.isNotEmpty()) SourceButton(session, beat.refs, false, onSource)
                 Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (!busy && compact && beat.refs.isNotEmpty()) SourceButton(session, beat.refs, true, onSource)
+                    if (index > 0 && !busy) TextButton(onClick = onBack, modifier = Modifier.testTag("dialogue_back")) {
+                        Text("◂ " + stringResource(R.string.explainer_prev_page), color = skin.inkMuted)
+                    }
                     PageDots(index, total, Modifier.weight(1f).testTag("dialogue_page"))
                     if (index < total - 2 && !busy) TextButton(onClick = onSkip, modifier = Modifier.testTag("dialogue_skip")) { Text(stringResource(R.string.explainer_last_page), color = skin.inkMuted) }
                     if (!last && !busy) TextButton(onClick = onNext, modifier = Modifier.testTag("dialogue_next")) {

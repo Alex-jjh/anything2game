@@ -140,6 +140,22 @@ class ExplainerScreenshotTest {
         }
     }
 
+    /** The concept list: where the walk is, what it has already introduced, and the way to take it again. */
+    @Test fun zh_spaced_concept_list() {
+        RuntimeEnvironment.setQualifiers("+zh")
+        val deps = seed(Stage.STARTED, "demo_zh_spaced")
+        runBlocking {
+            var cache = deps.tutors.open("demo_zh_spaced").cache
+            cache = cache.copy(session = deps.tutors.turn(cache, TutorIntent.CONTINUE, "", "c0"))
+            deps.tutors.save(cache)
+        }
+        show(deps, pkg = "demo_zh_spaced")
+        rule.onNodeWithTag("concept_progress_button").performClick()
+        rule.waitUntil(10000) { rule.onAllNodesWithTag("concept_sheet").fetchSemanticsNodes().isNotEmpty() }
+        rule.waitForIdle()
+        captureScreenRoboImage("$out/23_zh_concept_list.png")
+    }
+
     @Test fun zh_spaced_source_viewer() {
         RuntimeEnvironment.setQualifiers("+zh")
         show(seed(Stage.STARTED, "demo_zh_spaced"), pkg = "demo_zh_spaced"); lastPage()

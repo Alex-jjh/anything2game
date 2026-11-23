@@ -38,4 +38,13 @@
     <string name="wrapup_shelf">回到书架</string>
     <string name="check_right">答对了。</string>
     <string name="check_wrong">不太对。</string>
+    <string name="explainer_prev_page">上一页</string>
+    <string name="explainer_concepts_open">打开概念列表</string>
+    <string name="explainer_concepts_title">这次讲解的概念</string>
+    <string name="explainer_concepts_note">点一个讲过的概念就能再听一遍。已经读过的内容不会丢。</string>
+    <string name="explainer_concept_here">当前位置</string>
+    <string name="explainer_concept_again">再讲一遍</string>
+    <string name="explainer_concept_ahead">还没讲到</string>
+    <string name="explainer_restart">从第一个概念重新讲</string>
+    <string name="explainer_mode_again">再讲一遍</string>
 </resources>

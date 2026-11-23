@@ -66,7 +66,11 @@ const val SPEAKER_PLAYER = "player"
 }
 @Serializable enum class Understanding { DEMONSTRATED, NEEDS_CLARIFICATION, NOT_YET_ASSESSED }
 @Serializable data class ConceptAssessment(val questionId: String, val conceptId: String, val evidence: Understanding)
-@Serializable enum class TutorIntent { START, REPHRASE, EXAMPLE, CONTINUE, QUESTION }
+@Serializable enum class TutorIntent {
+    START, REPHRASE, EXAMPLE, CONTINUE, QUESTION,
+    /** Explain a concept that was already introduced again, at `targetPosition`: going back, or starting the walk over. */
+    REVISIT,
+}
 @Serializable data class TutorMessage(
     val id: String, val role: String, val text: String, val sourceRefs: List<SourceRef> = emptyList(),
     /** The same reply as scene lines, when the content has them; [text] stays the full reply (Log, older clients). */
@@ -78,12 +82,18 @@ const val SPEAKER_PLAYER = "player"
     val revision: Int = 0, val answers: Map<String, String> = emptyMap(),
     val assessment: List<ConceptAssessment> = emptyList(), val messages: List<TutorMessage> = emptyList(),
     val conceptPosition: Int = 0,
+    /** How many concepts the walk has introduced (its furthest point). 0 in sessions saved before revisiting existed. */
+    val conceptsIntroduced: Int = 0,
     /** What the reader wants to get out of the document. Empty = let the explainer decide. */
     val focus: List<Facet> = emptyList(), val focusNote: String = "",
 )
 @Serializable data class CreateTutorRequest(val language: String = "zh", val clientRequestId: String)
 @Serializable data class AssessTutorRequest(val expectedRevision: Int, val answers: Map<String, String>, val clientRequestId: String)
-@Serializable data class TutorTurnRequest(val expectedRevision: Int, val intent: TutorIntent, val question: String = "", val clientRequestId: String)
+@Serializable data class TutorTurnRequest(
+    val expectedRevision: Int, val intent: TutorIntent, val question: String = "", val clientRequestId: String,
+    /** REVISIT only: which already-introduced concept to explain again (0-based, at most the furthest reached). */
+    val targetPosition: Int? = null,
+)
 
 /** Pure checks shared by the local fixed example and server. Correct answers for real documents stay on the server. */
 object TutorRules {
@@ -167,6 +177,25 @@ object TutorRules {
         }
     }
 
+    /** The furthest concept the walk has reached, for a session saved before [TutorSession.conceptsIntroduced] existed. */
+    fun introduced(session: TutorSession): Int = maxOf(session.conceptsIntroduced, session.conceptPosition + 1).coerceAtMost(session.questions.size)
+
+    /**
+     * Where a turn lands. CONTINUE moves on, REVISIT goes to an already-introduced concept, everything else stays put.
+     * Throws when the move is not allowed, so a request cannot skip a concept or revisit one that was never introduced.
+     */
+    fun positionAfter(session: TutorSession, intent: TutorIntent, targetPosition: Int? = null): Int {
+        require(intent == TutorIntent.REVISIT || targetPosition == null) { "Only REVISIT takes a target" }
+        val position = when (intent) {
+            TutorIntent.CONTINUE -> session.conceptPosition + 1
+            TutorIntent.REVISIT -> requireNotNull(targetPosition) { "REVISIT needs a target" }
+            else -> session.conceptPosition
+        }
+        require(position in session.questions.indices) { "No such concept" }
+        if (intent == TutorIntent.REVISIT) require(position < introduced(session)) { "That concept has not been introduced yet" }
+        return position
+    }
+
     /** One scripted turn pulled apart: the concept's name, the personalised lead-in line, and the explanation itself. */
     data class ScriptedParts(val title: String, val leadIn: String, val body: String)
 
@@ -210,8 +239,9 @@ object TutorRules {
             TutorIntent.EXAMPLE -> c.example
             else -> c.explanation
         }
+
         // A course written as a scene says its lines; Rephrase and Example stay one short reply each.
-        val beats = if (intent == TutorIntent.START || intent == TutorIntent.CONTINUE) c.beats else emptyList()
+        val beats = if (intent in setOf(TutorIntent.START, TutorIntent.CONTINUE, TutorIntent.REVISIT)) c.beats else emptyList()
         val said = if (beats.isEmpty()) body else beats.joinToString("\n") { it.text }
         return TutorMessage("m${session.revision + 1}a", "tutor", "${q.concept}\n${leadIn(evidence, zh)}\n$said", q.sourceRefs, beats)
     }

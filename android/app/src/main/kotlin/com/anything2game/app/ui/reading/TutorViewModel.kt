@@ -63,10 +63,13 @@ class TutorViewModel(private val repository: TutorRepository, private val id: St
         if (c.questionIndex < c.session.questions.lastIndex) execute { old, _ -> old.copy(questionIndex = old.questionIndex + 1) }
         else execute { old, requestId -> old.copy(session = repository.assess(old, requestId)) }
     }
-    fun turn(intent: TutorIntent, question: String = "") {
+    fun turn(intent: TutorIntent, question: String = "", targetPosition: Int? = null) {
         if (intent == TutorIntent.QUESTION && (question.isBlank() || question.length > 1000)) return
+        // A move the rules refuse (a concept not introduced yet) is not a request to send.
+        val session0 = mutable.value.cache?.session ?: return
+        if (runCatching { TutorRules.positionAfter(session0, intent, targetPosition) }.isFailure) return
         execute { c, requestId ->
-            val session = repository.turn(c, intent, question.trim(), requestId)
+            val session = repository.turn(c, intent, question.trim(), requestId, targetPosition)
             val reply = session.messages.lastOrNull { it.role == "tutor" }
             val presentation = reply?.takeIf { it.id != c.session.messages.lastOrNull { m -> m.role == "tutor" }?.id }
                 ?.let { TutorReplyPresentation(it.id, intent) } ?: c.lastReply

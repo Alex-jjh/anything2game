@@ -56,6 +56,17 @@ class TutorApiTest {
         assertTrue(s.messages.last().text.contains("没法回答新的问题"))
         assertTrue(s.messages.last().sourceRefs.isEmpty())
         assertEquals(s, api.decode(TutorSession.serializer(), api.send(HttpMethod.Get, tutorPath, token)))
+        // A concept can be explained again; one the walk has not introduced yet cannot.
+        fun revisit(revision: Int, target: Int, id: String) = ContractJson.json.encodeToString(TutorTurnRequest.serializer(),
+            TutorTurnRequest(revision, TutorIntent.REVISIT, clientRequestId = id, targetPosition = target))
+        assertEquals(HttpStatusCode.BadRequest, api.send(HttpMethod.Post, "$tutorPath/turns", token, revisit(s.revision, 1, "ahead")).status)
+        s = api.decode(TutorSession.serializer(), api.send(HttpMethod.Post, "$tutorPath/turns", token,
+            ContractJson.json.encodeToString(TutorTurnRequest.serializer(), TutorTurnRequest(s.revision, TutorIntent.CONTINUE, clientRequestId = "next-1"))))
+        assertEquals(1, s.conceptPosition)
+        assertEquals(2, s.conceptsIntroduced)
+        s = api.decode(TutorSession.serializer(), api.send(HttpMethod.Post, "$tutorPath/turns", token, revisit(s.revision, 0, "again-1")))
+        assertEquals("back on the first concept", 0, s.conceptPosition)
+        assertEquals("but the walk it made is remembered", 2, s.conceptsIntroduced)
         // File-backed durability, without touching game packages or inventing an in-memory-only session.
         assertEquals(s, com.anything2game.server.store.FileStore(env.dir.toPath()).getTutor(s.sessionId)?.session)
         api.send(HttpMethod.Delete, "/v1/documents/${doc.documentId}", token)

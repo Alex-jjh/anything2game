@@ -54,7 +54,7 @@ fun ReadingContent(deps: AppDependencies, packageId: String, onBack: () -> Unit)
     var requestedIntent by rememberSaveable(packageId) { mutableStateOf<TutorIntent?>(null) }
     val context = LocalContext.current
     val theme = remember(profileId, context) { ExplainerThemes.resolve(context, deps.explainerPreferences.get()) }
-    val turn: (TutorIntent, String) -> Unit = { intent, question -> requestedIntent = intent; vm.turn(intent, question) }
+    val turn: (TutorIntent, String, Int?) -> Unit = { intent, question, target -> requestedIntent = intent; vm.turn(intent, question, target) }
     var unsupported by remember { mutableStateOf<LearningPackage?>(null) }
     LaunchedEffect(state.unsupported) {
         if (state.unsupported) unsupported = deps.packages.load(packageId).getOrNull()
@@ -144,7 +144,7 @@ fun ReadingContent(deps: AppDependencies, packageId: String, onBack: () -> Unit)
                             Badge(stringResource(when (evidence) { Understanding.DEMONSTRATED -> R.string.tutor_correct; Understanding.NEEDS_CLARIFICATION -> R.string.tutor_clarify; Understanding.NOT_YET_ASSESSED -> R.string.tutor_not_assessed }), skin.action, skin.evidenceSoft)
                         }
                     }
-                    item { Button(onClick = { turn(TutorIntent.START, "") }, enabled = enabled, modifier = Modifier.fillMaxWidth().testTag("start_tutor")) { Text(stringResource(R.string.tutor_start)) } }
+                    item { Button(onClick = { turn(TutorIntent.START, "", null) }, enabled = enabled, modifier = Modifier.fillMaxWidth().testTag("start_tutor")) { Text(stringResource(R.string.tutor_start)) } }
                 }
             }
         }

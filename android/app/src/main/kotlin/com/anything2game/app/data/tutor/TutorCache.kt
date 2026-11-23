@@ -37,6 +37,7 @@ import java.security.MessageDigest
         require(s.questions.map { it.id }.distinct().size == s.questions.size)
         TutorRules.checkFocus(s.focus, s.focusNote)
         require(questionIndex in s.questions.indices && s.conceptPosition in s.questions.indices)
+        require(s.conceptsIntroduced in 0..s.questions.size && s.conceptsIntroduced <= s.questions.size)
         s.questions.forEach { q ->
             require(q.id.isNotBlank() && q.conceptId.isNotBlank() && q.prompt.isNotBlank())
             require(q.options.size in 2..4 && q.options.map { it.id }.distinct().size == q.options.size)

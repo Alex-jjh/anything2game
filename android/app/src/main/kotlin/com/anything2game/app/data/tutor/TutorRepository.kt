@@ -29,7 +29,7 @@ interface TutorRepository {
     /** Saved progress of a scripted course, or null when nothing was saved yet. Never creates or changes a session. */
     suspend fun progressFor(packageId: String): TutorProgress? = null
     suspend fun assess(cache: TutorCache, requestId: String): TutorSession
-    suspend fun turn(cache: TutorCache, intent: TutorIntent, question: String, requestId: String): TutorSession
+    suspend fun turn(cache: TutorCache, intent: TutorIntent, question: String, requestId: String, targetPosition: Int? = null): TutorSession
     suspend fun cancel(cache: TutorCache, requestId: String): TutorSession
     suspend fun upload(request: ImportRequest): DocumentResponse
     suspend fun preparePractice(session: TutorSession): LearningPackage
@@ -113,13 +113,13 @@ class AndroidTutorRepository(
             assessment = TutorRules.assess(localScript(s).blueprint, cache.draftAnswers))
         return decode(http.request("POST", "/v1/tutors/${s.sessionId}/assessment", json.encodeToString(AssessTutorRequest.serializer(), AssessTutorRequest(s.revision, cache.draftAnswers, requestId)))).keepingFocusOf(s)
     }
-    override suspend fun turn(cache: TutorCache, intent: TutorIntent, question: String, requestId: String): TutorSession {
+    override suspend fun turn(cache: TutorCache, intent: TutorIntent, question: String, requestId: String, targetPosition: Int?): TutorSession {
         val s = cache.session
         if (s.mode == "local-mock") {
             require(s.messages.size < 80)
-            val position = if (intent == TutorIntent.CONTINUE) s.conceptPosition + 1 else s.conceptPosition
-            require(position in s.questions.indices)
-            val next = s.copy(conceptPosition = position)
+            val position = TutorRules.positionAfter(s, intent, targetPosition)
+            // Going back does not undo the walk: the furthest point reached is what the concept list offers.
+            val next = s.copy(conceptPosition = position, conceptsIntroduced = maxOf(TutorRules.introduced(s), position + 1))
             // The student's own turn is logged in the course's language (an English course must not show Chinese in its Log).
             val zh = s.language == "zh"
             val text = when (intent) {
@@ -127,11 +127,14 @@ class AndroidTutorRepository(
                 TutorIntent.REPHRASE -> if (zh) "换个说法" else "Say it another way"
                 TutorIntent.EXAMPLE -> if (zh) "举个例子" else "Give me an example"
                 TutorIntent.CONTINUE -> if (zh) "继续讲解" else "Continue"
+                TutorIntent.REVISIT -> if (position == 0 && s.conceptPosition > 0) (if (zh) "从头再讲一遍" else "Start over")
+                    else if (position == s.conceptPosition) (if (zh) "这个概念再讲一遍" else "Explain this one again")
+                    else if (zh) "回到上一个概念" else "Back to the concept before"
                 TutorIntent.QUESTION -> question
             }
             return next.copy(revision = s.revision + 1, messages = s.messages + TutorMessage("m${s.revision + 1}u", "user", text) + TutorRules.scriptedReply(next, localScript(s).blueprint, intent))
         }
-        return decode(http.request("POST", "/v1/tutors/${s.sessionId}/turns", json.encodeToString(TutorTurnRequest.serializer(), TutorTurnRequest(s.revision, intent, question, requestId)))).keepingFocusOf(s)
+        return decode(http.request("POST", "/v1/tutors/${s.sessionId}/turns", json.encodeToString(TutorTurnRequest.serializer(), TutorTurnRequest(s.revision, intent, question, requestId, targetPosition)))).keepingFocusOf(s)
     }
     override suspend fun cancel(cache: TutorCache, requestId: String): TutorSession = if (cache.session.mode == "local-mock") cache.session else
         decode(http.request("POST", "/v1/tutors/${cache.session.sessionId}/cancel", json.encodeToString(CreateTutorRequest.serializer(), CreateTutorRequest(clientRequestId = requestId)))).keepingFocusOf(cache.session)

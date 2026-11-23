@@ -38,4 +38,13 @@
     <string name="wrapup_shelf">Back to shelf</string>
     <string name="check_right">Right.</string>
     <string name="check_wrong">Not quite.</string>
+    <string name="explainer_prev_page">Back</string>
+    <string name="explainer_concepts_open">Open the concept list</string>
+    <string name="explainer_concepts_title">Concepts in this walk-through</string>
+    <string name="explainer_concepts_note">Tap one you have already heard to go through it again. Nothing you have read is lost.</string>
+    <string name="explainer_concept_here">You are here</string>
+    <string name="explainer_concept_again">Explain again</string>
+    <string name="explainer_concept_ahead">Not yet introduced</string>
+    <string name="explainer_restart">Start the whole walk-through again</string>
+    <string name="explainer_mode_again">Again</string>
 </resources>
