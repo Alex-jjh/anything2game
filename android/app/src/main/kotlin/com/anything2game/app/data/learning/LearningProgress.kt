@@ -51,7 +51,7 @@ class LearningProgress(file: File, val profileId: String, private val clock: Clo
 
     private fun gameEvent(run: GameRun, marker: String): CompletionRecord {
         val stage = run.stage
-        val ref = ActivityRef.Game(run.spec.gameId, run.spec.gameVersion, stage.stageId, stage.rulesVersion)
+        val ref = if (run.completed) run.spec.completionActivity() else ActivityRef.Game(run.spec.gameId, run.spec.gameVersion, stage.stageId, stage.rulesVersion)
         val id = stableId("game", ref.contentId, ref.contentVersion, ref.activityId, ref.rulesVersion.toString(), run.checkpoint.seed.toString(), marker)
         return event(id, ref, run.outcome)
     }

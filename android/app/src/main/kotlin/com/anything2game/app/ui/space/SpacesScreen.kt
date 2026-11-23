@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anything2game.app.AppDependencies
@@ -31,8 +32,9 @@ import com.anything2game.contract.space.*
 import com.anything2game.engine.progress.NodeStatus
 
 @Composable
-private fun spaceModel(deps: AppDependencies, language: String, detail: String? = null): SpaceViewModel {
-    val vm = viewModel(key = "spaces:${deps.profiles.active.value?.id}:$language:$detail") { SpaceViewModel(deps, language, detail) }
+internal fun spaceModel(deps: AppDependencies, language: String, detail: String? = null): SpaceViewModel {
+    val profile by deps.profiles.active.collectAsStateWithLifecycle()
+    val vm = viewModel(key = "spaces:${profile?.id}:$language:$detail") { SpaceViewModel(deps, language, detail) }
     LifecycleResumeEffect(vm) { vm.perform(); onPauseOrDispose {} }
     return vm
 }
@@ -40,7 +42,7 @@ private fun spaceModel(deps: AppDependencies, language: String, detail: String? 
 @Composable
 internal fun SpacesHome(deps: AppDependencies, language: String, padding: PaddingValues, nav: Navigator) {
     val vm = spaceModel(deps, language)
-    val profile = deps.profiles.active.value
+    val profile by deps.profiles.active.collectAsStateWithLifecycle()
     var creating by rememberSaveable { mutableStateOf(false) }
     BackHandler(creating) { creating = false }
     LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("home_SPACES"), contentPadding = PaddingValues(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -80,7 +82,7 @@ internal fun SpacesHome(deps: AppDependencies, language: String, padding: Paddin
 
 @Composable
 internal fun SpaceScreen(deps: AppDependencies, language: String, route: Route.Space, nav: Navigator, library: LibraryViewModel) {
-    val profile = deps.profiles.active.value
+    val profile by deps.profiles.active.collectAsStateWithLifecycle()
     val vm = spaceModel(deps, language, route.id)
     val card = vm.cards.firstOrNull()
     var rename by rememberSaveable { mutableStateOf(false) }
@@ -109,7 +111,7 @@ internal fun SpaceScreen(deps: AppDependencies, language: String, route: Route.S
                 } }
             }
             item { SpaceFeedback(vm) }
-            if (card != null && route.materials) materialItems(deps, vm, card.space, nav, library)
+            if (card != null && route.materials) materialItems(deps, vm, card.space, nav, library, route)
             if (card != null && !route.materials) {
                 item { Text(stringResource(R.string.spaces_counts, card.space.members.size, card.completed, card.path?.nodes?.size ?: 0)) }
                 item { GenerationPanel(vm.generation, { it is GenerationInput.SpacePath && it.spaceId == vm.remote?.spaceId },
@@ -120,7 +122,7 @@ internal fun SpaceScreen(deps: AppDependencies, language: String, route: Route.S
                                 Text(if (excluded.isEmpty()) stringResource(R.string.spaces_included) else stringResource(R.string.spaces_exclusions) + "\n" + excluded.joinToString("\n", transform = vm::memberTitle)) },
                             confirmButton = { TextButton({ generate = false; enqueue { vm.pathRequest(route.id) } }) { Text(stringResource(R.string.spaces_generate)) } },
                             dismissButton = { TextButton({ generate = false }) { Text(stringResource(R.string.import_cancel)) } })
-                    }, { vm.perform() }, scopeKey = vm.remote?.spaceId)
+                    }, { vm.perform() }, scopeKey = vm.remote?.spaceId, confirmSpaceRetry = { generate = true })
                 }
                 if (!card.path?.excludedMembers.isNullOrEmpty()) item {
                     Text(stringResource(R.string.spaces_exclusions) + "\n" + card.path.excludedMembers.joinToString("\n", transform = vm::memberTitle))
@@ -174,7 +176,7 @@ internal fun SpaceScreen(deps: AppDependencies, language: String, route: Route.S
 }
 
 @Composable
-private fun NameEditor(initial: String, dismiss: () -> Unit, submit: (String) -> Unit) {
+internal fun NameEditor(initial: String, dismiss: () -> Unit, submit: (String) -> Unit) {
     var text by rememberSaveable { mutableStateOf(initial) }
     PaperCard {
         OutlinedTextField(text, { text = it.take(120) }, Modifier.fillMaxWidth().testTag("space_name"), singleLine = true,
@@ -189,8 +191,11 @@ private fun NameEditor(initial: String, dismiss: () -> Unit, submit: (String) ->
 @Composable
 private fun SpaceFeedback(vm: SpaceViewModel) {
     if (vm.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-    vm.error?.let { Text(stringResource(R.string.spaces_error, it), color = A2g.skin.wrong)
-        OutlinedButton({ vm.perform() }) { Text(stringResource(R.string.home_retry)) } }
+    val problem = if (vm.unavailable) stringResource(R.string.spaces_unavailable) else vm.error?.let { stringResource(R.string.spaces_error, it) }
+    if (problem != null) {
+        Text(problem, color = A2g.skin.wrong)
+        OutlinedButton({ vm.perform() }) { Text(stringResource(R.string.home_retry)) }
+    }
 }
 
 private fun statusLabel(status: NodeStatus) = when (status) {

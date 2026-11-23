@@ -15,6 +15,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -57,7 +58,8 @@ internal class GameViewModel(private val content: ContentLibrary, private val pr
 
 @Composable
 internal fun GameScreen(deps: AppDependencies, version: ContentVersion, onBack: () -> Unit) {
-    val vm = viewModel(key = "game:${deps.profiles.active.value?.id}:$version") {
+    val profile by deps.profiles.active.collectAsStateWithLifecycle()
+    val vm = viewModel(key = "game:${profile?.id}:$version") {
         GameViewModel(requireNotNull(deps.content), requireNotNull(deps.learningProgress), version)
     }
     BackHandler { if (!vm.busy) onBack() }
@@ -70,14 +72,14 @@ internal fun GameScreen(deps: AppDependencies, version: ContentVersion, onBack: 
             TextButton(onBack, enabled = !vm.busy) { Text(stringResource(R.string.action_back)) }
             if (vm.busy && run == null) LinearProgressIndicator(Modifier.fillMaxWidth())
             vm.error?.let {
-                Text(stringResource(R.string.activity_missing) + " " + it, color = A2g.skin.wrong)
+                Text(if (run == null) stringResource(R.string.activity_missing) + " " + it else stringResource(R.string.games_save_failed, it), color = A2g.skin.wrong)
                 OutlinedButton({ vm.load() }) { Text(stringResource(R.string.home_retry)) }
             }
             if (run != null) {
                 Text(run.spec.title, style = MaterialTheme.typography.headlineMedium)
                 Text(stringResource(if (run.stage.transfer) R.string.games_transfer else R.string.games_practice), color = A2g.skin.action)
                 Text(run.stage.goal, style = MaterialTheme.typography.titleMedium)
-                val playing = !vm.busy && run.status == StageStatus.PLAYING
+                val playing = !vm.busy && !run.actionLimitReached && run.status == StageStatus.PLAYING
                 val move: (GameAction) -> Unit = { vm.move(run, it) }
                 when (val b = run.board) {
                     is PartitionBoard -> PartitionControls(b, run.stage.config as PartitionConfig, playing, move)
@@ -91,7 +93,10 @@ internal fun GameScreen(deps: AppDependencies, version: ContentVersion, onBack: 
                         style = MaterialTheme.typography.titleLarge, modifier = Modifier.testTag("game_verdict"))
                 }
                 when {
-                    run.completed -> Button({ vm.load(true) }, enabled = !vm.busy) { Text(stringResource(R.string.games_replay)) }
+                    run.completed || run.actionLimitReached -> {
+                        if (!run.completed) Text(stringResource(R.string.games_limit), color = A2g.skin.inkMuted)
+                        Button({ vm.load(true) }, Modifier.testTag("restart_game"), enabled = !vm.busy) { Text(stringResource(R.string.games_replay)) }
+                    }
                     run.status == StageStatus.WON -> Button({ move(GameAction.Advance) }, Modifier.testTag("game_advance"), enabled = !vm.busy) { Text(stringResource(R.string.games_next)) }
                     else -> TextButton({ move(GameAction.Reset) }, enabled = !vm.busy && run.checkpoint.actions.isNotEmpty()) { Text(stringResource(R.string.games_reset)) }
                 }
@@ -117,8 +122,9 @@ private fun PartitionControls(b: PartitionBoard, config: PartitionConfig, enable
         for (row in (1..config.candidates).chunked(4)) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             row.forEach { n ->
                 val active = n in b.low..b.high
-                val fill = when { !active -> A2g.skin.paper; choice != null && n <= split -> A2g.skin.action; else -> A2g.skin.evidenceSoft }
-                val ink = if (active && n <= split) A2g.skin.onAction else A2g.skin.inkMuted
+                val leftGroup = active && choice != null && n <= split
+                val fill = when { !active -> A2g.skin.paper; leftGroup -> A2g.skin.action; else -> A2g.skin.evidenceSoft }
+                val ink = if (leftGroup) A2g.skin.onAction else A2g.skin.inkMuted
                 val cutLabel = stringResource(R.string.games_cut_after, n)
                 val group = stringResource(when { !active -> R.string.games_door_out; choice == null -> R.string.games_door_in; n <= split -> R.string.games_door_left; else -> R.string.games_door_right })
                 Column(Modifier.weight(1f).heightIn(min = 48.dp).clickable(enabled = enabled && n in b.low until b.high,

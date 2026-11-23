@@ -72,7 +72,7 @@ class GenerationRepository(private val file: File, private val api: ActivityApi,
     }
     suspend fun retry(id: String): GenerationTicket {
         val original = get(id)
-        require(original.state in setOf(CompileJobState.FAILED, CompileJobState.CANCELLED))
+        require(original.state in setOf(CompileJobState.FAILED, CompileJobState.CANCELLED, CompileJobState.PARTIAL))
         val input = original.request.input
         val next = if (input is GenerationInput.SpacePath) input.copy(expectedRevision = api.space(input.spaceId).revision) else input
         return enqueue(next)

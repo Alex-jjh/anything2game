@@ -39,23 +39,14 @@ internal const val COMPACT_FONT_SCALE = 1.3f
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ReadingContent(deps: AppDependencies, packageId: String, conceptId: String? = null, sourcePackage: String = packageId, contentVersion: String? = null, onBack: () -> Unit) {
-    val profileId by deps.profiles.active.collectAsState()
+    val profileId by deps.profiles.active.collectAsStateWithLifecycle()
     val vm = viewModel(key = "tutor:${profileId?.id}:$packageId") { TutorViewModel(deps.tutors, packageId) }
     val state by vm.state.collectAsStateWithLifecycle()
     val pdf by vm.sourceDocument.collectAsStateWithLifecycle()
     androidx.activity.compose.BackHandler { if (state.busy) vm.cancelPending(); onBack() }
     val c = state.cache
     val s = c?.session
-    var initialConcept by rememberSaveable(packageId, conceptId) { mutableStateOf(conceptId) }
-    LaunchedEffect(s?.sessionId, initialConcept) {
-        val target = initialConcept ?: return@LaunchedEffect
-        if (s == null) return@LaunchedEffect
-        initialConcept = null
-        if (s.messages.isNotEmpty()) {
-            val i = TutorRules.orderedQuestions(s).indexOfFirst { it.conceptId == target }
-            if (i >= 0 && i != s.conceptPosition) vm.turn(TutorIntent.REVISIT, targetPosition = i)
-        }
-    }
+    if (conceptId != null && s != null && showRoutedTutorPrerequisite(conceptId, s, state, vm, onBack)) return
     val skin = A2g.skin
     val list = rememberLazyListState()
     var input by rememberSaveable(packageId) { mutableStateOf("") }
@@ -123,7 +114,7 @@ fun ReadingContent(deps: AppDependencies, packageId: String, conceptId: String? 
             }
             if (state.unsupported) {
                 item { Text(stringResource(R.string.tutor_unavailable), color = skin.inkMuted) }
-                items(unsupported?.sources.orEmpty()) { chunk -> PaperCard { Text("${chunk.pageLabel ?: (chunk.pageIndex + 1)} · ${chunk.chunkId}", color = skin.evidence); Text(chunk.text, color = skin.ink) } }
+                sourceChunks(unsupported?.sources.orEmpty())
             }
             val enabled = !state.busy && state.problem == null
             val askingFocus = focusItems(c, enabled, allowNote = s?.mode == "model", onSet = vm::setFocus)

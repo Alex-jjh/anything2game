@@ -6,6 +6,10 @@ import com.anything2game.app.AndroidAppContainer
 import com.anything2game.contract.*
 import com.anything2game.contract.game.*
 import com.anything2game.contract.pack.*
+import com.anything2game.contract.space.*
+import com.anything2game.app.R
+import com.anything2game.app.data.profile.LocalProfile
+import java.util.concurrent.CopyOnWriteArrayList
 import com.sun.net.httpserver.HttpServer
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
@@ -21,6 +25,92 @@ class GenerationJourneyTest : JourneyTest() {
         field.isAccessible = true
         field.set(app, lazy { container })
         return container
+    }
+
+    @Test fun partial_route_regeneration_lists_current_local_exclusions_before_syncing_and_sending_a_new_request() {
+        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+        val json = ContractJson.json
+        var remote = Space("remote", "Seminar", 1)
+        val requests = CopyOnWriteArrayList<GenerationRequest>()
+        server.createContext("/") { x ->
+            val body = when (x.requestURI.path) {
+                "/v1/installs" -> json.encodeToString(InstallResponse("install", "token"))
+                "/v1/spaces", "/v1/spaces/remote" -> json.encodeToString(remote)
+                "/v1/spaces/remote/members" -> {
+                    val member = json.decodeFromString<SpaceMemberRequest>(x.requestBody.bufferedReader().readText()).member
+                    remote = remote.copy(revision = remote.revision + 1, members = remote.members + member)
+                    json.encodeToString(remote)
+                }
+                "/v1/generation-jobs" -> {
+                    requests += json.decodeFromString<GenerationRequest>(x.requestBody.bufferedReader().readText())
+                    json.encodeToString(GenerationStatus("job-${requests.size}", if (requests.size == 1) CompileJobState.PARTIAL else CompileJobState.CANCELLED))
+                }
+                else -> { x.sendResponseHeaders(404, -1); x.close(); return@createContext }
+            }.toByteArray()
+            x.sendResponseHeaders(200, body.size.toLong())
+            x.responseBody.use { it.write(body) }
+        }
+        server.start()
+        try {
+            val container = useServer(server)
+            val (space, ticket, local) = runBlocking {
+                container.profiles.choose(LocalProfile.GUEST)
+                val space = container.spaces.create("Seminar")
+                val request = container.generation.enqueue(container.spaces.pathRequest(space.spaceId, "en"))
+                assertEquals(CompileJobState.PARTIAL, container.generation.refresh(request.id).state)
+                val local = container.materials.materials().first { it.member is SpaceMember.LocalPackRef }
+                container.spaces.add(space.spaceId, local.member)
+                Triple(space, request, local)
+            }
+            launch()
+            val tag = "open_space_${space.spaceId}"
+            waitFor("Seminar Space") { runCatching { rule.onNodeWithTag("home_SPACES").performScrollToNode(hasTestTag(tag)); true }.getOrDefault(false) }
+            tap(rule.onNodeWithTag(tag))
+            val retry = "retry_generation_${ticket.id}"
+            waitForTag(retry)
+            tap(rule.onNodeWithTag(retry))
+            rule.onNode(hasAnyAncestor(isDialog()) and hasText(local.title, substring = true)).assertExists()
+            assertEquals(1, requests.size)
+            tap(rule.onNode(hasAnyAncestor(isDialog()) and hasText(str(R.string.import_cancel))))
+            assertEquals(1, requests.size)
+            tap(rule.onNodeWithTag(retry))
+            tap(rule.onNode(hasAnyAncestor(isDialog()) and hasText(str(R.string.spaces_generate)) and hasClickAction()))
+            waitFor("second request dispatched") { requests.size == 2 }
+            assertNotEquals(requests.first().clientRequestId, requests.last().clientRequestId)
+            assertEquals(GenerationInput.SpacePath("remote", 2, "en"), requests.last().input)
+        } finally { server.stop(0) }
+    }
+
+    @Test fun recovered_terminal_poll_removes_connection_error_and_keeps_cancelled_status() {
+        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+        val json = ContractJson.json
+        val restored = AtomicBoolean(false)
+        server.createContext("/") { x ->
+            var code = 200
+            val body = when (x.requestURI.path) {
+                "/v1/installs" -> json.encodeToString(InstallResponse("install", "token"))
+                "/v1/generation-jobs" -> json.encodeToString(GenerationStatus("job", CompileJobState.QUEUED))
+                "/v1/generation-jobs/job" -> if (restored.get()) json.encodeToString(GenerationStatus("job", CompileJobState.CANCELLED))
+                    else { code = 503; json.encodeToString(ErrorBody(ApiError("OFFLINE", "temporary outage", true))) }
+                else -> { x.sendResponseHeaders(404, -1); x.close(); return@createContext }
+            }.toByteArray()
+            x.sendResponseHeaders(code, body.size.toLong())
+            x.responseBody.use { it.write(body) }
+        }
+        server.start()
+        try {
+            val container = useServer(server)
+            runBlocking {
+                container.profiles.choose(LocalProfile.GUEST)
+                container.generation.enqueue(GenerationInput.ConceptGame("binary search", "en"))
+            }
+            launch(); waitForTag("tab_PLAYGROUND"); tap(rule.onNodeWithTag("tab_PLAYGROUND"))
+            val interrupted = hasText(str(R.string.job_offline), substring = true)
+            waitFor("temporary polling failure shown") { exists(interrupted) }
+            restored.set(true)
+            waitForText(str(R.string.job_cancelled))
+            rule.onNode(interrupted).assertDoesNotExist()
+        } finally { server.stop(0) }
     }
 
     @Test fun rejected_concept_keeps_the_topic_and_the_supported_offline_game_remains_playable() {

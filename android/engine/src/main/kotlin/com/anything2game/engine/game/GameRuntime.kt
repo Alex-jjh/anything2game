@@ -3,6 +3,12 @@ package com.anything2game.engine.game
 import com.anything2game.contract.game.*
 import com.anything2game.contract.progress.ActivityOutcome
 
+/** The activity credited when a complete game wins its changed-condition transfer. */
+fun GameSpec.completionActivity(): com.anything2game.contract.space.ActivityRef.Game {
+    val transfer = stages.last()
+    return com.anything2game.contract.space.ActivityRef.Game(gameId, gameVersion, transfer.stageId, transfer.rulesVersion)
+}
+
 enum class StageStatus { PLAYING, WON, LOST }
 
 sealed interface GameBoard
@@ -14,6 +20,7 @@ class GameRun internal constructor(val spec: GameSpec, val checkpoint: GameCheck
     val board: GameBoard, val status: StageStatus, val usedHelp: Boolean) {
     val stage get() = spec.stages[stageIndex]
     val completed get() = stageIndex == spec.stages.lastIndex && status == StageStatus.WON
+    val actionLimitReached get() = checkpoint.actions.size >= MechanicRegistry.MAX_ACTIONS
     val outcome get() = when {
         !completed -> ActivityOutcome.PLAYED
         usedHelp -> ActivityOutcome.HELPED

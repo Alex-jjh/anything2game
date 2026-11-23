@@ -67,7 +67,10 @@ class SpacePdfPickerTest {
         assertEquals(setOf("first.pdf", "second.pdf"), rows.map { it.title }.toSet())
         assertTrue(rows.all { it.spaceId == id && it.sessionId == null })
         for (row in rows) {
-            rule.onNodeWithTag("space_materials").performScrollToNode(hasText(row.title))
+            rule.waitUntil(20000) {
+                ShadowLooper.idleMainLooper()
+                runCatching { rule.onNodeWithTag("space_materials").performScrollToNode(hasText(row.title)); true }.getOrDefault(false)
+            }
             rule.onNodeWithText(row.title).assertExists()
         }
         assertTrue(runBlocking { deps.spaces.list().first { it.spaceId == id }.members.isEmpty() })

@@ -164,8 +164,24 @@ abstract class JourneyTest {
         waitForTag("space_materials")
         openCourse = courseTitle
     }
-    protected fun openMe() { if (exists(hasTestTag("space_materials")) || exists(hasTestTag("space_route"))) systemBack(); tap(rule.onNodeWithTag("tab_PROFILE")); waitForTag("home_PROFILE") }
-    protected fun switchProfile() { openMe(); scrollMeTo(str(R.string.profile_switch)); tapText(str(R.string.profile_switch)); waitForTag("welcome") }
+    protected fun openMe() {
+        if (exists(hasTestTag("home_PROFILE"))) return
+        if (exists(hasTestTag("space_materials")) || exists(hasTestTag("space_route"))) systemBack()
+        tap(rule.onNodeWithTag("tab_PROFILE"))
+        waitForTag("home_PROFILE")
+    }
+    protected fun switchProfile() {
+        openMe()
+        val action = hasText(str(R.string.profile_switch)) and hasClickAction()
+        waitFor("visible switch profile action") {
+            exists(hasTestTag("welcome")) || runCatching {
+                rule.onNodeWithTag("home_PROFILE").performScrollToNode(action)
+                tap(rule.onNode(action))
+                true
+            }.getOrDefault(false)
+        }
+        waitForTag("welcome")
+    }
 
     /** Scrolls a Practice / Me list until [text] is on screen (list items compose lazily); waits while the library loads. */
     private fun scrollListTo(tag: String, text: String) {

@@ -17,7 +17,7 @@ import java.util.UUID
 
 @Serializable
 data class PdfImportItem(val id: String, val spaceId: String, val title: String, val uri: String, val sizeBytes: Long?,
-    val staged: Boolean = false, val document: DocumentResponse? = null, val sessionId: String? = null, val error: String? = null)
+    val staged: Boolean = false, val document: DocumentResponse? = null, val sessionId: String? = null, val error: String? = null, val batchId: String? = null)
 
 /** Stage the authorized selection while its temporary grant is alive. Each PDF has its own retry boundary. */
 class PdfImportQueue(private val dir: File, private val read: suspend (ImportRequest.PdfFile) -> ByteArray,
@@ -43,14 +43,31 @@ class PdfImportQueue(private val dir: File, private val read: suspend (ImportReq
         return save(row.copy(staged = true, error = null))
     }
     private fun errorCode(e: Exception) = (e as? TutorApiException)?.code ?: "CONNECTION_OR_FILE_ERROR"
-    suspend fun enqueue(spaceId: String, requests: List<ImportRequest.PdfFile>): List<PdfImportItem> =
-        requests.map { request ->
-            val row = PdfImportItem(UUID.randomUUID().toString(), spaceId, request.title, request.uri.toString(), request.sizeBytes)
-            lock(row.id).withLock {
-                rows.update { it + row }
-                try { stage(row) } catch (e: CancellationException) { throw e } catch (e: Exception) { save(row.copy(error = errorCode(e))) }
+    /** Publish the whole confirmed selection atomically before reading any URI. A restored confirmation
+     * reuses its batch ID and the original row IDs, including any siblings which have already completed. */
+    suspend fun enqueue(spaceId: String, requests: List<ImportRequest.PdfFile>, batchId: String = UUID.randomUUID().toString(),
+        onJournaled: () -> Unit = {}): List<PdfImportItem> {
+        require(batchId.isNotBlank() && requests.isNotEmpty())
+        val selection = requests.map { request ->
+            PdfImportItem(UUID.randomUUID().toString(), spaceId, request.title, request.uri.toString(), request.sizeBytes, batchId = batchId)
+        }
+        val batch = rows.update { all ->
+            val existing = all.filter { it.batchId == batchId }
+            if (existing.isEmpty()) all + selection else {
+                require(existing.map { it.spaceId to it.uri } == selection.map { it.spaceId to it.uri }) { "Confirmation belongs to a different selection" }
+                all
+            }
+        }.filter { it.batchId == batchId }
+        onJournaled()
+        return batch.map { saved ->
+            lock(saved.id).withLock {
+                // process() can already have staged, uploaded and cleaned this row since the transaction.
+                val row = list().single { it.id == saved.id }
+                if (row.staged || row.sessionId != null || row.error != null) row else
+                    try { stage(row) } catch (e: CancellationException) { throw e } catch (e: Exception) { save(row.copy(error = errorCode(e))) }
             }
         }
+    }
 
     suspend fun process(id: String): PdfImportItem = lock(id).withLock {
         val row = list().single { it.id == id }

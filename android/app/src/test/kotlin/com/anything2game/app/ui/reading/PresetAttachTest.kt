@@ -329,19 +329,26 @@ class PresetAttachTest {
         }
         // Through the course as a reader would, to the first explanation that cites the paper.
         rule.waitUntil(10000) { has("tutor_list") || has("explainer_stage") }
-        fun scrolledTo(tag: String) = try { rule.onNodeWithTag("tutor_list").performScrollToNode(hasTestTag(tag)); true } catch (e: AssertionError) { false }
-        repeat(80) {
-            if (has("message_source")) return@repeat
+        fun tapListAction(tag: String): Boolean = try {
+            rule.onNodeWithTag("tutor_list").performScrollToNode(hasTestTag(tag))
+            rule.onNodeWithTag(tag).assertIsEnabled().performClick()
+            true
+        } catch (_: AssertionError) {
+            // The previous asynchronous answer may have already transitioned to the next screen.
+            false
+        }
+        rule.waitUntil(30000) {
+            if (has("message_source")) return@waitUntil true
             when {
                 has("explainer_stage") && has("dialogue_next") -> tap("dialogue_next")
                 has("explainer_stage") && has("tutor_example") -> tap("tutor_example")
                 has("explainer_stage") && has("dialogue_box") -> tap("dialogue_box")
                 has("explainer_stage") -> rule.waitForIdle()
-                has("tutor_list") -> listOf("start_tutor", "focus_continue", "answer_unknown").firstOrNull { scrolledTo(it) }?.let { tap(it) } ?: rule.waitForIdle()
+                has("tutor_list") -> listOf("start_tutor", "focus_continue", "answer_unknown").any(::tapListAction)
                 else -> rule.waitForIdle()
             }
+            false
         }
-        rule.waitUntil(10000) { has("message_source") }
 
         tap("message_source")
         rule.waitUntil(5000) { has("source_viewer") && has("source_attach_pdf") }

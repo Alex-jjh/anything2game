@@ -30,6 +30,49 @@ class VerifiedMaterialActionsTest {
     @get:Rule val rule = createComposeRule()
     @get:Rule val tmp = TemporaryFolder()
 
+    @Test fun a_missing_restored_space_offers_retry_and_a_return_to_spaces() {
+        val app = RuntimeEnvironment.getApplication()
+        val deps = AndroidAppContainer(app)
+        runBlocking { deps.profiles.choose(LocalProfile.GUEST) }
+        val nav = Navigator(SavedStateHandle()).apply { openSpace("missing") }
+        rule.setContent { A2gTheme { AppRoot(deps, nav) } }
+        fun waitUntilUnavailable() = rule.waitUntil(15000) {
+            ShadowLooper.idleMainLooper()
+            rule.onAllNodesWithText(app.getString(R.string.spaces_unavailable)).fetchSemanticsNodes().isNotEmpty()
+        }
+        waitUntilUnavailable()
+        rule.onNodeWithText(app.getString(R.string.home_retry)).performClick()
+        waitUntilUnavailable()
+        rule.onNodeWithText(app.getString(R.string.action_back)).performClick()
+        rule.onNodeWithTag("home_SPACES").assertExists()
+    }
+
+    @Test fun an_unreadable_space_store_keeps_the_load_error_and_can_recover_on_retry() {
+        val app = RuntimeEnvironment.getApplication()
+        val base = AndroidAppContainer(app)
+        runBlocking { base.profiles.choose(LocalProfile.GUEST) }
+        val store = File(tmp.root, "space-store")
+        val spaces = SpaceRepository(store, base.materials::materials)
+        val valid = runBlocking { spaces.create("Seminar") }
+        val workingCopy = store.readBytes()
+        store.writeText("broken")
+        val deps = object : AppDependencies by base { override val spaces = spaces }
+        val nav = Navigator(SavedStateHandle()).apply { openSpace(valid.spaceId) }
+        rule.setContent { A2gTheme { AppRoot(deps, nav) } }
+        val retry = app.getString(R.string.home_retry)
+        rule.waitUntil(15000) {
+            ShadowLooper.idleMainLooper()
+            rule.onAllNodesWithText(retry).fetchSemanticsNodes().isNotEmpty()
+        }
+        store.writeBytes(workingCopy)
+        rule.onNodeWithText(retry).performClick()
+        rule.waitUntil(15000) {
+            ShadowLooper.idleMainLooper()
+            rule.onAllNodesWithText("Seminar").fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithTag("show_materials").assertIsEnabled()
+    }
+
     @Test fun one_verified_document_offers_its_uploaded_tutor_and_compiled_practice_without_the_unrelated_sideload() {
         val base = AndroidAppContainer(RuntimeEnvironment.getApplication())
         runBlocking { base.profiles.choose(LocalProfile.GUEST) }

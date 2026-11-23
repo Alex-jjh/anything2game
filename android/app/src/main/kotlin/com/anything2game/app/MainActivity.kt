@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.activity.viewModels
+import com.anything2game.app.importing.ImportRequest
 import com.anything2game.app.importing.IntentImportParser
 import com.anything2game.app.ui.AppRoot
 import com.anything2game.app.ui.Navigator
@@ -38,6 +39,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleShare(intent: Intent?) {
-        parser.parse(intent)?.let(navigator::openImport)
+        parser.parse(intent)?.let { request ->
+            if (request is ImportRequest.PdfFile) runCatching {
+                contentResolver.takePersistableUriPermission(request.uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            navigator.openImport(request)
+        }
     }
 }

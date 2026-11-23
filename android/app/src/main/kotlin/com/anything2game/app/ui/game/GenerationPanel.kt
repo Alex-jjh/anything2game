@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun GenerationPanel(repository: GenerationRepository, accepts: (GenerationInput) -> Boolean,
     input: @Composable (busy: Boolean, enqueue: (suspend () -> GenerationInput) -> Unit) -> Unit,
-    onInstalled: (ContentVersion) -> Unit, scopeKey: String? = null) {
+    onInstalled: (ContentVersion) -> Unit, scopeKey: String? = null, confirmSpaceRetry: (() -> Unit)? = null) {
     val scope = rememberCoroutineScope()
     val owner = LocalLifecycleOwner.current
     val filter by rememberUpdatedState(accepts)
@@ -34,6 +34,8 @@ internal fun GenerationPanel(repository: GenerationRepository, accepts: (Generat
     var tickets by remember { mutableStateOf(emptyList<GenerationTicket>()) }
     var error by remember { mutableStateOf<String?>(null) }
     var offline by remember { mutableStateOf(false) }
+    var refreshError by remember { mutableStateOf<String?>(null) }
+    var refreshOffline by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var autoOpen by rememberSaveable { mutableStateOf<String?>(null) }
     var epoch by remember { mutableIntStateOf(0) }
@@ -60,17 +62,20 @@ internal fun GenerationPanel(repository: GenerationRepository, accepts: (Generat
                     tickets = repository.list().filter { filter(it.request.input) }.asReversed()
                     for (t in tickets.filter { it.state?.isTerminal != true }) repository.refresh(t.id)
                     tickets = repository.list().filter { filter(it.request.input) }.asReversed()
+                    refreshError = null
                     tickets.find { it.id == autoOpen && it.state == CompileJobState.READY && !it.installed }?.let {
                         autoOpen = null
-                        install(it)
+                        try { install(it) } catch (e: CancellationException) { throw e } catch (e: Exception) {
+                            offline = e is ApiException && e.retryable
+                            error = e.message ?: e.javaClass.simpleName
+                        }
                     }
                     if (tickets.none { it.state?.isTerminal != true }) break
                     delayMs = 1200L
-                    error = null
                 } catch (e: CancellationException) { throw e }
                 catch (e: Exception) {
-                    offline = e is ApiException && e.retryable
-                    error = e.message ?: e.javaClass.simpleName
+                    refreshOffline = e is ApiException && e.retryable
+                    refreshError = e.message ?: e.javaClass.simpleName
                     delayMs = (delayMs * 2).coerceAtMost(12000)
                 }
                 delay(delayMs)
@@ -78,7 +83,7 @@ internal fun GenerationPanel(repository: GenerationRepository, accepts: (Generat
         }
     }
     input(busy) { build -> perform { autoOpen = repository.enqueue(build()).id } }
-    error?.let { Text(if (offline) stringResource(R.string.job_offline) + " " + it else stringResource(R.string.job_problem, it), color = A2g.skin.wrong) }
+    (error ?: refreshError)?.let { Text(if (if (error != null) offline else refreshOffline) stringResource(R.string.job_offline) + " " + it else stringResource(R.string.job_problem, it), color = A2g.skin.wrong) }
     tickets.filterNot { it.installed }.forEach { t ->
         key(t.id) { PaperCard {
             (t.request.input as? GenerationInput.ConceptGame)?.let { Text(it.topic, style = MaterialTheme.typography.titleMedium) }
@@ -102,7 +107,15 @@ internal fun GenerationPanel(repository: GenerationRepository, accepts: (Generat
             t.status?.modelId?.let { Text(stringResource(if (t.status.fixture) R.string.games_fixture else R.string.games_generated, it)) }
             when {
                 state == CompileJobState.READY -> Button({ perform { install(t) } }, enabled = !busy) { Text(stringResource(R.string.job_install)) }
-                state == CompileJobState.FAILED || state == CompileJobState.CANCELLED -> OutlinedButton({ perform { autoOpen = repository.retry(t.id).id } }, enabled = !busy) { Text(stringResource(R.string.home_retry)) }
+                state in setOf(CompileJobState.FAILED, CompileJobState.CANCELLED, CompileJobState.PARTIAL) -> {
+                    if (state == CompileJobState.PARTIAL) Text(stringResource(R.string.job_partial_note))
+                    val isSpace = t.request.input is GenerationInput.SpacePath
+                    OutlinedButton({
+                        if (isSpace) confirmSpaceRetry?.invoke() else perform { autoOpen = repository.retry(t.id).id }
+                    }, Modifier.testTag("retry_generation_${t.id}"), enabled = !busy && (!isSpace || confirmSpaceRetry != null)) {
+                        Text(stringResource(if (state == CompileJobState.PARTIAL) R.string.job_regenerate else R.string.home_retry))
+                    }
+                }
                 state?.isTerminal != true -> OutlinedButton({ perform { autoOpen = null; repository.cancel(t.id) } }, enabled = !busy) { Text(stringResource(R.string.import_cancel)) }
             }
         } }

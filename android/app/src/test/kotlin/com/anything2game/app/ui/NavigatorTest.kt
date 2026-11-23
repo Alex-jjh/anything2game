@@ -58,6 +58,31 @@ class NavigatorTest {
         restored.back()
         assertEquals(Route.Home, restored.route.value)
     }
+    @Test fun `a confirmed share restored before acknowledgment reuses its destination and batch identity`() {
+        val saved = SavedStateHandle()
+        val nav = Navigator(saved)
+        val pdf = ImportRequest.PdfFile("paper.pdf", Uri.parse("content://test/paper"), 125L)
+        nav.openImport(pdf)
+        nav.openSpaceForPdf("reading-group", pdf)
+        val pending = nav.route.value as Route.Space
+        val batch = requireNotNull(pending.batchId)
+        val restored = recreated(saved)
+        assertEquals(Route.Space("reading-group", true, pdf, batch), restored.route.value)
+        restored.clearPdfConfirmation("some-other-selection")
+        assertEquals(pending, restored.route.value)
+        restored.clearPdfConfirmation(batch)
+        assertEquals(Route.Space("reading-group", true), restored.route.value)
+    }
+    @Test fun `the full reader restores the selected older package and returns to its materials`() {
+        val saved = SavedStateHandle()
+        val nav = Navigator(saved)
+        nav.openSpace("seminar", true)
+        nav.openSource("physics", "2024")
+        val restored = recreated(saved)
+        assertEquals(Route.Source("physics", "2024"), restored.route.value)
+        restored.back()
+        assertEquals(Route.Space("seminar", true), restored.route.value)
+    }
     @Test fun `import replaces stale game route without saving file contents`() {
         val saved = SavedStateHandle()
         val nav = Navigator(saved)

@@ -25,6 +25,9 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.anything2game.app.ui.importing.ImportViewModel
 import com.anything2game.app.AppDependencies
 import com.anything2game.app.R
+import com.anything2game.app.importing.ImportRequest
+import com.anything2game.app.ui.reading.MaterialReader
+import com.anything2game.app.ui.space.SharedPdfDestination
 import com.anything2game.app.platform.SimulatedContextSource
 import com.anything2game.app.ui.common.ContextSimulator
 import com.anything2game.app.ui.importing.ImportContent
@@ -90,6 +93,7 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator) {
         }
         is Route.Space -> tabsState.SaveableStateProvider("space:${r.id}") { SpaceScreen(deps, language, r, navigator, library) }
         is Route.Game -> GameScreen(deps, ContentVersion(r.id, r.version), navigator::back)
+        is Route.Source -> MaterialReader(deps.packages, r.packageId, r.version, navigator::back)
         is Route.Read -> {
             ReadingContent(deps, r.packageId, r.conceptId, r.sourcePackage ?: r.packageId, r.contentVersion, navigator::back)
         }
@@ -115,7 +119,14 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator) {
                 }
             }
         }
-        is Route.Import -> {
+        is Route.Import -> if (r.request is ImportRequest.PdfFile) {
+            SharedPdfDestination(deps, language, r.request.title, onChoose = { id ->
+                if (navigator.route.value == r && deps.profiles.active.value == current) {
+                    selectTab(HomeTab.SPACES)
+                    navigator.openSpaceForPdf(id, r.request)
+                }
+            }, onBack = navigator::back)
+        } else {
             val vm: ImportViewModel = viewModel(key = "import:${current.id}:" + java.security.MessageDigest.getInstance("SHA-256").digest(r.request.toString().toByteArray()).joinToString("") { "%02x".format(it) }, factory = viewModelFactory {
                 initializer { ImportViewModel(deps.tutors, r.request, createSavedStateHandle()) }
             })

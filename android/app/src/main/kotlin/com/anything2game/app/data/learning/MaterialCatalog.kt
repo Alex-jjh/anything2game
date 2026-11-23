@@ -9,6 +9,7 @@ import com.anything2game.contract.pack.*
 import com.anything2game.contract.space.*
 import com.anything2game.contract.tutor.TutorQuestion
 import com.anything2game.engine.progress.NodeStatus
+import com.anything2game.engine.game.completionActivity
 
 data class Material(val source: ContentVersion, val title: String, val member: SpaceMember, val nodes: List<PathNode>,
     val language: String = "", val tutorKey: String? = null, val chunks: List<SourceChunk> = emptyList(), val localPack: SpaceMember.LocalPackRef? = null)
@@ -98,7 +99,7 @@ class MaterialCatalog(private val content: ContentLibrary, private val tutors: T
             OpenActivity.Practice(if (saved == null) ref else ref.copy(frame = saved.frameId))
         }
         is ActivityRef.Game -> content.game(ContentVersion(ref.contentId, ref.contentVersion))?.takeIf { game ->
-            game.stages.any { it.stageId == ref.activityId && ref.rulesVersion == it.rulesVersion }
+            game.completionActivity() == ref
         }?.let { OpenActivity.Game(ref, it) }
     }
 

@@ -91,7 +91,8 @@ class LearningIntegrationTest {
         val version = ContentVersion("path-example", "1")
         val path = LearningPath(version.contentId, version.contentVersion, "remote", "Generated route", "en",
             listOf(first.copy(nodeId = "remote-node")), listOf(material.member))
-        fun archive(nodes: List<PathNode>) = PackCodec.build(path.copy(nodes = nodes), PackOrigin.SERVER).let {
+        var published = version
+        fun archive(nodes: List<PathNode>) = PackCodec.build(path.copy(pathVersion = published.contentVersion, nodes = nodes), PackOrigin.SERVER).let {
             PackCodec.toBytes(it.copy(manifest = it.manifest.copy(modelId = "fake-llm", fixture = true)))
         }
         val brokenRef = (first.activity as ActivityRef.Tutor).copy(activityId = "nonexistent-concept")
@@ -109,11 +110,11 @@ class LearningIntegrationTest {
                 }
                 url == "/v1/spaces/remote" -> json.encodeToString(remote).toByteArray()
                 url == "/v1/generation-jobs" -> {
-                    remote = remote.copy(revision = 3, activePathVersion = version)
+                    remote = remote.copy(revision = remote.revision + 1, activePathVersion = published)
                     json.encodeToString(GenerationStatus("example-job", CompileJobState.READY,
-                        result = GeneratedContent(version, ContentKind.PATH), modelId = "fake-llm", fixture = true)).toByteArray()
+                        result = GeneratedContent(published, ContentKind.PATH), modelId = "fake-llm", fixture = true)).toByteArray()
                 }
-                url == "/v1/content/path-example/versions/1" -> bytes
+                url == "/v1/content/path-example/versions/${published.contentVersion}" -> bytes
                 else -> error(url)
             }
             exchange.sendResponseHeaders(200, body.size.toLong())
@@ -136,6 +137,15 @@ class LearningIntegrationTest {
             val manifest = deps.content.manifests().single { it.packageId == version.contentId }
             assertTrue(manifest.fixture)
             assertEquals("fake-llm", manifest.modelId)
+            published = version.copy(contentVersion = "2")
+            val game = ReviewedGames.partition("en")
+            val practiceStage = ActivityRef.Game(game.gameId, game.gameVersion, game.stages.first().stageId, game.stages.first().rulesVersion)
+            bytes = archive(listOf(first.copy(activity = practiceStage)))
+            val replacement = reopen().enqueue(spaces.pathRequest(space.spaceId, "en"))
+            assertEquals(CompileJobState.READY, reopen().refresh(replacement.id).state)
+            assertTrue(runCatching { reopen().download(replacement.id) }.isFailure)
+            assertNull(deps.content.path(published))
+            assertEquals(version, spaces.list().single().activePathVersion)
             val offline = SpaceRepository(File(dir, "spaces"), { listOf(material) }, loadPath = deps.content::path)
             val route = requireNotNull(offline.route(space.spaceId, "en"))
             assertEquals("remote-node", route.nodes.first().nodeId)

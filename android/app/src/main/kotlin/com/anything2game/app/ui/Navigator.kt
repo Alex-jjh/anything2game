@@ -12,7 +12,8 @@ import kotlinx.coroutines.flow.asStateFlow
 
 sealed interface Route {
     data object Home : Route
-    data class Space(val id: String, val materials: Boolean = false) : Route
+    data class Space(val id: String, val materials: Boolean = false, val share: ImportRequest.PdfFile? = null, val batchId: String? = null) : Route
+    data class Source(val packageId: String, val version: String) : Route
     data class Game(val id: String, val version: String) : Route
     data class Read(val packageId: String, val conceptId: String? = null, val sourcePackage: String? = null, val contentVersion: String? = null) : Route
     /** [run] is a fresh number per tap on a level, so a finished or abandoned run's screen state is never reused for the next one. */
@@ -43,7 +44,11 @@ class Navigator(private val saved: SavedStateHandle) : ViewModel() {
         val pkg = saved.get<String>("route.pkg")
         val level = saved.get<String>("route.level")
         val type = saved.get<String>("route.type")
-        if (type == "space") return parent() ?: Route.Home
+        if (type == "space") return parent()?.let { space ->
+            val pdf = saved.get<String>("route.pdf") ?: return space
+            space.copy(share = ImportRequest.PdfFile(saved["route.title"] ?: return space, pdf.toUri(), saved["route.size"]), batchId = saved["route.batch"])
+        } ?: Route.Home
+        if (type == "source" && pkg != null) return Route.Source(pkg, saved["route.version"] ?: return Route.Home)
         if (type == "game" && pkg != null) return Route.Game(pkg, saved["route.version"] ?: return Route.Home)
         if (type == "read" && pkg != null) return Route.Read(pkg, saved["route.concept"], saved["route.source"], saved["route.version"])
         if (pkg != null && level != null) {
@@ -56,7 +61,7 @@ class Navigator(private val saved: SavedStateHandle) : ViewModel() {
         return Route.Home
     }
     private fun clearDetail() {
-        listOf("route.pkg", "route.level", "route.frame", "route.type", "route.pdf", "route.title", "route.size", "route.version", "route.resume", "route.concept", "route.source").forEach { saved.remove<Any>(it) }
+        listOf("route.pkg", "route.level", "route.frame", "route.type", "route.pdf", "route.title", "route.size", "route.version", "route.resume", "route.concept", "route.source", "route.batch").forEach { saved.remove<Any>(it) }
     }
     fun selectTab(tab: HomeTab) { _tab.value = tab; saved["home.tab"] = tab.name; toHome() }
     private fun parent(): Route.Space? = saved.get<String>("parent.space")?.let { Route.Space(it, saved["parent.materials"] ?: false) }
@@ -66,6 +71,22 @@ class Navigator(private val saved: SavedStateHandle) : ViewModel() {
         saved["parent.materials"] = materials
         saved["route.type"] = "space"
         _route.value = Route.Space(id, materials)
+    }
+    fun openSpaceForPdf(id: String, request: ImportRequest.PdfFile) {
+        openSpace(id, true)
+        val batch = java.util.UUID.randomUUID().toString()
+        saved["route.pdf"] = request.uri.toString(); saved["route.title"] = request.title
+        saved["route.size"] = request.sizeBytes; saved["route.batch"] = batch
+        _route.value = Route.Space(id, true, request, batch)
+    }
+    fun clearPdfConfirmation(batchId: String) {
+        val space = _route.value as? Route.Space ?: return
+        if (space.batchId == batchId) openSpace(space.id, true)
+    }
+    fun openSource(packageId: String, version: String) {
+        clearDetail()
+        saved["route.type"] = "source"; saved["route.pkg"] = packageId; saved["route.version"] = version
+        _route.value = Route.Source(packageId, version)
     }
     fun back() {
         val parent = parent()

@@ -38,10 +38,16 @@ internal class SpaceViewModel(deps: AppDependencies, private val language: Strin
     var weekDays by mutableIntStateOf(0); private set
     var busy by mutableStateOf(false); private set
     var error by mutableStateOf<String?>(null); private set
+    var unavailable by mutableStateOf(false); private set
     var stale by mutableStateOf(false); private set
 
     private suspend fun load() {
         val all = spaces.list()
+        if (detail != null && all.none { it.spaceId == detail }) {
+            cards = emptyList()
+            unavailable = true
+            return
+        }
         val projection = progress.projection()
         val today = LocalDate.now()
         val monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).toString()
@@ -61,18 +67,21 @@ internal class SpaceViewModel(deps: AppDependencies, private val language: Strin
         if (busy) return
         busy = true
         viewModelScope.launch {
-            try { error = null; stale = false; work(); load() }
+            try { error = null; unavailable = false; stale = false; work(); load() }
             catch (e: CancellationException) { throw e }
             catch (e: Exception) {
                 error = e.message ?: e.javaClass.simpleName
                 stale = (e as? ApiException)?.code == "SPACE_STALE"
-                if (detail != null) rejected = spaces.rejectedEdits(detail)
+                if (detail != null) readRejections(detail)
             }
             finally { busy = false }
         }
     }
-    fun importFiles(id: String, files: List<ImportRequest.PdfFile>) = perform {
-        val rows = queue.enqueue(id, files)
+    private suspend fun readRejections(id: String) {
+        try { rejected = spaces.rejectedEdits(id) } catch (e: CancellationException) { throw e } catch (_: Exception) { /* Keep the original failure and the last readable snapshot. */ }
+    }
+    fun importFiles(id: String, files: List<ImportRequest.PdfFile>, batchId: String, onJournaled: () -> Unit) = perform {
+        val rows = queue.enqueue(id, files, batchId, onJournaled)
         imports = queue.list().filter { it.spaceId == id }
         for (row in rows.filter { it.error == null }) {
             queue.process(row.id)
@@ -84,7 +93,7 @@ internal class SpaceViewModel(deps: AppDependencies, private val language: Strin
     }
     suspend fun pathRequest(id: String): GenerationInput.SpacePath {
         try { return spaces.pathRequest(id, language).also { remote = spaces.serverState(id) } }
-        catch (e: ApiException) { stale = e.code == "SPACE_STALE"; rejected = spaces.rejectedEdits(id); throw e }
+        catch (e: ApiException) { stale = e.code == "SPACE_STALE"; readRejections(id); throw e }
     }
     fun memberTitle(member: SpaceMember): String = materials.firstOrNull { it.member == member || it.localPack == member }?.title ?: member.version().contentId
 }
