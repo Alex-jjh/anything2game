@@ -1,38 +1,41 @@
 # Anything2Game
 
-> Anything you have to read, playable in five minutes — and every answer points back to the page.
+> Explore a concept by playing; turn your readings into a route you can return to.
 
 CSI301 Mobile Computing group project. Everything is due **2026-12-07** (ad + demo video, group report + code, individual reports).
 
-## What the app does today (2026-11-20)
+## Concept games and learning Spaces (2026-11-23)
 
-A student opens it as **Lin**, a sample student with a few days of history, or as a guest, and lands on three tabs:
+The API edition is being updated around three entrances. Implementation and device acceptance are tracked in the [acceptance record](docs/design/concept-games-spaces-acceptance.md).
 
 | Tab | What happens |
 |---|---|
-| **Learn** (middle, default) | Pick what you care about (overview / method / results / limits). Answer 3–4 quick questions, where "I don't know" is fine. Then **Aya**, the explainer, walks you through the reading in a visual-novel scene: standee on top, dialogue below, tap to advance. You can Rephrase, ask for an Example, Ask a question or Continue, and every line has its page. Your own character sits on stage and reacts. |
-| **Practice** | One card per course. **Play as** Classic (quick review), Case (catch the AI summary overclaiming, with the page), Rookie (teach a junior), or Escape (process readings). You swipe, sort and order by **drag and drop**, deduce, and cross-examine. Each answer gets a verdict stamp and its evidence; misses come back later as other versions of the clue. |
-| **Me** | Nickname, character (Mochi / Pip / Kumo), progress, switch profile, and an opt-in *Pause when I'm walking*. |
+| **Playground / 游乐场** | Explore a concept through a native game, without uploading a PDF. The first mechanisms are information partition and finite resource allocation, each with a changed-condition transfer challenge. Installed reviewed games work offline; supported concept generation uses the server. |
+| **Spaces / 学习空间** (default) | One card per learning Space, with multiple PDFs and a route through grounded explanation, light practice and the existing Classic / Case / Rookie / Escape activities. Materials remain directly accessible. |
+| **Me / 我的** | Local nickname and character, shared learning-day and progress records, historical learning and profile switching. |
 
-Course content ships as **content packs** (`.a2gpack`: package + game frames + explanation script, checksummed). The same format covers presets, server output and imports. The phone never calls an AI API; generation runs on our server.
+The server and Android use one typed content contract, pack codec and deterministic game runtime. One transport handles the client's API calls; the existing worker and model router handle both PDF and concept generation. There is no additional deployed microservice or model-written executable code.
 
-**Start here:** [docs/product/PRODUCT.md](docs/product/PRODUCT.md) (current state, video plan, open decisions). The latest team decisions are in [docs/product/team-review-2026-11-20.md](docs/product/team-review-2026-11-20.md).
+Generation currently accepts reviewed topics for **binary search / 二分查找** and **opportunity cost / 机会成本**. Other concepts return an explicit unsupported result. Presets and fake-provider artifacts retain their labels. The phone never calls a model provider directly.
+
+**Start here:** [product state](docs/product/PRODUCT.md), [approved design and three-repository research](docs/superpowers/specs/2026-11-23-concept-games-spaces-design.md), [implemented architecture and protocols](docs/architecture/concept-games-spaces.md).
 
 ## Quick start
 
 ```sh
 # JDK 21 + Android SDK platform 37 (local.properties → sdk.dir)
-./gradlew test                                   # contract, engine, app (Robolectric + journeys), server
+./gradlew :contract:test :android:engine:test :android:app:testDebugUnitTest :server:test
+./gradlew :android:app:lintDebug
 ./gradlew :android:app:assembleDebug             # APK → android/app/build/outputs/apk/debug/app-debug.apk
 adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Demo path for the video, offline and with no server:
-1. Continue as **Lin**.
-2. In **Practice**, resume the ResNet case, or Play as Case on Attention.
-3. In **Learn**, start the Attention explanation (or the zh spaced-repetition course in Chinese).
+Offline demo path:
+1. Continue as **Lin** and open a Space to resume the saved ResNet case or the Attention explanation.
+2. Open **Playground** and play a reviewed partition or resource-allocation game through its transfer challenge.
+3. Open **Me** to inspect the same local learning records.
 
-Uploading your own PDF needs the local server: see [server/README.md](server/README.md) and [docs/design/document-tutor.md](docs/design/document-tutor.md).
+Uploading PDFs and generating new activities need the API: see [server setup](server/README.md) and [protocols and recovery](docs/architecture/concept-games-spaces.md). The existing Learn and Practice preferences both migrate to Spaces. Historical mastery without a known content version stays history.
 
 ## Repository map
 
@@ -52,15 +55,15 @@ Uploading your own PDF needs the local server: see [server/README.md](server/REA
 flowchart LR
   subgraph Phone["Android phone"]
     IMP["Import<br/>share sheet · file picker"]
-    DATA["Data<br/>content packs · local profiles · session/mastery/tutor stores"]
-    ENG["engine (pure Kotlin)<br/>session state machine · mastery · context policy"]
-    UI["UI (Compose)<br/>Learn explainer · Practice frames · characters · evidence"]
+    DATA["Data<br/>versioned content · Spaces · local profiles · shared progress"]
+    ENG["engine (pure Kotlin)<br/>native games · session state machine · shared progress"]
+    UI["UI (Compose)<br/>Playground · Spaces · Me · tutor · frames · evidence"]
     IMP --> DATA --> ENG --> UI
   end
   subgraph Server["Backend (Ktor)"]
     API["/v1 API"]
     ING["ingest<br/>PDF → page-indexed chunks"]
-    CMP["compile<br/>strong model: plan → generate → validate"]
+    CMP["shared generation worker<br/>PDF / concept / path → validate → publish"]
     ADP["adapt<br/>flash model: ask · new variants"]
     ST[("DB + blob store")]
     API --> ING --> ST

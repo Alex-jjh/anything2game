@@ -1,0 +1,16 @@
+{
+  "status": "passed",
+  "checks": [
+    "Old PRACTICE opens Spaces; raw legacy mastery and character bytes are preserved",
+    "An explicit cut survives rotation before submission",
+    "Submitted game checkpoint survives background and process restart",
+    "Partition practice and changed-condition transfer complete through real controls",
+    "The native allocation controls remain reachable with large text",
+    "Allocation loss, retry, hint, undo, transfer and idempotent helped completion",
+    "Installed native games work with the local API disconnected",
+    "Profile remains reachable with large text",
+    "English Playground and Chinese navigation both render"
+  ],
+  "serial": "emulator-5578",
+  "api": "37"
+}

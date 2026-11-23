@@ -313,6 +313,16 @@ All routes are under `/v1`. Everything except `GET /v1/health`, `GET /v1/ready` 
 | `POST /packages/{id}/frames/{frameId}` | generates if missing, idempotent, returns the `FrameOverlay` (`409` + retryable while the package is still compiling) |
 | `POST /ask` | `AskRequest` -> `AskResponse` |
 | `DELETE /documents/{id}` | `204`; removes document, chunks, packages, frames and jobs (running jobs are cancelled first) |
+| `POST /spaces`, `GET /spaces` | Create with an idempotency key, or list this owner's Spaces |
+| `GET /spaces/{id}`, `PATCH /spaces/{id}` | Read, or rename with expected revision and request ID |
+| `PUT /spaces/{id}/members`, `DELETE /spaces/{id}/members` | Typed member in a JSON body, expected revision and request ID; removal changes membership only |
+| `POST /generation-jobs`, `GET /generation-jobs/{id}` | Typed concept-game or Space-path request; status includes stage, error, exclusions, content version and provider provenance |
+| `POST /generation-jobs/{id}/cancel` | Cancel through the existing shared worker/store protocol |
+| `GET /content/{id}/versions/{version}` | Owned ready V2 archive, `application/vnd.anything2game.pack+zip` |
+
+The [concept-games and Spaces implementation reference](../docs/architecture/concept-games-spaces.md) documents bodies, source ownership, revision conflicts, publication and restart guarantees. These activities reuse `CompileJobRunner`, `LlmRouter`, quotas and storage. Server-side validation imports the same pure Kotlin runtime and pack codec as Android. The server-only build includes `android/engine` and does not require the Android SDK.
+
+The first source provider recognizes reviewed binary-search and opportunity-cost topics. Unsupported concepts return `UNSUPPORTED_TOPIC`; it does not perform arbitrary web retrieval. Fake providers follow the typed validation path and preserve `fixture`/`modelId`. Actual prompts are in `src/main/resources/prompts/activity.v1.md`, `activity-experience.v1.md`, `game-spec.v1.md` and `space-path.v1.md`.
 
 Errors are `ErrorBody` with the contract's `ErrorCodes`: `UNAUTHORIZED` 401, `NOT_FOUND` 404 (also another install's
 resource), `BAD_REQUEST` 400, `FILE_TOO_LARGE` 413, `UNSUPPORTED_TYPE` 415 (also a PDF that takes longer than `A2G_PDF_TIMEOUT_SECONDS`), `NO_TEXT_LAYER` and `ENCRYPTED_PDF` 422,
