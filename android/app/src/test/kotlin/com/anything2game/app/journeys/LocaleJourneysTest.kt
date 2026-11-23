@@ -57,7 +57,7 @@ class LocaleJourneysTest : JourneyTest() {
 
         openPractice()
         val title = Level("demo_zh_spaced", FrameId.CASE).pkg.title
-        scrollPracticeTo(title)
+        openMaterial(title)
         assertScreenIsTidy("Practice")
         playAs(title, FrameId.CASE)
         waitForText(str(R.string.frame_case_desc))
@@ -80,6 +80,6 @@ class LocaleJourneysTest : JourneyTest() {
         assertScreenIsTidy("recap")
         assertTrue(cjk.containsMatchIn(str(R.string.recap_library)))
         tapText(str(R.string.recap_library))
-        waitForTag("home_PRACTICE")
+        waitForTag("space_materials")
     }
 }

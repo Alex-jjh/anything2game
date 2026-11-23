@@ -19,8 +19,8 @@ data class LibraryUiState(
     val entries: List<LibraryEntry> = emptyList(),
     val hasError: Boolean = false,
     val tutorials: List<com.anything2game.contract.tutor.TutorSession> = emptyList(),
-    val preparingPractice: String? = null,
-    val practiceError: String? = null,
+    val activityProgress: com.anything2game.engine.progress.ActivityProgress? = null,
+    val legacyUnits: Int = 0,
 )
 
 data class LibraryEntry(
@@ -66,22 +66,10 @@ class LibraryViewModel(private val deps: AppDependencies) : ViewModel() {
         refresh()
     }
 
-    fun preparePractice(sessionId: String) {
-        if (_state.value.preparingPractice != null) return
-        val session = _state.value.tutorials.firstOrNull { it.sessionId == sessionId } ?: return
-        _state.value = _state.value.copy(preparingPractice = sessionId, practiceError = null)
-        viewModelScope.launch {
-            try {
-                deps.tutors.preparePractice(session)
-                _state.value = _state.value.copy(preparingPractice = null)
-                refresh()
-            } catch (e: CancellationException) {
-                _state.value = _state.value.copy(preparingPractice = null, practiceError = "TIMEOUT_OR_CANCELLED")
-                throw e
-            } catch (e: Exception) {
-                _state.value = _state.value.copy(preparingPractice = null, practiceError = (e as? com.anything2game.app.data.tutor.TutorApiException)?.code ?: "CONNECTION_OR_STORAGE")
-            }
-        }
+    suspend fun preparePractice(sessionId: String) {
+        val session = deps.tutors.list().single { it.sessionId == sessionId }
+        deps.tutors.preparePractice(session)
+        refresh()
     }
 
     fun refresh() = viewModelScope.launch {
@@ -103,10 +91,16 @@ class LibraryViewModel(private val deps: AppDependencies) : ViewModel() {
             catch (_: Exception) { emptySet() }
         val tutorials = try { deps.tutors.list() } catch (e: CancellationException) { throw e }
             catch (_: Exception) { failed = true; emptyList() }
-        _state.value = LibraryUiState(loading = false, entries = entries.map { e ->
+        val progress = try { deps.learningProgress?.projection() } catch (e: CancellationException) { throw e } catch (_: Exception) { failed = true; null }
+        val history = entries.sumOf { entry ->
+            try { deps.mastery.legacyUnversioned(entry.summary.packageId).values.count { it.attempts > 0 } }
+            catch (e: CancellationException) { throw e }
+            catch (_: Exception) { failed = true; 0 }
+        }
+        _state.value = LibraryUiState(activityProgress = progress, legacyUnits = history, loading = false, entries = entries.map { e ->
             val has = e.summary.packageId in scripted
             e.copy(hasTutor = has, tutorProgress = if (has) try { deps.tutors.progressFor(e.summary.packageId) } catch (c: CancellationException) { throw c } catch (_: Exception) { null } else null)
-        }, hasError = failed, tutorials = tutorials, preparingPractice = _state.value.preparingPractice, practiceError = _state.value.practiceError)
+        }, hasError = failed, tutorials = tutorials)
     }
 }
 

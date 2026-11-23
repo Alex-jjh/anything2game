@@ -30,7 +30,7 @@ class ResumeJourneysTest : JourneyTest() {
         level.play(steps = 3)                     // clue 1 answered, next, clue 2 on screen
         val at = level.here()
         systemBack()
-        waitForTag("home_PRACTICE")
+        waitForTag("space_materials")
         waitFor("Practice to show the open level") { levelStatus(attentionTitle, level1) == inProgressText(level) }
         assertEquals(at, level.here())
 
@@ -95,7 +95,7 @@ class ResumeJourneysTest : JourneyTest() {
         level.play(steps = 3)
         val at = level.here()
         restartProcess()
-        waitForTag("tab_PRACTICE")
+        waitForTag("tab_SPACES")
         openPractice()
         waitFor("open level after restart") { levelStatus(attentionTitle, level1) == inProgressText(level) }
         tapText(str(R.string.home_resume))
@@ -122,7 +122,7 @@ class ResumeJourneysTest : JourneyTest() {
         level.play()
         assertEquals(Phase.Recap, level.session()!!.phase)
         tapText(str(R.string.recap_library))
-        waitForTag("home_PRACTICE")
+        waitForTag("space_materials")
         waitFor("Practice to refresh") { levelStatus(attentionTitle, level1) != str(R.string.level_status_new) }
         startLevel(attentionTitle, level1)
         // A fresh run: first clue, nothing answered yet — not the old recap.
@@ -136,17 +136,17 @@ class ResumeJourneysTest : JourneyTest() {
         val level = startClassic()
         val level2 = "How Attention Actually Works"
         level.play(steps = 2)                     // L1 touched ...
-        systemBack(); waitForTag("home_PRACTICE")
+        systemBack(); waitForTag("space_materials")
         startLevel(attentionTitle, level2)
         waitFor("level 2 to open") { level.session()!!.levelId == "L2" }
         level.play(steps = 2)                     // ... then L2 touched (one session per course: this replaces L1's)
-        systemBack(); waitForTag("home_PRACTICE")
+        systemBack(); waitForTag("space_materials")
         startLevel(attentionTitle, level1)
         waitFor("level 1 to open again") { level.session()!!.levelId == "L1" }
         level.play(steps = 3)                     // ... and L1 again: this is the session the student left open
         val open = level.session()!!
         assertEquals("L1", open.levelId)
-        systemBack(); waitForTag("home_PRACTICE")
+        systemBack(); waitForTag("space_materials")
 
         // The phone says "walking" while the student is on the home screen.
         val sensors = deps.contextSource as com.anything2game.app.platform.SimulatedContextSource

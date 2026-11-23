@@ -27,6 +27,7 @@ class LinJourneyTest : JourneyTest() {
         val open = resnet.session()!!
         assertFalse(open.isFinished)
         val resnetLevel = resnet.pkg.level(open.levelId)!!
+        openMaterial(Level("demo_resnet", FrameId.CASE).pkg.title)
         scrollPracticeTo(str(R.string.level_status_in_progress, open.position + 1, open.queue.size))
         val before = resnet.mastery()
 
@@ -46,7 +47,7 @@ class LinJourneyTest : JourneyTest() {
 
         // Back home: the in-progress status is gone.
         tapText(str(R.string.recap_library))
-        waitForTag("home_PRACTICE")
+        waitForTag("space_materials")
         waitFor("Practice to stop offering to resume a finished case") { !textShown(str(R.string.home_resume)) }
         assertNotEquals("In progress", levelStatus(resnet.pkg.title, resnetLevel.title).take(11))
     }

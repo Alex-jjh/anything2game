@@ -28,6 +28,7 @@ interface TutorRepository {
     suspend fun list(): List<TutorSession>
     /** Saved progress of a scripted course, or null when nothing was saved yet. Never creates or changes a session. */
     suspend fun progressFor(packageId: String): TutorProgress? = null
+    suspend fun progressFor(packageId: String, version: String): TutorProgress? = progressFor(packageId)
     suspend fun assess(cache: TutorCache, requestId: String): TutorSession
     suspend fun turn(cache: TutorCache, intent: TutorIntent, question: String, requestId: String, targetPosition: Int? = null): TutorSession
     suspend fun cancel(cache: TutorCache, requestId: String): TutorSession
@@ -107,6 +108,10 @@ class AndroidTutorRepository(
     internal suspend fun recoverPendingReads() = files.recoverPendingReads()
     override suspend fun progressFor(packageId: String): TutorProgress? {
         val pkg = packages.load(packageId).getOrNull() ?: return null
+        return savedProgress(pkg)
+    }
+    override suspend fun progressFor(packageId: String, version: String): TutorProgress? = packages.load(packageId, version).getOrNull()?.let { savedProgress(it) }
+    private suspend fun savedProgress(pkg: LearningPackage): TutorProgress? {
         val saved = try { files.read(localTutorKey(pkg)) } catch (e: CancellationException) { throw e } catch (e: Exception) { null } ?: return null
         val s = saved.session
         return TutorProgress(explaining = s.messages.isNotEmpty(), position = s.conceptPosition, total = s.questions.size)

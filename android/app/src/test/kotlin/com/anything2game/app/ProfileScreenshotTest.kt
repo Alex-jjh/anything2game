@@ -2,11 +2,14 @@ package com.anything2game.app
 
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onRoot
 import com.anything2game.app.data.profile.LocalProfile
 import com.anything2game.app.ui.character.Avatars
 import com.anything2game.app.ui.character.LocalAvatar
-import com.anything2game.app.ui.home.HomeContent
+import com.anything2game.app.ui.AppRoot
+import com.anything2game.app.ui.Navigator
+import androidx.lifecycle.SavedStateHandle
 import com.anything2game.app.ui.home.HomeNavigation
 import com.anything2game.app.ui.home.HomeTab
 import com.anything2game.app.ui.home.WelcomeScreen
@@ -41,32 +44,19 @@ class ProfileScreenshotTest {
         rule.onRoot().captureRoboImage("build/outputs/roborazzi/profile/p1_welcome_en.png")
     }
 
-    @Test fun sample_student_practice() = sampleHome(HomeTab.PRACTICE, "p2_sample_practice_en")
+    @Test fun sample_student_practice() = sampleHome(HomeTab.SPACES, "p2_sample_practice_en")
     @Test fun sample_student_profile() = sampleHome(HomeTab.PROFILE, "p3_sample_profile_en")
 
     private fun sampleHome(tab: HomeTab, name: String) {
         val deps = AndroidAppContainer(app)
-        // Same state the library view model builds, from the seeded stores.
-        val state = runBlocking {
-            deps.profiles.choose(LocalProfile.SAMPLE)
-            LibraryUiState(loading = false, entries = deps.packages.list().map { sum ->
-                val pkg = deps.packages.load(sum.packageId).getOrThrow()
-                val frames = com.anything2game.app.ui.play.offeredFrames(pkg, deps.frames.available(pkg.packageId))
-                libraryEntry(sum, pkg, deps.sessions.load(sum.packageId), deps.mastery.all(sum.packageId), deps.clock.now())
-                    .copy(frames = frames, selectedFrame = com.anything2game.contract.FrameId.CASE.takeIf { it in frames } ?: frames.first())
-            })
-        }
-        val avatarId = deps.avatarPreferences.get() ?: "mochi"
-        rule.setContent {
-            A2gTheme {
-                androidx.compose.runtime.CompositionLocalProvider(LocalAvatar provides Avatars.of(avatarId)) {
-                    Scaffold(bottomBar = { HomeNavigation(tab) {} }) { padding ->
-                        HomeContent(tab, state, avatarId, deps.homePreferences.nickname,
-                            onSelectAvatar = {}, onRename = {}, onPickPdf = {}, onRead = {}, onPlay = { _, _, _ -> }, onSelectTab = {}, onRetry = {},
-                            padding = padding, onSwitchProfile = {})
-                    }
-                }
-            }
+        runBlocking { deps.profiles.choose(LocalProfile.SAMPLE) }
+        val nav = Navigator(SavedStateHandle())
+        nav.selectTab(tab)
+        rule.setContent { A2gTheme { AppRoot(deps, nav) } }
+        val visible = if (tab == HomeTab.SPACES) app.getString(R.string.spaces_open) else app.getString(R.string.study_record)
+        rule.waitUntil(30000) {
+            org.robolectric.shadows.ShadowLooper.idleMainLooper()
+            rule.onAllNodesWithText(visible).fetchSemanticsNodes().isNotEmpty()
         }
         rule.onRoot().captureRoboImage("build/outputs/roborazzi/profile/$name.png")
     }

@@ -65,7 +65,7 @@ class PromisesJourneysTest : JourneyTest() {
         waitForTag("choose_sample")
         val button = rule.onNodeWithTag("choose_sample")
         button.performClick(); button.performClick(); button.performClick()
-        waitForTag("tab_PRACTICE")
+        waitForTag("tab_SPACES")
         Thread.sleep(1500); rule.waitForIdle()
         val twice = history()
 

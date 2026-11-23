@@ -28,7 +28,12 @@ import com.anything2game.app.R
 import com.anything2game.app.platform.SimulatedContextSource
 import com.anything2game.app.ui.common.ContextSimulator
 import com.anything2game.app.ui.importing.ImportContent
-import com.anything2game.app.ui.home.HomeContent
+import com.anything2game.app.ui.game.GameScreen
+import com.anything2game.app.ui.game.Playground
+import com.anything2game.app.ui.space.SpacesHome
+import com.anything2game.app.ui.space.SpaceScreen
+import com.anything2game.contract.game.ContentVersion
+import com.anything2game.app.ui.home.ProfileContent
 import com.anything2game.app.ui.home.HomeNavigation
 import com.anything2game.app.ui.home.HomeTab
 import com.anything2game.app.ui.reading.ReadingContent
@@ -41,7 +46,7 @@ import com.anything2game.app.ui.home.WelcomeScreen
 import kotlinx.coroutines.launch
 
 @Composable
-fun AppRoot(deps: AppDependencies, navigator: Navigator, onPickPdf: () -> Unit) {
+fun AppRoot(deps: AppDependencies, navigator: Navigator) {
     val route by navigator.route.collectAsStateWithLifecycle()
     val tab by navigator.tab.collectAsStateWithLifecycle()
     val simulator = simulatorFor(deps)
@@ -57,49 +62,56 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator, onPickPdf: () -> Unit) 
     var nickname by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(deps.homePreferences.nickname) }
     var pauseWalking by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(deps.homePreferences.pauseWhenWalking) }
     val tabsState = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
-    LaunchedEffect(navigator) { navigator.initializeTab(deps.homePreferences.lastTab) }
+    LaunchedEffect(navigator, current.id) { navigator.initializeTab(deps.homePreferences.lastTab); deps.homePreferences.lastTab = navigator.tab.value.name }
+    val language = if (androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language == "zh") "zh" else "en"
+    val library = viewModel(key = "library:${current.id}") { LibraryViewModel(deps) }
     val selectTab: (HomeTab) -> Unit = { navigator.selectTab(it); deps.homePreferences.lastTab = it.name }
     androidx.compose.runtime.CompositionLocalProvider(LocalAvatar provides Avatars.of(avatarId)) {
     when (val r = route) {
         Route.Home -> {
-            val vm = viewModel(key = "library:${current.id}") { LibraryViewModel(deps) }
-            LaunchedEffect(Unit) { vm.refresh() }
-            val state by vm.state.collectAsStateWithLifecycle()
-            BackHandler(enabled = tab != HomeTab.LEARN) { selectTab(HomeTab.LEARN) }
+            BackHandler(enabled = tab != HomeTab.SPACES) { selectTab(HomeTab.SPACES) }
             Scaffold(containerColor = A2g.skin.paper, bottomBar = { HomeNavigation(tab, selectTab) }) { padding ->
                 tabsState.SaveableStateProvider(tab.name) {
-                    HomeContent(tab, state, avatarId, nickname,
-                        onSelectAvatar = { avatarId = it; deps.avatarPreferences.set(it) },
-                        onRename = { nickname = it; deps.homePreferences.nickname = it },
-                        onPickPdf = onPickPdf, onRead = navigator::openRead, onPlay = navigator::openPlay,
-                        onSelectTab = selectTab, onRetry = { vm.refresh() }, padding = padding, simulator = simulator, onPreparePractice = vm::preparePractice,
-                        onSwitchProfile = { navigator.toHome(); deps.profiles.leave() }, onSelectFrame = vm::selectFrame,
-                        pauseWhenWalking = pauseWalking, onPauseWhenWalking = { pauseWalking = it; deps.homePreferences.pauseWhenWalking = it })
+                    when (tab) {
+                        HomeTab.PLAYGROUND -> Playground(deps, language, padding) { navigator.openGame(it.contentId, it.contentVersion) }
+                        HomeTab.SPACES -> SpacesHome(deps, language, padding, navigator)
+                        HomeTab.PROFILE -> {
+                            LaunchedEffect(library) { library.refresh() }
+                            val state by library.state.collectAsStateWithLifecycle()
+                            ProfileContent(state, avatarId, nickname, onSelectAvatar = { avatarId = it; deps.avatarPreferences.set(it) },
+                                onRename = { nickname = it; deps.homePreferences.nickname = it }, onSpaces = { selectTab(HomeTab.SPACES) },
+                                onRetry = { library.refresh() }, padding = padding, simulator = simulator,
+                                onSwitchProfile = { navigator.resetProfile(); deps.profiles.leave() },
+                                pauseWhenWalking = pauseWalking, onPauseWhenWalking = { pauseWalking = it; deps.homePreferences.pauseWhenWalking = it })
+                        }
+                    }
                 }
             }
         }
+        is Route.Space -> tabsState.SaveableStateProvider("space:${r.id}") { SpaceScreen(deps, language, r, navigator, library) }
+        is Route.Game -> GameScreen(deps, ContentVersion(r.id, r.version), navigator::back)
         is Route.Read -> {
-            ReadingContent(deps, r.packageId, onBack = navigator::toHome)
+            ReadingContent(deps, r.packageId, r.conceptId, r.sourcePackage ?: r.packageId, r.contentVersion, navigator::back)
         }
         is Route.Play -> {
-            val vm = viewModel(key = "play:${current.id}:${r.packageId}:${r.levelId}:${r.frameId}:${r.run}") { PlayViewModel(deps, r.packageId, r.levelId, r.frameId) }
+            val vm = viewModel(key = "play:${current.id}:${r.packageId}:${r.version}:${r.levelId}:${r.frameId}:${r.run}") { PlayViewModel(deps, r.packageId, r.levelId, r.frameId, r.version, r.resumeFrame) }
             // A level that is no longer on screen must not keep reacting to the phone's sensors (it would rewrite the course's one saved session).
             androidx.compose.runtime.DisposableEffect(vm) { vm.listenToContext(); onDispose { vm.stopListeningToContext() } }
             val state by vm.state.collectAsStateWithLifecycle()
             when (val s = state) {
                 PlayUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                 is PlayUiState.Failed -> {
-                    BackHandler(onBack = navigator::toHome)
+                    BackHandler(onBack = navigator::back)
                     Text(stringResource(R.string.load_failed, s.reason), Modifier.padding(24.dp))
                 }
                 is PlayUiState.Ready -> {
                     // The same file Show source uses: a preset's attached or bundled paper, else a PDF the reader imported.
                     val pkg = s.pkg
                     val pdf by androidx.compose.runtime.produceState<com.anything2game.app.data.tutor.SourceDocument?>(null, current.id, pkg.packageId, pkg.documentVersion) {
-                        value = deps.presetSources?.load(pkg.packageId, pkg.documentId, pkg.documentVersion)
+                        value = deps.presetSources?.load(pkg.packageId, pkg.documentId, pkg.documentVersion, pkg.contentVersion)
                             ?: runCatching { deps.tutors.sourceDocument(pkg.documentId, pkg.documentVersion) }.getOrNull()
                     }
-                    PlayContent(s, onAction = vm::dispatch, onBack = navigator::toHome, onRestart = vm::restart, simulator = simulator, sourcePdf = pdf)
+                    PlayContent(s, onAction = vm::dispatch, onBack = navigator::back, onRestart = vm::restart, simulator = simulator, sourcePdf = pdf)
                 }
             }
         }
@@ -110,10 +122,20 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator, onPickPdf: () -> Unit) 
             val state by vm.state.collectAsStateWithLifecycle()
             val cancel = { vm.cancel(); navigator.toHome() }
             BackHandler(onBack = cancel)
-            LaunchedEffect(state.ready) { state.ready?.let(navigator::openRead) }
+            suspend fun openImported(id: String) {
+                val catalog = requireNotNull(deps.materials).materials()
+                val source = catalog.firstOrNull { it.tutorKey == id || (it.member as? com.anything2game.contract.space.SpaceMember.LocalPackRef)?.packageId == id }
+                val parent = requireNotNull(deps.spaces).list().firstOrNull { source?.member in it.members }
+                navigator.selectTab(HomeTab.SPACES)
+                if (parent != null && source != null) {
+                    navigator.openSpace(parent.spaceId, true)
+                    navigator.openRead(source.tutorKey ?: id, sourcePackage = source.localPack?.packageId, version = source.localPack?.contentVersion)
+                }
+            }
+            LaunchedEffect(state.ready) { state.ready?.let { openImported(it) } }
             Scaffold(containerColor = A2g.skin.paper) { padding ->
                 ImportContent(r.request, onCancel = cancel, contentPadding = padding, endpoint = deps.tutors.endpoint,
-                    state = state, onStart = vm::start, onDemo = { vm.cancel(); navigator.openRead(com.anything2game.app.data.tutor.EXAMPLE_TUTOR_PACKAGE) })
+                    state = state, onStart = vm::start, onDemo = { vm.cancel(); scope.launch { openImported(com.anything2game.app.data.tutor.EXAMPLE_TUTOR_PACKAGE) } })
             }
         }
     }

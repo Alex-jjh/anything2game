@@ -25,6 +25,7 @@ class ProfileJourneysTest : JourneyTest() {
         openPractice()
         val resume = Level("demo_resnet", FrameId.CASE).session()!!
         val resumeText = str(R.string.level_status_in_progress, resume.position + 1, resume.queue.size)
+        openMaterial(Level("demo_resnet", FrameId.CASE).pkg.title)
         scrollPracticeTo(resumeText)
 
         // Lin -> welcome -> guest: nothing of Lin's is visible.
@@ -46,13 +47,14 @@ class ProfileJourneysTest : JourneyTest() {
         guestLevel.play(steps = 3)
         val guestAt = guestLevel.here()
         systemBack()
-        waitForTag("home_PRACTICE")
+        waitForTag("space_materials")
 
         // Guest -> Lin: Lin's Attention is untouched by the guest's open session.
         switchProfile()
         chooseLin()
         openPractice()
         waitFor("Lin's Attention to read 'Needs practice'") { levelStatus(attentionTitle, level1) == str(R.string.home_needs_review) }
+        openMaterial(Level("demo_resnet", FrameId.CASE).pkg.title)
         scrollPracticeTo(resumeText)
         openMe()
         assertEquals("Lin's figures are intact", lin, me())
@@ -65,7 +67,7 @@ class ProfileJourneysTest : JourneyTest() {
 
         // Process restart: the chosen profile (guest) is remembered, no welcome screen.
         restartProcess()
-        waitForTag("tab_PRACTICE")
+        waitForTag("tab_SPACES")
         assertFalse("welcome shown again after restart", exists(androidx.compose.ui.test.hasTestTag("welcome")))
         openPractice()
         waitFor("the guest's open level after restart") { levelStatus(attentionTitle, level1).startsWith("In progress") }
@@ -88,6 +90,7 @@ class ProfileJourneysTest : JourneyTest() {
         val resnet = Level("demo_resnet", FrameId.CASE)
         val seeded = resnet.session()!!
         // Lin finishes the open case ...
+        openMaterial(Level("demo_resnet", FrameId.CASE).pkg.title)
         scrollPracticeTo(str(R.string.level_status_in_progress, seeded.position + 1, seeded.queue.size))
         tapText(str(R.string.home_resume))
         waitFor("play screen") { exists(androidx.compose.ui.test.hasContentDescription(str(R.string.action_back))) }
@@ -96,7 +99,7 @@ class ProfileJourneysTest : JourneyTest() {
         val finished = resnet.mastery()
         // ... leaves and comes back: coming back must not replay the seed over the progress made.
         tapText(str(R.string.recap_library))
-        waitForTag("home_PRACTICE")
+        waitForTag("space_materials")
         switchProfile()
         chooseLin()
         assertEquals(finished, resnet.mastery())

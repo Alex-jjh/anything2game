@@ -61,7 +61,7 @@ abstract class LearnJourneyBase : JourneyTest() {
 
     // ---- Learn tab --------------------------------------------------------------------------------------
 
-    protected fun openLearn() { tap(rule.onNodeWithTag("tab_LEARN")); waitForTag("home_LEARN") }
+    protected fun openLearn() = openPractice()
 
     protected fun scrollListTo(list: String, tag: String) {
         var last: Throwable? = null
@@ -70,7 +70,10 @@ abstract class LearnJourneyBase : JourneyTest() {
         }
         throw AssertionError("Could not scroll to tag $tag in $list", last)
     }
-    protected fun scrollLearnTo(tag: String) = scrollListTo("home_LEARN", tag)
+    protected fun scrollLearnTo(tag: String) {
+        openMaterial(title(tag.removePrefix("start_explanation_")))
+        scrollListTo("space_materials", tag)
+    }
 
     protected fun startExplanation(pkgId: String) {
         scrollLearnTo("start_explanation_$pkgId")
@@ -220,7 +223,7 @@ abstract class LearnJourneyBase : JourneyTest() {
         val content = (s.flatMap { c -> listOf(c.explanation, c.simpler, c.example, c.question.prompt, c.question.concept) + c.question.options.map { it.text } } +
             runBlocking { deps.packages.load(pkgId).getOrThrow().sources.map { it.text } } + title(pkgId) +
             runBlocking { deps.packages.list().map { it.title } }).joinToString(" ")   // the shelf lists every course by its own (maybe English) title
-        return everythingShown().flatMap { t -> Regex("[A-Za-z]{3,}").findAll(t).map { it.value }.toList() }.filter { it !in content }.distinct()
+        return everythingShown().flatMap { t -> Regex("[A-Za-z]{3,}").findAll(t).map { it.value }.toList() }.filter { it != "PDF" && it !in content }.distinct()
     }
 
     /** Any Text that is cut short: an ellipsis, or fewer characters laid out than the string has (hasVisualOverflow is unreliable under Robolectric). */

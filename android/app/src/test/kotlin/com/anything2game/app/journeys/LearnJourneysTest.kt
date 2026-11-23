@@ -58,7 +58,7 @@ class LearnJourneysTest : LearnJourneyBase() {
 
     @Test fun learn_lists_the_four_preset_courses_each_with_start_explanation() {
         launch(); chooseGuest()
-        waitForTag("home_LEARN")                       // Learn is the default tab
+        waitForTag("home_SPACES")                       // Learn is the default tab
         for (id in listOf(attention, resnet, zhSpaced, retrieval)) {
             scrollLearnTo("start_explanation_$id")
             assertEquals(str(R.string.tutor_start_explanation), textOf("start_explanation_$id"))
@@ -67,24 +67,19 @@ class LearnJourneysTest : LearnJourneyBase() {
     }
 
     @Test fun learn_lists_only_courses_with_an_explanation_and_has_no_dead_end_list_of_other_materials() {
-        launch(); chooseGuest(); waitForTag("home_LEARN")
-        waitFor("the library to load") { has("start_explanation_$attention") }
-        // cs231n and mapreduce ship without a tutor script: no explanation card for them ...
-        val others = listOf("demo_cs231n_l1", "demo_mapreduce")
-        for (id in others) assertFalse("$id has an explanation card", exists(hasTestTag("start_explanation_$id")))
-        // ... and no second list of materials either: every card of Learn is an explanation, and the other courses' titles are nowhere in it.
-        for (id in listOf(attention, resnet, zhSpaced, retrieval)) scrollLearnTo("start_explanation_$id")
-        for (id in others) assertFalse("$id is listed in Learn although it has no explanation", exists(hasText(title(id))))
-        assertFalse("a 'View material' button leads to a screen that says there is no explanation", exists(hasText("View material")))
-        // Those courses live in Practice.
-        openPractice()
-        for (id in others) assertTrue("${title(id)} is in Practice", run { scrollPracticeTo(title(id)); textShown(title(id)) })
+        launch(); chooseGuest(); waitForTag("home_SPACES")
+        for (id in listOf("demo_cs231n_l1", "demo_mapreduce")) {
+            openMaterial(title(id))
+            val pkg = Level(id, FrameId.CLASSIC).pkg
+            levelButton(pkg.title, pkg.levels.first().title).assertHasClickAction()
+            assertFalse("A course without a script offered a tutor", exists(hasTestTag("start_explanation_$id")))
+        }
     }
 
     // ---- journey 1 --------------------------------------------------------------------------------------
 
     @Test fun guest_attention_results_focus_end_to_end_and_back_on_the_shelf() {
-        launch(); chooseGuest(); waitForTag("home_LEARN")
+        launch(); chooseGuest(); waitForTag("home_SPACES")
         startExplanation(attention)
 
         // The focus step comes first: four facets, free text, "let the explainer decide" is the default.
@@ -176,7 +171,7 @@ class LearnJourneysTest : LearnJourneyBase() {
         }
         tap(rule.onNodeWithTag("tutor_finish"))
         waitForTag("wrap_up"); tap(rule.onNodeWithTag("wrapup_shelf"))
-        waitForTag("home_LEARN")
+        waitForTag("space_materials")
         assertLearnCard(attention, str(R.string.tutor_card_explained))     // the walk reached its last concept: the card says so
         // The saved explanation is still there: opening the card again lands on the last concept, not a restart.
         startExplanation(attention)
@@ -204,18 +199,18 @@ class LearnJourneysTest : LearnJourneyBase() {
 
     @Test fun back_to_shelf_on_the_last_concept_leaves_learn_showing_the_course_as_continuable() {
         seedUntilLastConcept(attention)
-        launch(); chooseGuest(); waitForTag("home_LEARN")
+        launch(); chooseGuest(); waitForTag("home_SPACES")
         startExplanation(attention)
         waitFor("last concept") { has("dialogue_text") }
         readPages("last concept")
         tap(rule.onNodeWithTag("tutor_finish"))
         waitForTag("wrap_up"); tap(rule.onNodeWithTag("wrapup_shelf"))
-        waitForTag("home_LEARN")
+        waitForTag("space_materials")
         assertLearnCard(attention, str(R.string.tutor_card_explained))
     }
 
     @Test fun focus_accepts_several_facets_orders_the_questions_by_them_and_offers_no_free_text_for_a_scripted_course() {
-        launch(); chooseGuest(); waitForTag("home_LEARN")
+        launch(); chooseGuest(); waitForTag("home_SPACES")
         startExplanation(attention)
         waitForTag("focus_continue")
         tapTutor("focus_limitation"); tapTutor("focus_method")
@@ -233,11 +228,12 @@ class LearnJourneysTest : LearnJourneyBase() {
     }
 
     @Test fun a_first_time_student_sees_an_explanation_to_start_on_the_first_screen_of_learn() {
-        launch(); chooseGuest(); waitForTag("home_LEARN")
-        waitFor("the library to load") { has("start_explanation_$attention") }
-        val nav = boundsOf("home_navigation").top
-        val b = rule.onNodeWithTag("start_explanation_$attention").fetchSemanticsNode().boundsInRoot
-        assertTrue("the first course's Start button at $b is below the bottom bar (top $nav): the student has to scroll past the upload card", b.bottom <= nav && b.top >= 0f)
+        launch(); chooseGuest(); waitForTag("home_SPACES")
+        waitFor("an available Space on the first screen") {
+            rule.onAllNodes(hasText(str(R.string.spaces_open)) and hasClickAction()).fetchSemanticsNodes().any {
+                it.boundsInRoot.height > 0 && it.boundsInRoot.bottom <= boundsOf("home_navigation").top
+            }
+        }
     }
 
     @Test fun no_concept_opens_with_a_page_that_is_only_a_heading_and_a_lead_in() {
@@ -314,7 +310,7 @@ class LearnJourneysTest : LearnJourneyBase() {
         waitFor("scene in portrait") { has("dialogue_text") }
         assertEquals(second, textOf("dialogue_text"))
 
-        systemBack(); waitForTag("home_LEARN")
+        systemBack(); waitForTag("space_materials")
         assertLearnCard(attention, str(R.string.tutor_card_continue_concept, 2, 4))     // the card says where the student is
         startExplanation(attention)
         waitFor("scene after coming back") { has("dialogue_text") && !has("typing_indicator") }
@@ -323,7 +319,7 @@ class LearnJourneysTest : LearnJourneyBase() {
         assertEquals("the message is read from its first page again", first, textOf("dialogue_text"))
 
         restartProcess()
-        waitForTag("home_LEARN")
+        waitForTag("home_SPACES")
         startExplanation(attention)
         waitFor("scene after a process restart") { has("dialogue_text") && !has("typing_indicator") }
         assertEquals("same concept after restart", conceptLine(2, 4), textOf("concept_count"))
@@ -335,7 +331,7 @@ class LearnJourneysTest : LearnJourneyBase() {
     }
 
     @Test fun choosing_an_answer_moves_on_by_itself_and_previous_goes_back_to_change_it() {
-        launch(); chooseGuest(); waitForTag("home_LEARN")
+        launch(); chooseGuest(); waitForTag("home_SPACES")
         startExplanation(attention); chooseFocus()
         val qs = cache(attention).session.questions
         waitForText(str(R.string.tutor_question_count, 1, 4))
@@ -358,12 +354,12 @@ class LearnJourneysTest : LearnJourneyBase() {
         waitForText(str(R.string.tutor_question_count, 3, 4))
         assertEquals(other, cache(attention).draftAnswers[qs[1].id])
         // Leaving here keeps the place; the card says "Continue", not "Start".
-        systemBack(); waitForTag("home_LEARN")
+        systemBack(); waitForTag("space_materials")
         assertLearnCard(attention, str(R.string.tutor_card_continue))
         startExplanation(attention)
         waitForText(str(R.string.tutor_question_count, 3, 4))
         assertFalse("the focus question is asked again after it was answered", has("focus_continue"))
-        restartProcess(); waitForTag("home_LEARN"); startExplanation(attention)
+        restartProcess(); waitForTag("home_SPACES"); startExplanation(attention)
         waitForText(str(R.string.tutor_question_count, 3, 4))
         // The last answer opens the starting-point screen with no further tap.
         answerCurrent(qs[2], UNKNOWN_ANSWER); waitForText(str(R.string.tutor_question_count, 4, 4))
@@ -382,7 +378,7 @@ class LearnJourneysTest : LearnJourneyBase() {
 
     @Test fun chinese_course_end_to_end_in_a_chinese_phone_without_english_or_clipped_text() {
         RuntimeEnvironment.setQualifiers("+zh")
-        launch(); waitForTag("welcome"); chooseGuest(); waitForTag("home_LEARN")
+        launch(); waitForTag("welcome"); chooseGuest(); waitForTag("home_SPACES")
         scrollLearnTo("start_explanation_$zhSpaced")
         assertEquals("开始讲解", textOf("start_explanation_$zhSpaced"))
         noLeaks(zhSpaced, "Learn shelf")
@@ -416,7 +412,7 @@ class LearnJourneysTest : LearnJourneyBase() {
         rule.onNodeWithTag("tutor_ask").performClick(); waitForTag("tutor_input"); noLeaks(zhSpaced, "ask sheet")
         tapText(str(R.string.explainer_cancel)); waitFor("ask sheet closed") { !has("ask_sheet") }
         rule.onNodeWithTag("explainer_log").performClick(); waitForTag("explainer_log_list"); noLeaks(zhSpaced, "log")
-        tap(rule.onNodeWithTag("tutor_finish")); waitForTag("wrap_up"); tap(rule.onNodeWithTag("wrapup_shelf")); waitForTag("home_LEARN")
+        tap(rule.onNodeWithTag("tutor_finish")); waitForTag("wrap_up"); tap(rule.onNodeWithTag("wrapup_shelf")); waitForTag("space_materials")
     }
 
     // ---- journey 4 --------------------------------------------------------------------------------------
@@ -425,7 +421,7 @@ class LearnJourneysTest : LearnJourneyBase() {
         reachScene(attention, listOf("focus_result"), right(attention))
         readPages("guest concept 1"); choose(attention, "tutor_continue")
         waitFor("guest on concept 2") { textOf("concept_count") == conceptLine(2, 4) }
-        systemBack(); waitForTag("home_LEARN")
+        systemBack(); waitForTag("space_materials")
 
         switchProfile(); chooseLin(); openLearn()
         startExplanation(attention)
@@ -437,20 +433,20 @@ class LearnJourneysTest : LearnJourneyBase() {
         val lin = cache(attention).session.questions
         answerCurrent(lin[0], UNKNOWN_ANSWER)
         waitForText(str(R.string.tutor_question_count, 2, 4))
-        systemBack(); waitForTag("home_LEARN")
+        systemBack(); waitForTag("space_materials")
 
         switchProfile(); chooseGuest(); openLearn()
         startExplanation(attention)
         waitFor("guest's explanation") { has("dialogue_text") }
         assertEquals("the guest's own place", conceptLine(2, 4), textOf("concept_count"))
         assertEquals(listOf(Facet.RESULT), cache(attention).session.focus)
-        systemBack(); waitForTag("home_LEARN")
+        systemBack(); waitForTag("space_materials")
 
         switchProfile(); chooseLin(); openLearn()
         startExplanation(attention)
         waitForText(str(R.string.tutor_question_count, 2, 4))            // Lin's own place, not the guest's scene
         assertEquals(listOf(Facet.METHOD), cache(attention).session.focus)
-        restartProcess(); waitForTag("home_LEARN")                       // Lin is remembered across a restart
+        restartProcess(); waitForTag("home_SPACES")                       // Lin is remembered across a restart
         startExplanation(attention)
         waitForText(str(R.string.tutor_question_count, 2, 4))
     }
@@ -575,7 +571,7 @@ class LearnJourneysTest : LearnJourneyBase() {
 
     @Test fun at_200_percent_the_focus_and_diagnostic_steps_can_be_scrolled_to_every_button() {
         RuntimeEnvironment.setFontScale(2f)
-        launch(); chooseGuest(); waitForTag("home_LEARN")
+        launch(); chooseGuest(); waitForTag("home_SPACES")
         startExplanation(attention)
         chooseFocus("focus_method", "focus_result")
         runDiagnostic(attention, right(attention))
@@ -584,7 +580,7 @@ class LearnJourneysTest : LearnJourneyBase() {
 
     @Test fun at_200_percent_the_first_diagnostic_question_is_on_screen_without_scrolling() {
         RuntimeEnvironment.setFontScale(2f)
-        launch(); chooseGuest(); waitForTag("home_LEARN")
+        launch(); chooseGuest(); waitForTag("home_SPACES")
         startExplanation(attention); chooseFocus()
         waitForText(str(R.string.tutor_question_count, 1, 4))
         val q = cache(attention).session.questions.first()
@@ -613,7 +609,7 @@ class LearnJourneysTest : LearnJourneyBase() {
         waitForText(str(R.string.one_handed_badge))
         assertFalse(textShown(str(R.string.paused_title)))
         sensors.setActivity(ContextSignals.Activity.STILL)
-        systemBack(); waitForTag("home_PRACTICE")
+        systemBack(); waitForTag("space_materials")
 
         // On: walking pauses.
         openMe(); scrollListTo("home_PROFILE", "setting_pause_walking")
@@ -628,7 +624,7 @@ class LearnJourneysTest : LearnJourneyBase() {
         tapText(str(R.string.paused_continue))
         waitFor("pause gone") { !textShown(str(R.string.paused_title)) }
         sensors.setActivity(ContextSignals.Activity.STILL)
-        systemBack(); waitForTag("home_PRACTICE")
+        systemBack(); waitForTag("space_materials")
 
         // Off again: walking does not pause any more.
         openMe(); scrollListTo("home_PROFILE", "setting_pause_walking")
@@ -642,7 +638,7 @@ class LearnJourneysTest : LearnJourneyBase() {
         sensors.setActivity(ContextSignals.Activity.STILL)
 
         // The setting survives a restart.
-        systemBack(); waitForTag("home_PRACTICE")
+        systemBack(); waitForTag("space_materials")
         restartProcess(); waitForTag("tab_PROFILE"); openMe(); scrollListTo("home_PROFILE", "setting_pause_walking")
         rule.onNodeWithTag("setting_pause_walking").assertIsOff()
     }

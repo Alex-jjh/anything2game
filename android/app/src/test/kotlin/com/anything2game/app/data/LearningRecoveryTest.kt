@@ -582,11 +582,29 @@ class LearningRecoveryTest {
         deps.content.install(PackCodec.toBytes(PackCodec.build(pkg, emptyList(), PackOrigin.PRESET, sourceLayout = layout)).inputStream())
         deps.content.install(PackCodec.toBytes(PackCodec.build(pkg.copy(contentVersion = "2", documentVersion = "new-doc"), emptyList(), PackOrigin.PRESET)).inputStream())
         val presets = PresetSources(deps.content, SourceDocumentStore(tmp.newFolder())) { bytes.inputStream() }
+        assertNull(presets.available(pkg.packageId))
+        assertEquals(pkg.documentId, requireNotNull(presets.available(pkg.packageId, "1")).documentId)
+        assertTrue(presets.attach(pkg.packageId, "1") { bytes.inputStream() } is AttachResult.Accepted)
         val catalog = MaterialCatalog(deps.content, deps.tutors, presets)
         val mat = catalog.materials().single { it.member == SpaceMember.LocalPackRef("retained", "1") }
         val citation = mat.nodes.first().evidence.single()
         val target = catalog.source(citation) as SourceTarget.Pdf
         assertArrayEquals(bytes, requireNotNull(target.document).file.readBytes())
+    }
+
+    @Test fun `a retained tutor card reads progress at the requested version`() = runBlocking {
+        val deps = AndroidAppContainer(app)
+        val original = deps.packages.load(EXAMPLE_TUTOR_PACKAGE).getOrThrow()
+        val script = requireNotNull(deps.tutorScripts.scriptFor(original.packageId))
+        for (version in listOf("1", "2")) {
+            val pkg = original.copy(packageId = "retained-tutor", contentVersion = version)
+            deps.content.install(PackCodec.toBytes(PackCodec.build(pkg, emptyList(), PackOrigin.PRESET,
+                tutor = script.copy(packageId = pkg.packageId, contentVersion = version))).inputStream())
+            if (version == "1") deps.tutors.save(deps.tutors.open(localTutorKey(pkg)).cache.copy(focusChosen = true))
+        }
+        assertNull(deps.tutors.progressFor("retained-tutor"))
+        assertNotNull(deps.tutors.progressFor("retained-tutor", "1"))
+        assertNull(deps.tutors.progressFor("retained-tutor", "2"))
     }
 
     @Test fun `matching bundled evidence leaves uploaded profile PDF and layout intact`() = runBlocking {

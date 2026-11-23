@@ -14,8 +14,16 @@ class HomePreferences(context: Context, name: String = "home") {
         get() = prefs.getBoolean("pause_walking", false)
         set(value) { prefs.edit { putBoolean("pause_walking", value) } }
     var lastTab: String
-        get() = prefs.getString("tab", "LEARN") ?: "LEARN"
+        get() = prefs.getString("tab", "SPACES") ?: "SPACES"
         set(value) { prefs.edit { putString("tab", value) } }
+
+    var lastGame: com.anything2game.contract.game.ContentVersion?
+        get() {
+            val id = prefs.getString("game.id", null) ?: return null
+            val version = prefs.getString("game.version", null) ?: return null
+            return com.anything2game.contract.game.ContentVersion(id, version)
+        }
+        set(value) { prefs.edit { putString("game.id", value?.contentId); putString("game.version", value?.contentVersion) } }
 
     // Length prefixes avoid collisions; versioning retains old answers without applying them to new content.
     private fun key(pkg: String, version: String, level: String) =

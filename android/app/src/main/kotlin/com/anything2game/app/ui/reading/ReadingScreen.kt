@@ -38,7 +38,7 @@ internal const val COMPACT_FONT_SCALE = 1.3f
 /** Middle-tab teaching surface. Practice has its own tab and never launches from this flow. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ReadingContent(deps: AppDependencies, packageId: String, onBack: () -> Unit) {
+fun ReadingContent(deps: AppDependencies, packageId: String, conceptId: String? = null, sourcePackage: String = packageId, contentVersion: String? = null, onBack: () -> Unit) {
     val profileId by deps.profiles.active.collectAsState()
     val vm = viewModel(key = "tutor:${profileId?.id}:$packageId") { TutorViewModel(deps.tutors, packageId) }
     val state by vm.state.collectAsStateWithLifecycle()
@@ -46,6 +46,16 @@ fun ReadingContent(deps: AppDependencies, packageId: String, onBack: () -> Unit)
     androidx.activity.compose.BackHandler { if (state.busy) vm.cancelPending(); onBack() }
     val c = state.cache
     val s = c?.session
+    var initialConcept by rememberSaveable(packageId, conceptId) { mutableStateOf(conceptId) }
+    LaunchedEffect(s?.sessionId, initialConcept) {
+        val target = initialConcept ?: return@LaunchedEffect
+        if (s == null) return@LaunchedEffect
+        initialConcept = null
+        if (s.messages.isNotEmpty()) {
+            val i = TutorRules.orderedQuestions(s).indexOfFirst { it.conceptId == target }
+            if (i >= 0 && i != s.conceptPosition) vm.turn(TutorIntent.REVISIT, targetPosition = i)
+        }
+    }
     val skin = A2g.skin
     val list = rememberLazyListState()
     var input by rememberSaveable(packageId) { mutableStateOf("") }
@@ -58,11 +68,11 @@ fun ReadingContent(deps: AppDependencies, packageId: String, onBack: () -> Unit)
     // Preset courses (ADR-019): the reader's own copy of the paper, attached in the viewer. Looked up here because the
     // view model only asks for imported PDFs; keyed on the session's ids like that lookup, so both can never disagree.
     val presets = deps.presetSources
-    val presetPdf by produceState<PresetPdf?>(null, presets, packageId) { value = presets?.available(packageId) }
+    val presetPdf by produceState<PresetPdf?>(null, presets, packageId) { value = presets?.available(sourcePackage, contentVersion) }
     var presetDoc by remember(profileId, packageId) { mutableStateOf<SourceDocument?>(null) }
-    LaunchedEffect(presets, s?.documentId, s?.documentVersion) { presetDoc = s?.let { presets?.load(packageId, it.documentId, it.documentVersion) } }
+    LaunchedEffect(presets, s?.documentId, s?.documentVersion) { presetDoc = s?.let { presets?.load(sourcePackage, it.documentId, it.documentVersion, contentVersion) } }
     // Owned here, not by the dialog: a check outlives a closed viewer and a picker result outlives a recreated activity.
-    val attachFlow = rememberAttachFlow("$profileId:$packageId", attach = { open -> presets?.attach(packageId, open) ?: AttachResult.NoLayout }, onAttached = { presetDoc = it })
+    val attachFlow = rememberAttachFlow("$profileId:$packageId", attach = { open -> presets?.attach(sourcePackage, contentVersion, open) ?: AttachResult.NoLayout }, onAttached = { presetDoc = it })
     // Pending intent is only for loading feedback; the displayed reply's mode comes from its saved metadata.
     var requestedIntent by rememberSaveable(packageId) { mutableStateOf<TutorIntent?>(null) }
     val context = LocalContext.current

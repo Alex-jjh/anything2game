@@ -41,7 +41,7 @@ class PresetSources(
         try { if (version == null) layouts.sourceLayoutFor(packageId) else layouts.sourceLayoutFor(packageId, version) } catch (e: CancellationException) { throw e } catch (e: Exception) { null }
 
     /** The file this course can show pages of, or null when it has no packed geometry (then nothing is offered). */
-    suspend fun available(packageId: String): PresetPdf? = layout(packageId)?.let(::describe)
+    suspend fun available(packageId: String, version: String? = null): PresetPdf? = layout(packageId, version)?.let(::describe)
 
     /** The attached PDF for the session with these ids, if one was attached here and is still the file the pack's geometry is for. */
     suspend fun load(packageId: String, documentId: String, documentVersion: String, contentVersion: String? = null): SourceDocument? {
@@ -59,8 +59,9 @@ class PresetSources(
     }
 
     /** Reads the picked file once (bounded), checks it is a PDF and is the exact file measured, then keeps it. */
-    suspend fun attach(packageId: String, open: () -> InputStream?): AttachResult {
-        val layout = layout(packageId) ?: return AttachResult.NoLayout
+    suspend fun attach(packageId: String, open: () -> InputStream?): AttachResult = attach(packageId, null, open)
+    suspend fun attach(packageId: String, version: String?, open: () -> InputStream?): AttachResult {
+        val layout = layout(packageId, version) ?: return AttachResult.NoLayout
         return attach(layout, open = open)
     }
 

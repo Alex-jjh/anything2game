@@ -88,7 +88,7 @@ class EverydayJourneysTest : JourneyTest() {
         waitForText(str(R.string.paused_title))
         // The phone is put away mid-walk and the app is later reopened while the student sits still.
         restartProcess()
-        waitForTag("tab_PRACTICE"); openPractice()
+        waitForTag("tab_SPACES"); openPractice()
         waitFor("open level") { levelStatus(attentionTitle, level1).startsWith("In progress") }
         tapText(str(R.string.home_resume))
         waitFor("play screen") { exists(hasContentDescription(str(R.string.action_back))) }

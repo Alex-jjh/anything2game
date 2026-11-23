@@ -41,7 +41,7 @@ class FrameJourneysTest : JourneyTest() {
         waitForText(str(R.string.boss_cleared))
         waitForText(str(R.string.recap_all_solid))
         tapText(str(R.string.recap_library))
-        waitForTag("home_PRACTICE")
+        waitForTag("space_materials")
 
         openMe()
         val units = level.pkg.level("L1")!!.units.size

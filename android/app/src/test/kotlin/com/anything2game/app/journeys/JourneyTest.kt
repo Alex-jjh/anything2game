@@ -117,7 +117,7 @@ abstract class JourneyTest {
     /** A finger cannot press a button that sits under the bottom bar: drag the list up, as a student would, until it is clear. */
     private fun revealAboveNavigation(node: SemanticsNodeInteraction) {
         if (node.fetchSemanticsNode().config.getOrNull(SemanticsProperties.Role) == androidx.compose.ui.semantics.Role.Tab) return
-        val list = listOf("home_PRACTICE", "home_PROFILE", "home_LEARN").firstOrNull { rule.onAllNodesWithTag(it).fetchSemanticsNodes().isNotEmpty() } ?: return
+        val list = listOf("home_PROFILE", "home_SPACES").firstOrNull { rule.onAllNodesWithTag(it).fetchSemanticsNodes().isNotEmpty() } ?: return
         val navTop = rule.onAllNodesWithTag("home_navigation").fetchSemanticsNodes().firstOrNull()?.boundsInRoot?.top ?: return
         repeat(8) {
             val b = node.fetchSemanticsNode().boundsInRoot
@@ -144,11 +144,28 @@ abstract class JourneyTest {
 
     // ---- welcome / home ----------------------------------------------------------------------------------
 
-    protected fun chooseLin() { waitForTag("choose_sample"); tap(rule.onNodeWithTag("choose_sample")); waitForTag("tab_PRACTICE") }
-    protected fun chooseGuest() { waitForTag("choose_guest"); tap(rule.onNodeWithTag("choose_guest")); waitForTag("tab_PRACTICE") }
-    protected fun openPractice() { tap(rule.onNodeWithTag("tab_PRACTICE")); waitForTag("home_PRACTICE") }
-    protected fun openMe() { tap(rule.onNodeWithTag("tab_PROFILE")); waitForTag("home_PROFILE") }
-    protected fun switchProfile() { openMe(); tapText(str(R.string.profile_switch)); waitForTag("welcome") }
+    protected fun chooseLin() { waitForTag("choose_sample"); tap(rule.onNodeWithTag("choose_sample")); waitForTag("tab_SPACES") }
+    protected fun chooseGuest() { waitForTag("choose_guest"); tap(rule.onNodeWithTag("choose_guest")); waitForTag("tab_SPACES") }
+    private var openCourse: String? = null
+    protected fun openPractice() {
+        if (exists(hasTestTag("space_materials")) || exists(hasTestTag("space_route"))) systemBack()
+        tap(rule.onNodeWithTag("tab_SPACES")); waitForTag("home_SPACES")
+        openCourse = null
+    }
+    protected fun openMaterial(courseTitle: String) {
+        if (exists(hasTestTag("space_materials")) && openCourse == courseTitle) return
+        openPractice()
+        val id = runBlocking { requireNotNull(deps.spaces).list().first { it.title == courseTitle }.spaceId }
+        val tag = "open_space_$id"
+        waitFor("Space for $courseTitle") { runCatching { rule.onNodeWithTag("home_SPACES").performScrollToNode(hasTestTag(tag)); true }.getOrDefault(false) }
+        tap(rule.onNodeWithTag(tag))
+        waitForTag("show_materials")
+        tap(rule.onNodeWithTag("show_materials"))
+        waitForTag("space_materials")
+        openCourse = courseTitle
+    }
+    protected fun openMe() { if (exists(hasTestTag("space_materials")) || exists(hasTestTag("space_route"))) systemBack(); tap(rule.onNodeWithTag("tab_PROFILE")); waitForTag("home_PROFILE") }
+    protected fun switchProfile() { openMe(); scrollMeTo(str(R.string.profile_switch)); tapText(str(R.string.profile_switch)); waitForTag("welcome") }
 
     /** Scrolls a Practice / Me list until [text] is on screen (list items compose lazily); waits while the library loads. */
     private fun scrollListTo(tag: String, text: String) {
@@ -162,40 +179,32 @@ abstract class JourneyTest {
         }
         throw AssertionError("Could not scroll to \"$text\" in $tag", last)
     }
-    protected fun scrollPracticeTo(text: String) = scrollListTo("home_PRACTICE", text)
+    protected fun scrollPracticeTo(text: String) = scrollListTo("space_materials", text)
     protected fun scrollMeTo(text: String) = scrollListTo("home_PROFILE", text)
 
     /** The button of one level in Practice: the first "Start practice" / "Continue your session" below the level's title. */
+    private fun levelTag(courseTitle: String, levelTitle: String): String = runBlocking {
+        val summary = deps.packages.list().single { it.title == courseTitle }
+        val level = deps.packages.load(summary.packageId).getOrThrow().levels.single { it.title == levelTitle }
+        "${summary.packageId}_${level.levelId}"
+    }
+    private fun materialControl(tag: String): SemanticsNodeInteraction {
+        waitFor("material control $tag") { runCatching { rule.onNodeWithTag("space_materials").performScrollToNode(hasTestTag(tag)); true }.getOrDefault(false) }
+        return rule.onNodeWithTag(tag)
+    }
     protected fun levelButton(courseTitle: String, levelTitle: String): SemanticsNodeInteraction {
-        scrollPracticeTo(courseTitle)
-        scrollPracticeTo(levelTitle)
-        val titleTop = rule.onNode(hasText(levelTitle)).fetchSemanticsNode().boundsInRoot.top
-        val buttons = rule.onAllNodes(hasClickAction() and (hasText(str(R.string.home_practice_action)) or hasText(str(R.string.home_resume))))
-        val idx = buttons.fetchSemanticsNodes().withIndex().filter { it.value.boundsInRoot.top > titleTop }.minByOrNull { it.value.boundsInRoot.top }?.index
-            ?: throw AssertionError("No start button under level \"$levelTitle\"")
-        return buttons[idx]
+        openMaterial(courseTitle)
+        return materialControl("play_" + levelTag(courseTitle, levelTitle))
     }
-    /** What Practice says about one level ("Needs practice", "New", "In progress · 3/9"…). */
     protected fun levelStatus(courseTitle: String, levelTitle: String): String {
-        scrollPracticeTo(courseTitle); scrollPracticeTo(levelTitle)
-        // The status line is the Text that follows the level title inside the card.
-        val titleTop = rule.onNode(hasText(levelTitle)).fetchSemanticsNode().boundsInRoot.top
-        val texts = rule.onAllNodes(SemanticsMatcher("text below title") { it.config.getOrNull(SemanticsProperties.Text) != null })
-            .fetchSemanticsNodes().filter { it.boundsInRoot.top > titleTop }.sortedBy { it.boundsInRoot.top }
-        return texts.first().config[SemanticsProperties.Text].joinToString("") { it.text }
+        openMaterial(courseTitle)
+        return materialControl("level_status_" + levelTag(courseTitle, levelTitle)).fetchSemanticsNode().config[SemanticsProperties.Text].joinToString("") { it.text }
     }
-    /** Click "Play as <frame>" on one course card. */
     protected fun playAs(courseTitle: String, frame: FrameId) {
-        scrollPracticeTo(courseTitle)
-        val titleTop = rule.onNode(hasText(courseTitle)).fetchSemanticsNode().boundsInRoot.top
-        val chips = rule.onAllNodes(hasTestTag("play_as_${frame.name}"))
-        val idx = chips.fetchSemanticsNodes().withIndex().filter { it.value.boundsInRoot.top > titleTop }.minByOrNull { it.value.boundsInRoot.top }?.index
-            ?: throw AssertionError("No \"Play as $frame\" chip under $courseTitle")
-        tap(chips[idx])
-        // The choice is saved and the library redrawn asynchronously; a student sees the chip light up before tapping Start.
-        waitFor("the $frame chip to be selected") {
-            rule.onAllNodes(hasTestTag("play_as_${frame.name}")).fetchSemanticsNodes().any { it.config.getOrNull(SemanticsProperties.Selected) == true && it.boundsInRoot.top > titleTop - 1f }
-        }
+        openMaterial(courseTitle)
+        val chip = materialControl("play_as_${frame.name}")
+        tap(chip)
+        waitFor("frame selected") { chip.fetchSemanticsNode().config.getOrNull(SemanticsProperties.Selected) == true }
     }
     protected fun startLevel(courseTitle: String, levelTitle: String) {
         tap(levelButton(courseTitle, levelTitle))

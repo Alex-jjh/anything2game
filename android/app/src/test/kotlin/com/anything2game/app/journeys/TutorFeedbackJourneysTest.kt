@@ -17,7 +17,7 @@ class TutorFeedbackJourneysTest : LearnJourneyBase() {
         choose(attention, "tutor_example")
         assertEquals("Example", textOf("dialogue_mode"))
         val example = lastTutorMessage(attention)
-        restartProcess(); waitForTag("home_LEARN"); startExplanation(attention); sceneReady()
+        restartProcess(); waitForTag("home_SPACES"); startExplanation(attention); sceneReady()
         assertEquals(example, lastTutorMessage(attention))
         assertEquals("Example", textOf("dialogue_mode"))
         readPages("saved example")

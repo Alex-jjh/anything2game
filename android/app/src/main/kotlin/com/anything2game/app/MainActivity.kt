@@ -5,7 +5,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.activity.viewModels
 import com.anything2game.app.importing.IntentImportParser
 import com.anything2game.app.ui.AppRoot
@@ -16,13 +19,7 @@ class MainActivity : ComponentActivity() {
     private val navigator: Navigator by viewModels()
     private val parser by lazy { IntentImportParser(contentResolver) }
 
-    private val pickPdf = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        uri?.let {
-            runCatching { contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
-            navigator.openImport(parser.pdf(it))
-        }
-    }
-
+    @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -30,7 +27,7 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) handleShare(intent)
         setContent {
             A2gTheme {
-                AppRoot(deps, navigator, onPickPdf = { pickPdf.launch(arrayOf(IntentImportParser.PDF)) })
+                Box(Modifier.semantics { testTagsAsResourceId = true }) { AppRoot(deps, navigator) }
             }
         }
     }

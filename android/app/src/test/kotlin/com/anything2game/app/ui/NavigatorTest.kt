@@ -19,17 +19,17 @@ class NavigatorTest {
     @Test fun `first launch opens reading and saved tab overrides device default`() {
         val handle = SavedStateHandle()
         val nav = Navigator(handle)
-        assertEquals(HomeTab.LEARN, nav.tab.value)
+        assertEquals(HomeTab.SPACES, nav.tab.value)
         nav.initializeTab("PROFILE")
-        nav.selectTab(HomeTab.PRACTICE)
+        nav.selectTab(HomeTab.PLAYGROUND)
         val restored = recreated(handle)
         restored.initializeTab("PROFILE")
-        assertEquals(HomeTab.PRACTICE, restored.tab.value)
+        assertEquals(HomeTab.PLAYGROUND, restored.tab.value)
         assertEquals(Route.Home, restored.route.value)
     }
     @Test fun `invalid old tab falls back safely`() {
         val nav = Navigator(SavedStateHandle(mapOf("home.tab" to "removed")))
-        assertEquals(HomeTab.LEARN, nav.tab.value)
+        assertEquals(HomeTab.SPACES, nav.tab.value)
     }
     @Test fun `legacy saved play route retains its frame`() {
         val nav = Navigator(SavedStateHandle(mapOf("route.pkg" to "p", "route.level" to "L1", "route.frame" to "CASE")))
@@ -38,12 +38,24 @@ class NavigatorTest {
     @Test fun `reading restores with its originating tab and back clears detail`() {
         val saved = SavedStateHandle()
         val nav = Navigator(saved)
-        nav.selectTab(HomeTab.PRACTICE)
+        nav.selectTab(HomeTab.PLAYGROUND)
         nav.openRead("p")
         val restored = recreated(saved)
         assertEquals(Route.Read("p"), restored.route.value)
         restored.toHome()
-        assertEquals(HomeTab.PRACTICE, restored.tab.value)
+        assertEquals(HomeTab.PLAYGROUND, restored.tab.value)
+        assertEquals(Route.Home, restored.route.value)
+    }
+    @Test fun `pinned game inside a Space restores and returns to that parent`() {
+        val saved = SavedStateHandle()
+        val nav = Navigator(saved)
+        nav.openSpace("science")
+        nav.openGame("locker-en", "v1")
+        val restored = recreated(saved)
+        assertEquals(Route.Game("locker-en", "v1"), restored.route.value)
+        restored.back()
+        assertEquals(Route.Space("science"), restored.route.value)
+        restored.back()
         assertEquals(Route.Home, restored.route.value)
     }
     @Test fun `import replaces stale game route without saving file contents`() {
