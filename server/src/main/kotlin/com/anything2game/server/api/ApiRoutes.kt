@@ -6,17 +6,20 @@ import com.anything2game.contract.ApiError
 import com.anything2game.contract.CompileJobRequest
 import com.anything2game.contract.CompileJobState
 import com.anything2game.contract.DocumentKind
+import com.anything2game.contract.DocumentLayout
 import com.anything2game.contract.DocumentResponse
 import com.anything2game.contract.ErrorBody
 import com.anything2game.contract.ErrorCodes
 import com.anything2game.contract.FrameId
 import com.anything2game.contract.InstallResponse
 import com.anything2game.contract.PageText
+import com.anything2game.contract.SourceChunk
 import com.anything2game.contract.TextDocumentRequest
 import com.anything2game.server.AppContext
 import com.anything2game.server.config.ServerConfig
 import com.anything2game.server.ingest.Chunker
 import com.anything2game.server.ingest.IngestException
+import com.anything2game.server.ingest.ChunkLayouts
 import com.anything2game.server.ingest.PdfTextExtractor
 import com.anything2game.server.store.JobRecord
 import com.anything2game.server.store.StoredDocument
@@ -276,9 +279,15 @@ private suspend fun uploadPdf(call: ApplicationCall, ctx: AppContext, ownerId: S
     if (!PdfTextExtractor.looksLikePdf(data)) {
         throw ApiException(HttpStatusCode.UnsupportedMediaType, ErrorCodes.UNSUPPORTED_TYPE, "The file is not a PDF.")
     }
-    val pages = withContext(Dispatchers.IO) { ctx.pdf.extract(data) }
     val displayTitle = title ?: fileName?.substringBeforeLast('.')
-    return storeDocument(ctx, ownerId, displayTitle, DocumentKind.PDF, pages)
+    // Glyph geometry only on request: it can be a megabyte of JSON that older phones (2 MB response cap) never asked for.
+    if (call.request.queryParameters["layout"] != "1") {
+        val pages = withContext(Dispatchers.IO) { ctx.pdf.extract(data) }
+        return storeDocument(ctx, ownerId, displayTitle, DocumentKind.PDF, pages)
+    }
+    val read = withContext(Dispatchers.IO) { ctx.pdf.extractWithGlyphs(data) }
+    // Nothing of the layout is stored: the phone keeps its own copy of the PDF and this geometry next to it.
+    return storeDocument(ctx, ownerId, displayTitle, DocumentKind.PDF, read.pages) { chunks -> ChunkLayouts.build(chunks, read.glyphs) }
 }
 
 private suspend fun uploadText(call: ApplicationCall, ctx: AppContext, ownerId: String): DocumentResponse {
@@ -293,7 +302,10 @@ private suspend fun uploadText(call: ApplicationCall, ctx: AppContext, ownerId: 
     return storeDocument(ctx, ownerId, req.title, req.kind, pages)
 }
 
-private fun storeDocument(ctx: AppContext, ownerId: String, rawTitle: String?, kind: DocumentKind, pages: List<PageText>): DocumentResponse {
+private fun storeDocument(
+    ctx: AppContext, ownerId: String, rawTitle: String?, kind: DocumentKind, pages: List<PageText>,
+    layoutOf: ((List<SourceChunk>) -> DocumentLayout)? = null,
+): DocumentResponse {
     val limits = ctx.config.limits
     val totalChars = pages.sumOf { it.text.length }
     if (totalChars > limits.maxTextChars) throw ApiException.tooLarge("The text has $totalChars characters; the limit is ${limits.maxTextChars}.")
@@ -307,5 +319,5 @@ private fun storeDocument(ctx: AppContext, ownerId: String, rawTitle: String?, k
         documentVersion = Chunker.documentVersion(pages), pageCount = pages.size, createdAt = System.currentTimeMillis(), chunks = chunks,
     )
     ctx.store.saveDocument(doc)
-    return DocumentResponse(doc.documentId, doc.documentVersion, doc.pageCount, doc.title)
+    return DocumentResponse(doc.documentId, doc.documentVersion, doc.pageCount, doc.title, layoutOf?.invoke(chunks))
 }

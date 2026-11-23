@@ -2,6 +2,7 @@ package com.anything2game.app
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -77,7 +78,7 @@ class ExplainerScreenshotTest {
         rule.waitForIdle()
     }
 
-    private fun lastPage() { repeat(3) { if (rule.onAllNodesWithTag("tutor_rephrase").fetchSemanticsNodes().isEmpty()) { rule.onNodeWithTag("dialogue_box").performClick(); rule.waitForIdle() } } }
+    private fun lastPage() { repeat(40) { if (rule.onAllNodesWithTag("tutor_rephrase").fetchSemanticsNodes().isEmpty()) { rule.onNodeWithTag("dialogue_next").performClick(); rule.waitForIdle() } } }
 
     @Test fun focus_step() {
         show(seed(Stage.FOCUS), ready = "focus_continue")
@@ -117,6 +118,51 @@ class ExplainerScreenshotTest {
         rule.onRoot().captureRoboImage("$out/15_zh_spaced_page.png")
         lastPage()
         rule.onRoot().captureRoboImage("$out/16_zh_spaced_choice_bar.png")
+    }
+
+    /** The scene line by line: the player's own character asking, the section the line is in, and a quick check answered wrong. */
+    @Test fun zh_spaced_scene_lines() {
+        RuntimeEnvironment.setQualifiers("+zh")
+        show(seed(Stage.STARTED, "demo_zh_spaced"), pkg = "demo_zh_spaced")
+        var shotPlayer = false
+        repeat(40) {
+            val speaker = rule.onAllNodesWithTag("dialogue_speaker").fetchSemanticsNodes().firstOrNull()?.config?.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.Text)?.joinToString { it.text }
+            if (!shotPlayer && speaker != null && speaker != "阿雅") { rule.onRoot().captureRoboImage("$out/20_zh_sidekick_line.png"); shotPlayer = true }
+            if (rule.onAllNodesWithTag("quick_check").fetchSemanticsNodes().isNotEmpty()) {
+                rule.onRoot().captureRoboImage("$out/21_zh_quick_check.png")
+                val wrong = listOf("a", "b", "c").first { id -> rule.onAllNodesWithTag("check_$id").fetchSemanticsNodes().isNotEmpty() && id != "b" }
+                rule.onNodeWithTag("check_$wrong").performClick(); rule.waitForIdle()
+                rule.onRoot().captureRoboImage("$out/22_zh_quick_check_answered.png")
+                return
+            }
+            if (rule.onAllNodesWithTag("dialogue_next").fetchSemanticsNodes().isEmpty()) return
+            rule.onNodeWithTag("dialogue_next").performClick(); rule.waitForIdle()
+        }
+    }
+
+    @Test fun zh_spaced_source_viewer() {
+        RuntimeEnvironment.setQualifiers("+zh")
+        show(seed(Stage.STARTED, "demo_zh_spaced"), pkg = "demo_zh_spaced"); lastPage()
+        rule.onNodeWithTag("message_source").performClick()
+        rule.waitUntil(10000) { rule.onAllNodesWithTag("source_highlighted").fetchSemanticsNodes().isNotEmpty() }
+        rule.waitForIdle()
+        captureScreenRoboImage("$out/17_zh_spaced_source_viewer.png")
+    }
+
+    @Test fun zh_spaced_wrap_up() {
+        RuntimeEnvironment.setQualifiers("+zh")
+        val deps = seed(Stage.STARTED, "demo_zh_spaced")
+        runBlocking {
+            var cache = deps.tutors.open("demo_zh_spaced").cache
+            repeat(cache.session.questions.size - 1) { n -> cache = cache.copy(session = deps.tutors.turn(cache, TutorIntent.CONTINUE, "", "c$n")) }
+            deps.tutors.save(cache)
+        }
+        show(deps, pkg = "demo_zh_spaced"); lastPage()
+        rule.onRoot().captureRoboImage("$out/18_zh_spaced_last_concept.png")
+        rule.onNodeWithTag("tutor_finish").performClick()
+        rule.waitUntil(10000) { rule.onAllNodesWithTag("wrap_up").fetchSemanticsNodes().isNotEmpty() }
+        rule.waitForIdle()
+        rule.onRoot().captureRoboImage("$out/19_zh_spaced_wrap_up.png")
     }
 
     @Test fun diagnostic() {

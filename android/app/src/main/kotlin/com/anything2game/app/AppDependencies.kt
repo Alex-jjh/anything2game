@@ -88,7 +88,7 @@ class AndroidAppContainer(context: Context) : AppDependencies {
         val homePreferences = HomePreferences(app, profile.prefs("home"))
         val avatarPreferences: AvatarPreferences = SharedPrefsAvatarPreferences(app, profile.prefs("avatar"))
         val explainerPreferences: ExplainerPreferences = SharedPrefsExplainerPreferences(app, profile.prefs("explainer"))
-        val tutors = AndroidTutorRepository(app, packages, tutorScripts, ::installServerPackage, File(dir, "tutor-sessions"), profile.prefs("tutor_connection"))
+        val tutors = AndroidTutorRepository(app, packages, tutorScripts, ::installServerPackage, File(dir, "tutor-sessions"), profile.prefs("tutor_connection"), File(dir, "source-documents"))
     }
 
     private suspend fun installServerPackage(pkg: com.anything2game.contract.LearningPackage) {

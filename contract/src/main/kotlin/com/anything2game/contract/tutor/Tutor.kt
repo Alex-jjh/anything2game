@@ -26,10 +26,30 @@ const val MAX_FOCUS_NOTE = 200
     /** Optional: which facet this concept belongs to. Without it the concept is never moved by a focus. */
     val facet: Facet? = null,
 )
+/**
+ * One line of a scripted walk-through (the paper2gal style: many short lines, not one paragraph): who says it, where in
+ * the document it is, and the passage it rests on. Optional everywhere; content without beats is shown as before.
+ */
+@Serializable data class TutorBeat(
+    val text: String,
+    /** [SPEAKER_EXPLAINER], or [SPEAKER_PLAYER]: the reader's own character voicing the question a reader would have. */
+    val speaker: String = SPEAKER_EXPLAINER,
+    /** Where in the document this line is, as the document names it ("3.2 Attention", "Table 3"); shown with the progress. */
+    val section: String? = null,
+    val sourceRefs: List<SourceRef> = emptyList(),
+    /** A quick check in the middle of the explanation. Scripted courses only (the answer travels with it). */
+    val check: TutorCheck? = null,
+)
+@Serializable data class TutorCheck(val prompt: String, val options: List<TutorOption>, val correctOptionId: String, val right: String, val wrong: String)
+const val SPEAKER_EXPLAINER = "explainer"
+const val SPEAKER_PLAYER = "player"
+
 /** Private scoring/teaching material. Never included in the server's pre-assessment response. */
 @Serializable data class TutorConcept(
     val question: TutorQuestion, val correctOptionId: String,
     val explanation: String, val simpler: String, val example: String,
+    /** The explanation as a scene, line by line. When present it is what the explainer says; [explanation] stays the summary. */
+    val beats: List<TutorBeat> = emptyList(),
 )
 @Serializable data class TutorBlueprint(val schema: String = TUTOR_SCHEMA, val concepts: List<TutorConcept>)
 
@@ -47,7 +67,11 @@ const val MAX_FOCUS_NOTE = 200
 @Serializable enum class Understanding { DEMONSTRATED, NEEDS_CLARIFICATION, NOT_YET_ASSESSED }
 @Serializable data class ConceptAssessment(val questionId: String, val conceptId: String, val evidence: Understanding)
 @Serializable enum class TutorIntent { START, REPHRASE, EXAMPLE, CONTINUE, QUESTION }
-@Serializable data class TutorMessage(val id: String, val role: String, val text: String, val sourceRefs: List<SourceRef> = emptyList())
+@Serializable data class TutorMessage(
+    val id: String, val role: String, val text: String, val sourceRefs: List<SourceRef> = emptyList(),
+    /** The same reply as scene lines, when the content has them; [text] stays the full reply (Log, older clients). */
+    val beats: List<TutorBeat> = emptyList(),
+)
 @Serializable data class TutorSession(
     val schema: String = TUTOR_SCHEMA, val sessionId: String, val documentId: String, val documentVersion: String,
     val title: String, val language: String, val mode: String, val questions: List<TutorQuestion>, val sources: List<SourceChunk>,
@@ -75,6 +99,21 @@ object TutorRules {
             require(q.options.all { it.id.isNotBlank() && it.id != UNKNOWN_ANSWER && it.text.isNotBlank() && it.text.length <= 800 })
             require(q.options.any { it.id == c.correctOptionId })
             checkRefs(q.sourceRefs, sources)
+            checkBeats(c.beats, sources)
+        }
+    }
+
+    fun checkBeats(beats: List<TutorBeat>, sources: List<SourceChunk>) {
+        require(beats.size <= 40) { "Too many lines" }
+        beats.forEach { b ->
+            require(b.text.isNotBlank() && b.text.length <= 400 && b.speaker in setOf(SPEAKER_EXPLAINER, SPEAKER_PLAYER))
+            require(b.section == null || b.section.isNotBlank() && b.section.length <= 60)
+            if (b.sourceRefs.isNotEmpty()) checkRefs(b.sourceRefs, sources)
+            b.check?.let { k ->
+                require(k.prompt.isNotBlank() && k.right.isNotBlank() && k.wrong.isNotBlank())
+                require(k.options.size in 2..4 && k.options.map { it.id }.distinct().size == k.options.size && k.options.all { it.text.isNotBlank() })
+                require(k.options.any { it.id == k.correctOptionId })
+            }
         }
     }
 
@@ -171,6 +210,9 @@ object TutorRules {
             TutorIntent.EXAMPLE -> c.example
             else -> c.explanation
         }
-        return TutorMessage("m${session.revision + 1}a", "tutor", "${q.concept}\n${leadIn(evidence, zh)}\n$body", q.sourceRefs)
+        // A course written as a scene says its lines; Rephrase and Example stay one short reply each.
+        val beats = if (intent == TutorIntent.START || intent == TutorIntent.CONTINUE) c.beats else emptyList()
+        val said = if (beats.isEmpty()) body else beats.joinToString("\n") { it.text }
+        return TutorMessage("m${session.revision + 1}a", "tutor", "${q.concept}\n${leadIn(evidence, zh)}\n$said", q.sourceRefs, beats)
     }
 }

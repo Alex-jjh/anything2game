@@ -18,11 +18,24 @@
     <string name="explainer_log_title">到目前为止的对话</string>
     <string name="explainer_ask">追问</string>
     <string name="explainer_ask_title">问问 %1$s</string>
-    <string name="explainer_finish">回到书架</string>
+    <string name="explainer_finish">讲完了 · 看总结</string>
     <string name="explainer_show_source">查看原文 · 第 %1$s 页</string>
     <string name="explainer_page_of">%1$d / %2$d</string>
     <string name="explainer_thinking">%1$s 正在思考</string>
     <string name="explainer_cancel">取消</string>
     <string name="explainer_concept">概念 %1$d/%2$d</string>
     <string name="explainer_focus_line">告诉我你想读出什么，我就从那里讲起。</string>
+    <string name="explainer_stage_start">刚开始</string>
+    <string name="explainer_stage_middle">讲解中</string>
+    <string name="explainer_stage_last">最后一个概念</string>
+    <string name="explainer_stage_done">已全部讲完</string>
+    <string name="wrapup_title">这一轮讲完啦</string>
+    <string name="wrapup_line">%1$s 陪你把 %2$d 个基础概念都过了一遍。</string>
+    <string name="wrapup_steps">按讲解顺序回顾</string>
+    <string name="wrapup_start">起点：%1$s</string>
+    <string name="wrapup_note">这些是从文档里挑出的基础概念，不是全文。点页码可以回看原文；完整对话保留在“记录”里。</string>
+    <string name="wrapup_stay">回到讲解</string>
+    <string name="wrapup_shelf">回到书架</string>
+    <string name="check_right">答对了。</string>
+    <string name="check_wrong">不太对。</string>
 </resources>

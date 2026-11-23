@@ -69,6 +69,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -82,6 +83,8 @@ import com.anything2game.app.ui.character.rememberReducedMotion
 import com.anything2game.app.ui.common.Badge
 import com.anything2game.app.ui.theme.A2g
 import com.anything2game.contract.SourceRef
+import com.anything2game.contract.tutor.SPEAKER_PLAYER
+import com.anything2game.contract.tutor.TutorCheck
 import com.anything2game.contract.tutor.TutorIntent
 import com.anything2game.contract.tutor.TutorMessage
 import com.anything2game.contract.tutor.TutorRules
@@ -95,6 +98,8 @@ private data class Beat(
     val player: Boolean, val text: String, val refs: List<SourceRef>,
     /** Concept name (dialogue-box title) and the personalised lead-in, for a scripted turn; the lead-in only on its first page. */
     val title: String? = null, val leadIn: String? = null,
+    /** Where in the document this line is (the latest section named so far), and a quick check asked on this page. */
+    val section: String? = null, val check: TutorCheck? = null,
 )
 
 /**
@@ -117,22 +122,43 @@ internal fun ExplainerTheatre(
 
     val latest = session.messages.lastOrNull { it.role != "user" } ?: session.messages.last()
     val latestIndex = session.messages.indexOf(latest)
-    // The player's own words are a line of the scene only when they were a real question; button presses are not speech.
-    val question = if (lastIntent == TutorIntent.QUESTION) session.messages.getOrNull(latestIndex - 1)?.takeIf { it.role == "user" } else null
+    // The player's own character speaks for the player: their typed question, or what a button press asks for.
+    val question = session.messages.getOrNull(latestIndex - 1)?.takeIf { it.role == "user" }
+    val playerLine = when (lastIntent) {
+        TutorIntent.QUESTION -> question?.text
+        TutorIntent.REPHRASE, TutorIntent.EXAMPLE -> sidekickLine(lastIntent, session.language == "zh")
+        else -> null
+    }
     // Pages fill what the box holds: larger system text means fewer characters per page, never clipped text.
     val scale = androidx.compose.ui.platform.LocalDensity.current.fontScale.coerceAtLeast(1f)
     val latinBudget = (DialoguePaging.LATIN_BUDGET / scale).toInt()
     val cjkBudget = (DialoguePaging.CJK_BUDGET / scale).toInt()
     // A scripted turn is "concept, lead-in, explanation": the first two become the box's title lines, the pages are the explanation.
     val parts = remember(latest.id) { TutorRules.splitScripted(latest.text, session.questions.map { it.concept }) }
-    val beats = remember(latest.id, question?.id, scale) {
+    val beats = remember(latest.id, playerLine, scale) {
         buildList {
-            question?.let { q -> DialoguePaging.pages(q.text, latinBudget, cjkBudget).forEach { add(Beat(true, it, emptyList())) } }
+            playerLine?.let { line -> DialoguePaging.pages(line, latinBudget, cjkBudget).forEach { add(Beat(true, it, emptyList())) } }
             if (parts == null) DialoguePaging.pages(latest.text, latinBudget, cjkBudget).forEach { add(Beat(false, it, latest.sourceRefs)) }
+            else if (latest.beats.isNotEmpty()) {
+                // A scene: one line per tap, each with its own speaker, place in the document and passage.
+                val share = DialoguePaging.titledShare(scale)
+                var section: String? = null
+                latest.beats.forEach { b ->
+                    section = b.section ?: section
+                    val player = b.speaker == SPEAKER_PLAYER
+                    val pages = DialoguePaging.pages(b.text, (latinBudget * share).toInt(), (cjkBudget * share).toInt())
+                    pages.forEachIndexed { i, text ->
+                        add(Beat(player, text, if (player) emptyList() else b.sourceRefs.ifEmpty { latest.sourceRefs }, parts.title,
+                            if (isEmpty()) parts.leadIn else null, section, if (i == pages.lastIndex) b.check else null))
+                    }
+                }
+            }
             else DialoguePaging.pages(parts, latinBudget, cjkBudget, DialoguePaging.titledShare(scale))
                 .forEachIndexed { i, text -> add(Beat(false, text, latest.sourceRefs, parts.title, if (i == 0) parts.leadIn else null)) }
         }
     }
+    // Answers to the quick checks of this reply, by page (kept across rotation; a new reply starts fresh).
+    var checked by rememberSaveable(latest.id) { mutableStateOf(emptyMap<Int, String>()) }
     var page by rememberSaveable(latest.id) { mutableIntStateOf(0) }
     val index = page.coerceIn(0, beats.lastIndex)
     val beat = beats[index]
@@ -150,8 +176,11 @@ internal fun ExplainerTheatre(
         else -> ExplainerExpression.EXPLAINING
     }
     // The player's sidekick: listens, wonders while a reply is awaited, jumps at an example, cheers when a concept is told.
+    val answered = beat.check?.let { k -> checked[index]?.let { it == k.correctOptionId } }
     val playerMood = when {
         busy -> Mood.THINKING
+        answered == true -> Mood.HAPPY
+        answered == false -> Mood.SURPRISED
         lastIntent == TutorIntent.EXAMPLE -> Mood.SURPRISED
         last && explaining -> Mood.HAPPY
         else -> Mood.IDLE
@@ -159,6 +188,9 @@ internal fun ExplainerTheatre(
 
     var askOpen by rememberSaveable { mutableStateOf(false) }
     var logOpen by rememberSaveable { mutableStateOf(false) }
+    // The end of the walk is a screen of its own: what was covered, where each idea stood, and the pages to go back to.
+    var wrapOpen by rememberSaveable { mutableStateOf(false) }
+    androidx.activity.compose.BackHandler(enabled = wrapOpen) { wrapOpen = false }
     val advance = { if (!last && !busy) page = index + 1 }
     // A tap turns the page. Not `clickable`: that would merge the box's texts and chips into one accessibility node.
     val nextLabel = stringResource(R.string.explainer_tap_next)
@@ -178,17 +210,20 @@ internal fun ExplainerTheatre(
             DialogueBox(
                 beat, index, beats.size, last, busy, if (beat.player) playerName else explainer, atLastConcept && last && !beat.player,
                 intent = lastIntent, onNext = advance, onSkip = { page = beats.lastIndex }, onSource = onSource, session = session, tap = tap.then(m),
+                chosen = checked[index], onCheck = { option -> checked = checked + (index to option) },
             )
         }
         val bottom: @Composable () -> Unit = {
             Notices(offline, problem, busy, onRetry, onReload)
             ChoiceBar(
                 visible = last || busy, busy = busy, enabled = enabled && !full, atLastConcept = atLastConcept, full = full,
-                onTurn = { intent -> onTurn(intent, "") }, onAsk = { askOpen = true }, onCancel = onCancel, onFinish = onBack,
+                onTurn = { intent -> onTurn(intent, "") }, onAsk = { askOpen = true }, onCancel = onCancel, onFinish = { wrapOpen = true },
             )
         }
         Column(Modifier.fillMaxSize()) {
-            TopBar(onBack, onLog = { logOpen = true }, height = topBar)
+            TopBar(onBack, onLog = { logOpen = true }, height = topBar) {
+                Progress(session.conceptPosition, session.questions.size, (index + 1f) / beats.size, finished = atLastConcept && last, Modifier.weight(1f))
+            }
             if (landscape) {
                 Row(Modifier.weight(1f).fillMaxWidth()) {
                     stage(Modifier.weight(0.32f).fillMaxHeight())
@@ -205,6 +240,7 @@ internal fun ExplainerTheatre(
                 }
             }
         }
+        if (wrapOpen) WrapUp(session, theme, explainer, onSource, onShelf = onBack, onStay = { wrapOpen = false }, Modifier.fillMaxSize())
     }
 
     if (askOpen) AskSheet(
@@ -217,11 +253,10 @@ internal fun ExplainerTheatre(
 }
 
 @Composable
-private fun TopBar(onBack: () -> Unit, onLog: () -> Unit, height: androidx.compose.ui.unit.Dp) {
-    val skin = A2g.skin
+private fun TopBar(onBack: () -> Unit, onLog: () -> Unit, height: androidx.compose.ui.unit.Dp, middle: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit) {
     Row(Modifier.fillMaxWidth().height(height).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         TextButton(onClick = onBack) { Text(stringResource(R.string.action_back)) }
-        Spacer(Modifier.weight(1f))
+        middle()
         TextButton(onClick = onLog, modifier = Modifier.testTag("explainer_log")) { Text(stringResource(R.string.explainer_log)) }
     }
 }
@@ -252,6 +287,7 @@ private fun Stage(
 private fun DialogueBox(
     beat: Beat, index: Int, total: Int, last: Boolean, busy: Boolean, speaker: String, closing: Boolean,
     intent: TutorIntent?, onNext: () -> Unit, onSkip: () -> Unit, onSource: (List<SourceRef>) -> Unit, session: TutorSession, tap: Modifier,
+    chosen: String? = null, onCheck: (String) -> Unit = {},
 ) {
     val skin = A2g.skin
     val reduced = rememberReducedMotion()
@@ -272,7 +308,8 @@ private fun DialogueBox(
             Column(Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(speaker, style = MaterialTheme.typography.titleMedium, color = accent, fontWeight = FontWeight.Bold, modifier = Modifier.testTag("dialogue_speaker"))
-                    val mode = if (busy || beat.player) null else when (intent) {
+                    // The label names the exchange, so it also sits on the sidekick's request ("Can you give me an example?").
+                    val mode = if (busy || (beat.player && intent == TutorIntent.QUESTION)) null else when (intent) {
                         TutorIntent.EXAMPLE -> R.string.explainer_mode_example
                         TutorIntent.REPHRASE -> R.string.explainer_mode_rephrase
                         TutorIntent.QUESTION -> R.string.explainer_mode_answer
@@ -281,14 +318,16 @@ private fun DialogueBox(
                     if (mode != null) Text(stringResource(mode), style = MaterialTheme.typography.labelMedium, color = skin.action,
                         modifier = Modifier.weight(1f).padding(horizontal = 8.dp).testTag("dialogue_mode").semantics { liveRegion = LiveRegionMode.Polite })
                     else Spacer(Modifier.weight(1f))
-                    Text(stringResource(R.string.explainer_concept, session.conceptPosition + 1, session.questions.size), style = MaterialTheme.typography.labelMedium, color = skin.inkMuted, modifier = Modifier.testTag("concept_count"))
                 }
+                // Where in the document this line is, as the document names it ("3.2 Attention", "Table 2").
+                if (!busy && beat.section != null) Text("§ " + beat.section, style = MaterialTheme.typography.labelMedium, color = skin.evidence, modifier = Modifier.testTag("dialogue_section"))
                 if (!busy && beat.title != null) Text(beat.title, style = MaterialTheme.typography.titleMedium, color = skin.ink, fontWeight = FontWeight.SemiBold, modifier = Modifier.testTag("dialogue_title"))
                 if (!busy && !compact && beat.leadIn != null) Text(beat.leadIn, style = MaterialTheme.typography.bodySmall, color = skin.inkMuted, modifier = Modifier.testTag("dialogue_lead_in"))
                 Box(Modifier.weight(1f, fill = true).verticalScroll(rememberScrollState())) {
                     if (busy) TypingIndicator(speaker, intent)
                     else Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.graphicsLayer { alpha = fade.value }) {
                         Text(beat.text, style = MaterialTheme.typography.bodyLarge.copy(fontSize = 19.sp, lineHeight = 28.sp), color = skin.ink, modifier = Modifier.testTag("dialogue_text"))
+                        beat.check?.let { QuickCheck(it, beat.text, chosen, onCheck) }
                         if (closing) Text(stringResource(R.string.tutor_all_introduced), style = MaterialTheme.typography.bodyMedium, color = skin.inkMuted)
                     }
                 }
@@ -366,7 +405,7 @@ private fun ChoiceBar(
     val skin = A2g.skin
     AnimatedVisibility(visible) {
         if (busy) {
-            OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("tutor_cancel")) { Text(stringResource(R.string.tutor_cancel)) }
+            OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("tutor_cancel")) { Text(stringResource(R.string.tutor_cancel)) }
         } else Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.testTag("choice_bar")) {
             if (full) Text(stringResource(R.string.tutor_limit), color = skin.hint, style = MaterialTheme.typography.bodySmall)
             val rephrase: @Composable (Modifier) -> Unit = { m -> ChoiceButton(stringResource(R.string.tutor_rephrase), m.testTag("tutor_rephrase"), enabled) { onTurn(TutorIntent.REPHRASE) } }
@@ -377,9 +416,11 @@ private fun ChoiceBar(
                 else ChoiceButton(stringResource(R.string.tutor_continue), m.testTag("tutor_continue"), enabled, primary = true) { onTurn(TutorIntent.CONTINUE) }
             }
             BoxWithConstraints {
-                val gap = Arrangement.spacedBy(8.dp)
-                if (maxWidth >= 520.dp) Row(Modifier.fillMaxWidth(), horizontalArrangement = gap) {
-                    rephrase(Modifier.weight(1f)); example(Modifier.weight(1f)); ask(Modifier.weight(1f)); next(Modifier.weight(1.2f))
+                val gap = Arrangement.spacedBy(6.dp)
+                // One row keeps the dialogue box tall; only very large system text needs two rows to stay readable.
+                val oneRow = maxWidth >= 300.dp && androidx.compose.ui.platform.LocalDensity.current.fontScale < 1.3f
+                if (oneRow) Row(Modifier.fillMaxWidth(), horizontalArrangement = gap) {
+                    rephrase(Modifier.weight(1f)); example(Modifier.weight(1f)); ask(Modifier.weight(0.8f)); next(Modifier.weight(1.25f))
                 } else Column(verticalArrangement = gap) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = gap) { rephrase(Modifier.weight(1f)); example(Modifier.weight(1f)) }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = gap) { ask(Modifier.weight(1f)); next(Modifier.weight(1f)) }
@@ -391,9 +432,11 @@ private fun ChoiceBar(
 
 @Composable
 private fun ChoiceButton(label: String, modifier: Modifier, enabled: Boolean, primary: Boolean = false, onClick: () -> Unit) {
-    val m = modifier.heightIn(min = 52.dp)
-    if (primary) Button(onClick = onClick, enabled = enabled, modifier = m) { Text(label, maxLines = 2) }
-    else OutlinedButton(onClick = onClick, enabled = enabled, modifier = m) { Text(label, maxLines = 2) }
+    val m = modifier.heightIn(min = 48.dp)
+    val padding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp, vertical = 4.dp)
+    val text: @Composable () -> Unit = { Text(label, maxLines = 2, style = MaterialTheme.typography.labelLarge, textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
+    if (primary) Button(onClick = onClick, enabled = enabled, modifier = m, contentPadding = padding) { text() }
+    else OutlinedButton(onClick = onClick, enabled = enabled, modifier = m, contentPadding = padding) { text() }
 }
 
 @Composable
@@ -470,6 +513,41 @@ internal fun ExplainerHeader(theme: ExplainerTheme, line: String, thinking: Bool
                 Text(stringResource(theme.personaNameRes), style = MaterialTheme.typography.labelLarge, color = skin.action, fontWeight = FontWeight.Bold)
                 Text(line, style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp), color = skin.ink)
             }
+        }
+    }
+}
+
+/** What the player's own character says when a button is pressed, in the course's language. */
+private fun sidekickLine(intent: TutorIntent, zh: Boolean): String = when (intent) {
+    TutorIntent.REPHRASE -> if (zh) "能换个说法再讲一遍吗？" else "Could you say that another way?"
+    else -> if (zh) "可以举个例子吗？" else "Can you give me an example?"
+}
+
+/**
+ * A quick check in the middle of a scene: the options, then one line on the answer. Answering is optional; the next page
+ * is always one tap away, and the result is not scored.
+ */
+@Composable
+private fun QuickCheck(check: TutorCheck, lead: String, chosen: String?, onCheck: (String) -> Unit) {
+    val skin = A2g.skin
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.testTag("quick_check")) {
+        if (check.prompt.filterNot { it.isWhitespace() } !in lead.filterNot { it.isWhitespace() })
+            Text(check.prompt, style = MaterialTheme.typography.titleSmall, color = skin.ink, fontWeight = FontWeight.SemiBold)
+        check.options.forEach { o ->
+            val picked = chosen == o.id
+            val right = o.id == check.correctOptionId
+            val border = when { chosen == null -> skin.outline; right -> skin.correct; picked -> skin.wrong; else -> skin.outline.copy(alpha = 0.4f) }
+            OutlinedButton(
+                onClick = { onCheck(o.id) }, enabled = chosen == null, shape = RoundedCornerShape(14.dp), border = BorderStroke(if (picked || (chosen != null && right)) 2.dp else 1.dp, border),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("check_${o.id}").semantics { selected = picked },
+                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(containerColor = if (picked) skin.evidenceSoft else skin.card, disabledContentColor = skin.ink, disabledContainerColor = if (picked) skin.evidenceSoft else skin.card),
+            ) { Text(o.text, Modifier.fillMaxWidth(), style = MaterialTheme.typography.bodyMedium) }
+        }
+        if (chosen != null) {
+            val ok = chosen == check.correctOptionId
+            Text(stringResource(if (ok) R.string.check_right else R.string.check_wrong) + "  " + (if (ok) check.right else check.wrong),
+                style = MaterialTheme.typography.bodyMedium, color = if (ok) skin.correct else skin.wrong,
+                modifier = Modifier.testTag("check_feedback").semantics { liveRegion = LiveRegionMode.Polite })
         }
     }
 }

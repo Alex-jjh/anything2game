@@ -36,7 +36,113 @@
     "correctOptionId": "b",
     "explanation": "The paper shows that once plain networks get deep enough, piling on more layers actually hurts training accuracy, not just test accuracy. This rules out overfitting as the cause and points to an optimization difficulty instead — the real puzzle the paper sets out to solve.",
     "simpler": "Making an ordinary deep network deeper can make it worse at even its own training data, which is weird and not just 'too much studying.'",
-    "example": "A made-up example: imagine a 20-floor building that's easy to climb, but adding 36 more floors somehow makes even the first 20 floors harder to climb too — that's the strange degradation effect."
+    "example": "A made-up example: imagine a 20-floor building that's easy to climb, but adding 36 more floors somehow makes even the first 20 floors harder to climb too — that's the strange degradation effect.",
+    "beats": [
+     {
+      "speaker": "explainer",
+      "text": "Let's look at what happens when a plain network gets pushed deeper and deeper.",
+      "section": "1. Introduction"
+     },
+     {
+      "speaker": "explainer",
+      "text": "The paper calls this the degradation problem: past a point, accuracy doesn't just plateau, it gets worse.",
+      "section": "1. Introduction",
+      "sourceRefs": [
+       {
+        "chunkId": "c3",
+        "quote": "a degradation problem has been exposed: with the network depth increasing, accuracy gets saturated"
+       }
+      ]
+     },
+     {
+      "speaker": "player",
+      "text": "Worse how? Like it's just memorizing too much?"
+     },
+     {
+      "speaker": "explainer",
+      "text": "That's the natural guess. But the paper rules it out directly.",
+      "section": "1. Introduction",
+      "sourceRefs": [
+       {
+        "chunkId": "c4",
+        "quote": "such degradation is not caused by overfitting"
+       }
+      ]
+     },
+     {
+      "speaker": "explainer",
+      "text": "Adding more layers to an already-deep model actually raises training error itself, not just test error.",
+      "section": "1. Introduction",
+      "sourceRefs": [
+       {
+        "chunkId": "c4",
+        "quote": "adding more layers to a suitably deep model leads to higher train- ing error"
+       }
+      ]
+     },
+     {
+      "speaker": "explainer",
+      "text": "Look at Figure 1: the 56-layer net sits above the 20-layer net on training error too, not only on test error.",
+      "section": "Figure 1",
+      "sourceRefs": [
+       {
+        "chunkId": "c3",
+        "quote": "The deeper network has higher training error, and thus test error."
+       }
+      ]
+     },
+     {
+      "speaker": "explainer",
+      "text": "Here's the slow part. A deeper net could in theory just copy the shallow one and leave extra layers as identity, so training error should never rise.",
+      "section": "1. Introduction",
+      "sourceRefs": [
+       {
+        "chunkId": "c4",
+        "quote": "a deeper model should produce no higher training error than its shallower counterpart"
+       }
+      ]
+     },
+     {
+      "speaker": "explainer",
+      "text": "Quick check before we move on.",
+      "check": {
+       "prompt": "Why does rising training error rule out overfitting as the cause?",
+       "options": [
+        {
+         "id": "a",
+         "text": "Overfitting only hurts test error, not the error on the training data itself"
+        },
+        {
+         "id": "b",
+         "text": "Overfitting always needs more than 50 layers"
+        },
+        {
+         "id": "c",
+         "text": "Overfitting is only possible with residual connections"
+        }
+       ],
+       "correctOptionId": "a",
+       "right": "Exactly. Overfitting means great on training data, bad on new data. Here training itself got worse.",
+       "wrong": "Not quite. Overfitting by definition is fine on training data but poor on new data. That's not what happened here."
+      }
+     },
+     {
+      "speaker": "explainer",
+      "text": "So solvers simply fail to find that easy identity solution. That's an optimization difficulty, not a data problem.",
+      "section": "1. Introduction",
+      "sourceRefs": [
+       {
+        "chunkId": "c4",
+        "quote": "our current solvers on hand are unable to find solutions that"
+       }
+      ]
+     },
+     {
+      "speaker": "explainer",
+      "text": "Take this with you: deeper plain networks can get strictly harder to train, and that failure is the real puzzle the paper sets out to solve.",
+      "section": "1. Introduction"
+     }
+    ]
    },
    {
     "question": {
@@ -69,7 +175,106 @@
     "correctOptionId": "b",
     "explanation": "Instead of forcing a block of layers to learn the whole target function H(x) from scratch, residual learning has them learn only the leftover piece F(x) = H(x) - x, then adds x back via a shortcut connection. The idea is that it's easier to nudge something toward zero than to relearn an entire mapping, especially when identity-like behavior is close to optimal.",
     "simpler": "Instead of learning the whole answer, each block just learns the small correction needed on top of what it already received.",
-    "example": "A made-up example: if the right output is almost the same as the input, it's easier for a layer to learn 'add almost nothing' than to learn 'reproduce this complicated input from scratch.'"
+    "example": "A made-up example: if the right output is almost the same as the input, it's easier for a layer to learn 'add almost nothing' than to learn 'reproduce this complicated input from scratch.'",
+    "beats": [
+     {
+      "speaker": "explainer",
+      "text": "Picture a block of layers with one job: produce H(x), the desired output.",
+      "section": "3.1. Residual Learning",
+      "sourceRefs": [
+       {
+        "chunkId": "c10",
+        "quote": "Let us consider H(x) as an underlying mapping to be fit by a few stacked layers"
+       }
+      ]
+     },
+     {
+      "speaker": "explainer",
+      "text": "Normally those layers would have to learn H(x) entirely, starting from nothing.",
+      "section": "3.1. Residual Learning"
+     },
+     {
+      "speaker": "player",
+      "text": "Isn't that just... normal training?"
+     },
+     {
+      "speaker": "explainer",
+      "text": "It is. And it's harder than it sounds, especially once networks get deep."
+     },
+     {
+      "speaker": "explainer",
+      "text": "So the paper flips the job. Let the layers learn only F(x), the gap between H(x) and x.",
+      "section": "3.1. Residual Learning",
+      "sourceRefs": [
+       {
+        "chunkId": "c5",
+        "quote": "we let the stacked nonlinear layers fit another mapping of F(x) := H(x)−x"
+       }
+      ]
+     },
+     {
+      "speaker": "explainer",
+      "text": "Then a shortcut connection adds x back in. Output becomes F(x) plus x, matching the original goal.",
+      "section": "Figure 2",
+      "sourceRefs": [
+       {
+        "chunkId": "c5",
+        "quote": "The orig- inal mapping is recast intoF(x)+x"
+       }
+      ]
+     },
+     {
+      "speaker": "explainer",
+      "text": "Slow down with me here. If identity is already close to optimal, F(x) just needs to settle near zero.",
+      "section": "3.1. Residual Learning",
+      "sourceRefs": [
+       {
+        "chunkId": "c11",
+        "quote": "the solvers may simply drive the weights of the multiple nonlinear lay- ers toward zero to approach identity mappings"
+       }
+      ]
+     },
+     {
+      "speaker": "player",
+      "text": "So zero is an easier target than copying x exactly?"
+     },
+     {
+      "speaker": "explainer",
+      "text": "Quick check before we move on.",
+      "section": "3.1. Residual Learning",
+      "check": {
+       "prompt": "Why might learning F(x) be easier than learning H(x) directly?",
+       "options": [
+        {
+         "id": "a",
+         "text": "Because F(x) has fewer parameters"
+        },
+        {
+         "id": "b",
+         "text": "Because pushing a mapping toward zero is easier than reconstructing identity from scratch"
+        },
+        {
+         "id": "c",
+         "text": "Because F(x) skips the nonlinearities"
+        }
+       ],
+       "correctOptionId": "b",
+       "right": "Exactly. Nudging toward zero is gentler than rebuilding identity from nothing.",
+       "wrong": "Not quite. The ease comes from zero being a simpler target than reconstructing identity, not from fewer parameters."
+      }
+     },
+     {
+      "speaker": "explainer",
+      "text": "Take this with you: the shortcut doesn't learn anything. It just hands x back, so the layers only chase the leftover.",
+      "section": "3.1. Residual Learning",
+      "sourceRefs": [
+       {
+        "chunkId": "c6",
+        "quote": "the shortcut connections simply perform identity mapping, and their outputs are added to the outputs of the stacked layers"
+       }
+      ]
+     }
+    ]
    },
    {
     "question": {
@@ -102,7 +307,89 @@
     "correctOptionId": "a",
     "explanation": "With the residual (and bottleneck) design, going from 34 to 50, 101, and 152 layers kept paying off — accuracy improved and the degradation problem did not reappear. This is the core evidence that residual learning lets networks genuinely benefit from extra depth.",
     "simpler": "Adding more layers to these residual networks kept making them better, instead of eventually making them worse.",
-    "example": "The paper's own 152-layer ResNet ended up winning 1st place in the ILSVRC 2015 classification competition, showing real-world payoff from that extra depth."
+    "example": "The paper's own 152-layer ResNet ended up winning 1st place in the ILSVRC 2015 classification competition, showing real-world payoff from that extra depth.",
+    "beats": [
+     {
+      "speaker": "explainer",
+      "text": "Before, the plain 34-layer net got worse than the 18-layer one. That was the degradation problem.",
+      "section": "Table 2",
+      "sourceRefs": [
+       {
+        "chunkId": "c22",
+        "quote": "the 34-layer ResNet is better than the 18-layer ResNet"
+       }
+      ]
+     },
+     {
+      "speaker": "player",
+      "text": "So does going even deeper break things again?"
+     },
+     {
+      "speaker": "explainer",
+      "text": "That's the real test. Push to 50, 101, even 152 layers, using the bottleneck block instead of the simple one.",
+      "section": "Figure 5"
+     },
+     {
+      "speaker": "explainer",
+      "text": "Look at Table 3. Each deeper ResNet beats the 34-layer version, not just matches it.",
+      "section": "Table 3",
+      "sourceRefs": [
+       {
+        "chunkId": "c29",
+        "quote": "The 50/101/152-layer ResNets are more accurate than the 34-layer ones by considerable margins"
+       }
+      ]
+     },
+     {
+      "speaker": "explainer",
+      "text": "And no sign of the old collapse. Accuracy keeps climbing with depth instead of turning back down.",
+      "section": "Table 3",
+      "sourceRefs": [
+       {
+        "chunkId": "c29",
+        "quote": "We do not observe the degradation problem and thus en- joy significant accuracy gains from considerably increased depth"
+       }
+      ]
+     },
+     {
+      "speaker": "explainer",
+      "text": "Slow down for a second. This matters because depth alone used to hurt. Here, with shortcuts, depth finally helps the way it should."
+     },
+     {
+      "speaker": "player",
+      "text": "Like finally being able to add more floors without the building sinking."
+     },
+     {
+      "speaker": "explainer",
+      "text": "Quick check before we move on.",
+      "section": "Table 3",
+      "check": {
+       "prompt": "What happened as the ResNets went from 34 to 50, 101, 152 layers?",
+       "options": [
+        {
+         "id": "a",
+         "text": "Accuracy improved each time, no degradation returned"
+        },
+        {
+         "id": "b",
+         "text": "Accuracy improved briefly, then degraded past 101 layers"
+        },
+        {
+         "id": "c",
+         "text": "Accuracy stayed flat, only speed changed"
+        }
+       ],
+       "correctOptionId": "a",
+       "right": "Right. Deeper kept winning, cleanly.",
+       "wrong": "Not quite. Table 3 shows steady gains at every depth, no degradation reappeared."
+      }
+     },
+     {
+      "speaker": "explainer",
+      "text": "This is the real evidence: residual learning lets depth genuinely pay off, instead of fighting the network's own training.",
+      "section": "Table 3"
+     }
+    ]
    },
    {
     "question": {
@@ -135,7 +422,100 @@
     "correctOptionId": "a",
     "explanation": "Residual learning solved the optimization problem even at 1202 layers — training error got below 0.1% — but on a small dataset like CIFAR-10, that much capacity led to worse test results than the 110-layer model, which the authors attribute to overfitting rather than any training difficulty. This shows residual learning fixes optimization, but doesn't automatically fix generalization on tiny datasets.",
     "simpler": "The giant 1202-layer network trained perfectly but memorized too much, so it did worse on new test data than a smaller 110-layer version.",
-    "example": "A made-up example: it's like a student who perfectly memorizes every past exam question (great 'training' score) but struggles on a new exam with slightly different questions (worse 'test' score)."
+    "example": "A made-up example: it's like a student who perfectly memorizes every past exam question (great 'training' score) but struggles on a new exam with slightly different questions (worse 'test' score).",
+    "beats": [
+     {
+      "speaker": "explainer",
+      "text": "Let's look at what happened deep inside that 1202-layer experiment.",
+      "section": "4.2. CIFAR-10 and Analysis"
+     },
+     {
+      "speaker": "explainer",
+      "text": "Training was not the problem at all. Error dropped below 0.1 percent.",
+      "section": "4.2. CIFAR-10 and Analysis",
+      "sourceRefs": [
+       {
+        "chunkId": "c37",
+        "quote": "this 103-layer network is able to achieve training error <0.1%"
+       }
+      ]
+     },
+     {
+      "speaker": "player",
+      "text": "So the shortcuts really did their job."
+     },
+     {
+      "speaker": "explainer",
+      "text": "Exactly. No vanishing gradients, no stuck optimization. The residual trick held even at that scale.",
+      "section": "4.2. CIFAR-10 and Analysis",
+      "sourceRefs": [
+       {
+        "chunkId": "c37",
+        "quote": "Our method shows no optimization difficulty"
+       }
+      ]
+     },
+     {
+      "speaker": "explainer",
+      "text": "But look at Table 6. The 1202-layer net tests worse than the 110-layer one.",
+      "section": "Table 6",
+      "sourceRefs": [
+       {
+        "chunkId": "c31",
+        "quote": "ResNet 110 1.7M 6.43 (6.61±0.16) ResNet 1202 19.4M 7.93"
+       }
+      ]
+     },
+     {
+      "speaker": "explainer",
+      "text": "Slow down here. Both trained almost perfectly. Only the test result split them apart.",
+      "section": "4.2. CIFAR-10 and Analysis"
+     },
+     {
+      "speaker": "explainer",
+      "text": "The authors' read: the 1202-layer model may just be too large for a dataset this small.",
+      "section": "4.2. CIFAR-10 and Analysis",
+      "sourceRefs": [
+       {
+        "chunkId": "c37",
+        "quote": "The 1202-layer network may be unnecessarily large (19.4M) for this small dataset."
+       }
+      ]
+     },
+     {
+      "speaker": "player",
+      "text": "So more depth without more data can backfire."
+     },
+     {
+      "speaker": "explainer",
+      "text": "Quick check before we move on.",
+      "check": {
+       "prompt": "What does this 1202-layer result mainly show about residual learning?",
+       "options": [
+        {
+         "id": "a",
+         "text": "It fixes both optimization and overfitting automatically."
+        },
+        {
+         "id": "b",
+         "text": "It fixes optimization, but generalization on small data still needs its own care."
+        },
+        {
+         "id": "c",
+         "text": "It only works well on very large datasets like ImageNet."
+        }
+       ],
+       "correctOptionId": "b",
+       "right": "Right. Easy training does not guarantee good test results.",
+       "wrong": "Not quite. Training was fine here; the trouble was purely on the test side, from overfitting."
+      }
+     },
+     {
+      "speaker": "explainer",
+      "text": "Take this with you: residual learning solves depth as an optimization problem, not depth as a capacity problem.",
+      "section": "4.2. CIFAR-10 and Analysis"
+     }
+    ]
    }
   ]
  },
@@ -143,6 +523,11 @@
   "mode": "pre-generated",
   "model": "us.anthropic.claude-sonnet-5",
   "promptVersion": "tutor-script.v1",
-  "review": "needs human review"
+  "review": "needs human review",
+  "beats": {
+   "model": "us.anthropic.claude-sonnet-5",
+   "promptVersion": "tutor-beats.v1",
+   "review": "needs human review"
+  }
  }
 }

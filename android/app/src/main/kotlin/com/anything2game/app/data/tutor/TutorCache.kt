@@ -55,6 +55,7 @@ import java.security.MessageDigest
         require(s.messages.all { it.role in setOf("user", "tutor") && it.text.isNotBlank() && it.text.length <= 4000 })
         require(s.messages.isEmpty() || s.assessment.isNotEmpty())
         s.messages.filter { it.sourceRefs.isNotEmpty() }.forEach { TutorRules.checkRefs(it.sourceRefs, s.sources) }
+        s.messages.forEach { TutorRules.checkBeats(it.beats, s.sources) }
         return this
     }
 }

@@ -142,17 +142,21 @@ class LearnJourneysTest : LearnJourneyBase() {
             val first = pages.first()
             assertEquals(q.concept, textOf("dialogue_title").takeIf { has("dialogue_title") })
             assertFalse("the first page repeats the concept name or the lead-in: $first", first.startsWith(q.concept) || first.contains("You weren't sure") || first.contains("Your answer mixed") || first.contains("You got this one right"))
-            assertTrue("body is the script's explanation", norm(msg.text).contains(norm(c.explanation)))
+            // A course written as a scene says its lines; one without lines says the explanation paragraph.
+            val said = if (c.beats.isEmpty()) c.explanation else c.beats.joinToString("\n") { it.text }
+            assertTrue("body is the script's explanation", norm(msg.text).contains(norm(said)))
             val prefix = when (understanding(attention, q)) { Understanding.DEMONSTRATED -> "You got this one right"; Understanding.NEEDS_CLARIFICATION -> "Your answer mixed something up"; else -> "You weren't sure" }
             assertTrue("prefix for ${q.id}: $prefix", msg.text.contains(prefix))
 
             // Show source -> the page of the very passage the concept rests on.
-            val page = pageLabelOf(attention, q.sourceRefs.first().chunkId)
+            // The chip shows the passage of the line on screen (a scene line's own, else the concept's).
+            val refs = c.beats.lastOrNull()?.sourceRefs?.takeIf { it.isNotEmpty() } ?: q.sourceRefs
+            val page = pageLabelOf(attention, refs.first().chunkId)
             assertEquals(str(R.string.explainer_show_source, page), textOf("message_source"))
             rule.onNodeWithTag("message_source").performClick()
             waitForText(str(R.string.tutor_source_title))
             assertTrue("page $page shown", textShown(str(R.string.evidence_page, page)))
-            assertTrue("the quote is shown", textShown(q.sourceRefs.first().quote))
+            assertTrue("the quote is on the page, marked", norm(textOf("source_highlighted")).contains(norm(refs.first().quote)))
             tapText(str(R.string.tutor_close))
             waitFor("source dialog closed") { !textShown(str(R.string.tutor_source_title)) }
 
@@ -171,6 +175,7 @@ class LearnJourneysTest : LearnJourneyBase() {
             }
         }
         tap(rule.onNodeWithTag("tutor_finish"))
+        waitForTag("wrap_up"); tap(rule.onNodeWithTag("wrapup_shelf"))
         waitForTag("home_LEARN")
         assertLearnCard(attention, str(R.string.tutor_card_explained))     // the walk reached its last concept: the card says so
         // The saved explanation is still there: opening the card again lands on the last concept, not a restart.
@@ -204,6 +209,7 @@ class LearnJourneysTest : LearnJourneyBase() {
         waitFor("last concept") { has("dialogue_text") }
         readPages("last concept")
         tap(rule.onNodeWithTag("tutor_finish"))
+        waitForTag("wrap_up"); tap(rule.onNodeWithTag("wrapup_shelf"))
         waitForTag("home_LEARN")
         assertLearnCard(attention, str(R.string.tutor_card_explained))
     }
@@ -403,14 +409,14 @@ class LearnJourneysTest : LearnJourneyBase() {
             noLeaks(zhSpaced, "choice bar of ${q.concept}")
             if (i < teaching.lastIndex) { choose(zhSpaced, "tutor_rephrase"); readPages("zh rephrase"); choose(zhSpaced, "tutor_example"); readPages("zh example"); choose(zhSpaced, "tutor_continue") }
         }
-        assertEquals("回到书架", textOf("tutor_finish"))
+        assertEquals("讲完了 · 看总结", textOf("tutor_finish"))
         // Source, Ask, Log in Chinese too.
         rule.onNodeWithTag("message_source").performClick(); waitForText(str(R.string.tutor_source_title)); noLeaks(zhSpaced, "source dialog"); tapText(str(R.string.tutor_close))
         waitFor("closed") { !textShown(str(R.string.tutor_source_title)) }
         rule.onNodeWithTag("tutor_ask").performClick(); waitForTag("tutor_input"); noLeaks(zhSpaced, "ask sheet")
         tapText(str(R.string.explainer_cancel)); waitFor("ask sheet closed") { !has("ask_sheet") }
         rule.onNodeWithTag("explainer_log").performClick(); waitForTag("explainer_log_list"); noLeaks(zhSpaced, "log")
-        tap(rule.onNodeWithTag("tutor_finish")); waitForTag("home_LEARN")
+        tap(rule.onNodeWithTag("tutor_finish")); waitForTag("wrap_up"); tap(rule.onNodeWithTag("wrapup_shelf")); waitForTag("home_LEARN")
     }
 
     // ---- journey 4 --------------------------------------------------------------------------------------

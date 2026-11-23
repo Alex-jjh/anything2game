@@ -36,7 +36,96 @@
     "correctOptionId": "a",
     "explanation": "Recurrent networks compute hidden states step by step, so each step has to wait for the previous one to finish. That sequential dependency makes it hard to parallelize training, especially as sentences get longer, which was the core motivation for a different architecture.",
     "simpler": "RNNs read a sentence one word at a time in order, so you can't speed them up much by doing things in parallel.",
-    "example": "A made-up example: translating a 50-word sentence with an RNN means waiting through 50 sequential steps, like reading a book one page at a time even if you have many readers available."
+    "example": "A made-up example: translating a 50-word sentence with an RNN means waiting through 50 sequential steps, like reading a book one page at a time even if you have many readers available.",
+    "beats": [
+     {
+      "speaker": "explainer",
+      "text": "Let's look closer at how recurrent networks actually compute, step by step.",
+      "section": "1 Introduction"
+     },
+     {
+      "speaker": "explainer",
+      "text": "They generate a hidden state for each position, but each one needs the state right before it.",
+      "section": "1 Introduction",
+      "sourceRefs": [
+       {
+        "chunkId": "c4",
+        "quote": "they generate a sequence of hidden states ht, as a function of the previous hidden state ht−1 and the input for position t"
+       }
+      ]
+     },
+     {
+      "speaker": "player",
+      "text": "So step five can't start until step four is done?"
+     },
+     {
+      "speaker": "explainer",
+      "text": "Exactly. Slow down with me here: that chain means no shortcuts, no skipping ahead.",
+      "section": "1 Introduction"
+     },
+     {
+      "speaker": "explainer",
+      "text": "This sequential nature blocks parallel work within a single training example.",
+      "section": "1 Introduction",
+      "sourceRefs": [
+       {
+        "chunkId": "c4",
+        "quote": "This inherently sequential nature precludes parallelization within training examples"
+       }
+      ]
+     },
+     {
+      "speaker": "explainer",
+      "text": "It's a bit like a bucket brigade: each person must wait for the bucket before passing it on."
+     },
+     {
+      "speaker": "explainer",
+      "text": "And the problem grows with longer sentences, since memory limits how much you can batch instead.",
+      "section": "1 Introduction",
+      "sourceRefs": [
+       {
+        "chunkId": "c4",
+        "quote": "which becomes critical at longer sequence lengths, as memory constraints limit batching across examples"
+       }
+      ]
+     },
+     {
+      "speaker": "explainer",
+      "text": "Quick check before we move on.",
+      "section": "Table 1",
+      "check": {
+       "prompt": "According to Table 1, how many sequential operations does a recurrent layer need?",
+       "options": [
+        {
+         "id": "a",
+         "text": "A constant number, O(1)"
+        },
+        {
+         "id": "b",
+         "text": "A number that grows with sequence length, O(n)"
+        },
+        {
+         "id": "c",
+         "text": "A number that shrinks as sequences get longer"
+        }
+       ],
+       "correctOptionId": "b",
+       "right": "Right. Recurrence scales with sequence length, which is exactly the bottleneck.",
+       "wrong": "Not quite. Table 1 shows recurrent layers need O(n) sequential steps, growing with sentence length."
+      }
+     },
+     {
+      "speaker": "explainer",
+      "text": "So take this with you: recurrence forces waiting, and waiting is what blocks parallel training.",
+      "section": "1 Introduction",
+      "sourceRefs": [
+       {
+        "chunkId": "c4",
+        "quote": "The fundamental constraint of sequential computation, however, remains"
+       }
+      ]
+     }
+    ]
    },
    {
     "question": {
@@ -69,7 +158,92 @@
     "correctOptionId": "a",
     "explanation": "A single attention head averages information across positions, which can blur useful distinctions. Running several smaller attention operations in parallel, each with its own learned projections, lets the model look at different kinds of relationships at once, then combine the results.",
     "simpler": "Instead of one big spotlight, the model uses several smaller spotlights that can each focus on a different kind of relationship in the sentence.",
-    "example": "A made-up example: one head might track subject-verb agreement while another tracks which pronoun refers to which noun, and multi-head attention lets both happen simultaneously."
+    "example": "A made-up example: one head might track subject-verb agreement while another tracks which pronoun refers to which noun, and multi-head attention lets both happen simultaneously.",
+    "beats": [
+     {
+      "speaker": "explainer",
+      "text": "Let's slow down on how multi-head attention actually works.",
+      "section": "3.2.2 Multi-Head Attention"
+     },
+     {
+      "speaker": "explainer",
+      "text": "A single attention operation averages over positions. That averaging can wash out useful detail.",
+      "section": "2 Background",
+      "sourceRefs": [
+       {
+        "chunkId": "c6",
+        "quote": "an effect we counteract with Multi-Head Attention as described in section 3.2"
+       }
+      ]
+     },
+     {
+      "speaker": "player",
+      "text": "So one head just isn't enough?"
+     },
+     {
+      "speaker": "explainer",
+      "text": "Right. With one head, averaging inhibits the model from separating different relationships.",
+      "section": "3.2.2 Multi-Head Attention",
+      "sourceRefs": [
+       {
+        "chunkId": "c13",
+        "quote": "With a single attention head, averaging inhibits this."
+       }
+      ]
+     },
+     {
+      "speaker": "explainer",
+      "text": "So instead, the queries, keys, and values get projected several times, each with its own learned projection.",
+      "section": "3.2.2 Multi-Head Attention",
+      "sourceRefs": [
+       {
+        "chunkId": "c11",
+        "quote": "we found it beneficial to linearly project the queries, keys and values h times with different, learned linear projections"
+       }
+      ]
+     },
+     {
+      "speaker": "explainer",
+      "text": "Think of it like reading a sentence with several different highlighters at once, each tracking its own kind of connection."
+     },
+     {
+      "speaker": "explainer",
+      "text": "Each projected version runs attention in parallel, then all the outputs get concatenated and projected once more.",
+      "section": "3.2.2 Multi-Head Attention",
+      "sourceRefs": [
+       {
+        "chunkId": "c13",
+        "quote": "These are concatenated and once again projected, resulting in the final values"
+       }
+      ]
+     },
+     {
+      "speaker": "explainer",
+      "text": "That's why heads end up specializing. Figures show different heads tracking different things, like long-distance dependencies or anaphora.",
+      "section": "Figure 3",
+      "sourceRefs": [
+       {
+        "chunkId": "c38",
+        "quote": "Many of the attention heads attend to a distant dependency of the verb ‘making’"
+       }
+      ]
+     },
+     {
+      "speaker": "player",
+      "text": "So each head notices something different, then it all gets combined."
+     },
+     {
+      "speaker": "explainer",
+      "text": "Exactly. Multiple heads let the model attend jointly to different representation subspaces, instead of blurring everything into one average.",
+      "section": "3.2.2 Multi-Head Attention",
+      "sourceRefs": [
+       {
+        "chunkId": "c13",
+        "quote": "Multi-head attention allows the model to jointly attend to information from different representation subspaces at different positions."
+       }
+      ]
+     }
+    ]
    },
    {
     "question": {
@@ -102,7 +276,95 @@
     "correctOptionId": "a",
     "explanation": "The Transformer didn't just match prior systems, it clearly outperformed them, including systems that combined multiple models together (ensembles). This result mattered because it showed the attention-only approach wasn't just faster, it was also more accurate.",
     "simpler": "The new model's translations scored noticeably better than even the best older systems, even ones using teams of models at once.",
-    "example": "A made-up comparison: think of a race where the old champions were teams of runners, and a single new runner still crossed the line clearly ahead."
+    "example": "A made-up comparison: think of a race where the old champions were teams of runners, and a single new runner still crossed the line clearly ahead.",
+    "beats": [
+     {
+      "speaker": "explainer",
+      "text": "Let's look at how this model actually did on translation.",
+      "section": "6.1 Machine Translation"
+     },
+     {
+      "speaker": "explainer",
+      "text": "On English-to-German, it hit a new best score, and not by a small margin.",
+      "section": "Table 2",
+      "sourceRefs": [
+       {
+        "chunkId": "c23",
+        "quote": "Transformer (big) 28.4"
+       }
+      ]
+     },
+     {
+      "speaker": "player",
+      "text": "Better than everything before it?"
+     },
+     {
+      "speaker": "explainer",
+      "text": "Yes. It beat the best prior models, even ones that combined several models together.",
+      "section": "6.1 Machine Translation",
+      "sourceRefs": [
+       {
+        "chunkId": "c24",
+        "quote": "outperforms the best previously reported models (including ensembles) by more than 2.0 BLEU"
+       }
+      ]
+     },
+     {
+      "speaker": "explainer",
+      "text": "An aside: ensembles are like asking five experts and averaging their answers. Usually that wins."
+     },
+     {
+      "speaker": "explainer",
+      "text": "Here, one single attention-based model still came out ahead.",
+      "section": "Table 2",
+      "sourceRefs": [
+       {
+        "chunkId": "c23",
+        "quote": "ConvS2S Ensemble [9] 26.36"
+       }
+      ]
+     },
+     {
+      "speaker": "explainer",
+      "text": "Quick check before we move on.",
+      "section": "6.1 Machine Translation",
+      "check": {
+       "prompt": "Even the smaller base model, compared to all prior models and ensembles, did what?",
+       "options": [
+        {
+         "id": "a",
+         "text": "Matched them, but trained much faster"
+        },
+        {
+         "id": "b",
+         "text": "Surpassed them, at a fraction of the training cost"
+        },
+        {
+         "id": "c",
+         "text": "Fell slightly short but was simpler"
+        }
+       ],
+       "correctOptionId": "b",
+       "right": "Exactly. Even the lighter base model came out on top, and cheaply.",
+       "wrong": "Not quite. The passage says the base model surpassed every prior model and ensemble too, at a fraction of the cost."
+      }
+     },
+     {
+      "speaker": "player",
+      "text": "So speed wasn't the only win here."
+     },
+     {
+      "speaker": "explainer",
+      "text": "Right. The takeaway: this wasn't just a faster way to translate. It was a genuinely more accurate one.",
+      "section": "6.1 Machine Translation",
+      "sourceRefs": [
+       {
+        "chunkId": "c24",
+        "quote": "establishing a new state-of-the-art BLEU score of 28.4"
+       }
+      ]
+     }
+    ]
    },
    {
     "question": {
@@ -135,7 +397,119 @@
     "correctOptionId": "a",
     "explanation": "Full self-attention connects every position to every other position in one step, which is great for learning long-range dependencies but expensive for very long sequences. Restricting attention to a nearby window saves computation, but it brings back longer paths between distant words, which is exactly the problem self-attention was meant to avoid.",
     "simpler": "Looking only at nearby words saves work, but then far-apart words take more steps to connect again, which was the original problem attention solved.",
-    "example": "A made-up example: if a pronoun at the end of a long paragraph refers to a name at the start, a narrow attention window might force the model to relay that connection through several intermediate steps instead of linking them directly."
+    "example": "A made-up example: if a pronoun at the end of a long paragraph refers to a name at the start, a narrow attention window might force the model to relay that connection through several intermediate steps instead of linking them directly.",
+    "beats": [
+     {
+      "speaker": "explainer",
+      "text": "Full self-attention connects every position to every other position, all at once.",
+      "section": "4 Why Self-Attention",
+      "sourceRefs": [
+       {
+        "chunkId": "c19",
+        "quote": "a self-attention layer connects all positions with a constant number of sequentially executed operations"
+       }
+      ]
+     },
+     {
+      "speaker": "explainer",
+      "text": "That is exactly why it is so good at catching long-range dependencies.",
+      "section": "4 Why Self-Attention",
+      "sourceRefs": [
+       {
+        "chunkId": "c18",
+        "quote": "The shorter these paths between any combination of positions in the input and output sequences, the easier it is to learn long-range dependencies"
+       }
+      ]
+     },
+     {
+      "speaker": "player",
+      "text": "So why would anyone want less of that?"
+     },
+     {
+      "speaker": "explainer",
+      "text": "Because for very long sequences, connecting everything to everything gets expensive.",
+      "section": "4 Why Self-Attention",
+      "sourceRefs": [
+       {
+        "chunkId": "c20",
+        "quote": "To improve computational performance for tasks involving very long sequences, self-attention could be restricted to considering only a neighborhood of size r"
+       }
+      ]
+     },
+     {
+      "speaker": "explainer",
+      "text": "So one idea is to only let each position look at a nearby window, size r, instead of the whole sequence.",
+      "section": "4 Why Self-Attention",
+      "sourceRefs": [
+       {
+        "chunkId": "c20",
+        "quote": "self-attention could be restricted to considering only a neighborhood of size r in the input sequence centered around the respective output position"
+       }
+      ]
+     },
+     {
+      "speaker": "explainer",
+      "text": "Let me slow down here, because this is the catch. Restricting the window brings back a cost self-attention was built to avoid.",
+      "section": "Table 1",
+      "sourceRefs": [
+       {
+        "chunkId": "c16",
+        "quote": "Self-Attention (restricted) O(r · n · d) O(1) O(n/r)"
+       }
+      ]
+     },
+     {
+      "speaker": "explainer",
+      "text": "Two far-apart words now need several hops through the window to reach each other, instead of one direct step.",
+      "section": "4 Why Self-Attention",
+      "sourceRefs": [
+       {
+        "chunkId": "c20",
+        "quote": "This would increase the maximum path length to O(n/r)"
+       }
+      ]
+     },
+     {
+      "speaker": "player",
+      "text": "So it is a straight swap: speed for distance."
+     },
+     {
+      "speaker": "explainer",
+      "text": "Quick check before we move on.",
+      "section": "Table 1",
+      "check": {
+       "prompt": "What does restricting attention to a local window trade away?",
+       "options": [
+        {
+         "id": "a",
+         "text": "It makes training sequential instead of parallel"
+        },
+        {
+         "id": "b",
+         "text": "It lengthens the path between distant positions again"
+        },
+        {
+         "id": "c",
+         "text": "It removes the need for positional encoding"
+        }
+       ],
+       "correctOptionId": "b",
+       "right": "Exactly. The constant path length full attention gave you stretches back out.",
+       "wrong": "Not quite. The window stays parallel; what grows back is the path length between far positions."
+      }
+     },
+     {
+      "speaker": "explainer",
+      "text": "Take away: local windows save computation, but they undo the very thing self-attention was prized for, short paths between any two positions.",
+      "section": "4 Why Self-Attention",
+      "sourceRefs": [
+       {
+        "chunkId": "c6",
+        "quote": "In the Transformer this is reduced to a constant number of operations"
+       }
+      ]
+     }
+    ]
    }
   ]
  },
@@ -143,6 +517,11 @@
   "mode": "pre-generated",
   "model": "us.anthropic.claude-sonnet-5",
   "promptVersion": "tutor-script.v1",
-  "review": "needs human review"
+  "review": "needs human review",
+  "beats": {
+   "model": "us.anthropic.claude-sonnet-5",
+   "promptVersion": "tutor-beats.v1",
+   "review": "needs human review"
+  }
  }
 }

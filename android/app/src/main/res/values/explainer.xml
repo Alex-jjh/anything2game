@@ -18,11 +18,24 @@
     <string name="explainer_log_title">Conversation so far</string>
     <string name="explainer_ask">Ask</string>
     <string name="explainer_ask_title">Ask %1$s</string>
-    <string name="explainer_finish">Back to shelf</string>
+    <string name="explainer_finish">Finish · summary</string>
     <string name="explainer_show_source">Show source · p.%1$s</string>
     <string name="explainer_page_of">%1$d of %2$d</string>
     <string name="explainer_thinking">%1$s is thinking</string>
     <string name="explainer_cancel">Cancel</string>
     <string name="explainer_concept">Concept %1$d/%2$d</string>
     <string name="explainer_focus_line">Tell me what you are after, and I will start there.</string>
+    <string name="explainer_stage_start">Just started</string>
+    <string name="explainer_stage_middle">In progress</string>
+    <string name="explainer_stage_last">Last concept</string>
+    <string name="explainer_stage_done">All covered</string>
+    <string name="wrapup_title">That is the walk-through</string>
+    <string name="wrapup_line">%1$s went through all %2$d foundation concepts with you.</string>
+    <string name="wrapup_steps">What we covered, in the order we went</string>
+    <string name="wrapup_start">You started at: %1$s</string>
+    <string name="wrapup_note">These are the foundations picked from the document, not the whole of it. Tap a page to reread the passage; the full conversation stays in Log.</string>
+    <string name="wrapup_stay">Back to the explanation</string>
+    <string name="wrapup_shelf">Back to shelf</string>
+    <string name="check_right">Right.</string>
+    <string name="check_wrong">Not quite.</string>
 </resources>

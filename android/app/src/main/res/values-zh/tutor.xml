@@ -68,4 +68,13 @@
     <string name="tutor_card_continue">继续</string>
     <string name="tutor_card_continue_concept">继续 · 第 %1$d/%2$d 个概念</string>
     <string name="tutor_card_explained">已讲完</string>
+    <string name="source_page_of">第 %1$s 页 · 共 %2$d 页</string>
+    <string name="source_prev_page">上一页</string>
+    <string name="source_next_page">下一页</string>
+    <string name="source_marker_note">讲解引用的原句</string>
+    <string name="source_pdf_page_desc">原始 PDF，第 %1$s 页，共 %2$d 页</string>
+    <string name="source_pdf_loading">正在打开 PDF</string>
+    <string name="source_pdf_quote">本页标出的原句：“%1$s”</string>
+    <string name="source_pdf_quote_unplaced">本页引用的原句（未能标出）：“%1$s”</string>
+    <string name="source_pdf_zoom_hint">双指缩放，双击还原</string>
 </resources>

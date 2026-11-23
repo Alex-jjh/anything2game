@@ -23,8 +23,9 @@ data class TextDocumentRequest(val kind: DocumentKind, val title: String, val pa
 @Serializable
 data class PageText(val pageIndex: Int, val text: String, val pageLabel: String? = null)
 
+/** [layout]: text geometry of a PDF upload that asked for it (`?layout=1`); absent for text/OCR, older servers and old caches. */
 @Serializable
-data class DocumentResponse(val documentId: String, val documentVersion: String, val pageCount: Int, val title: String)
+data class DocumentResponse(val documentId: String, val documentVersion: String, val pageCount: Int, val title: String, val layout: DocumentLayout? = null)
 
 @Serializable
 data class CompileOptions(val minutesPerLevel: Int = 5, val language: String = "en")

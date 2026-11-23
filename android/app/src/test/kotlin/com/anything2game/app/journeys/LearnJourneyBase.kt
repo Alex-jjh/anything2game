@@ -165,7 +165,9 @@ abstract class LearnJourneyBase : JourneyTest() {
             pages += page
             if (has("tutor_rephrase")) return pages
             check(pages.size < 30) { "$where: still not on the last page after ${pages.size} pages" }
-            if (viaSemantics) rule.onNodeWithTag("dialogue_box").performSemanticsAction(SemanticsActions.OnClick) else rule.onNodeWithTag("dialogue_box").performClick()
+            // On a quick-check page the middle of the box is an answer button; the page turns with Next there.
+            if (viaSemantics) rule.onNodeWithTag("dialogue_box").performSemanticsAction(SemanticsActions.OnClick)
+            else if (has("quick_check")) rule.onNodeWithTag("dialogue_next").performClick() else rule.onNodeWithTag("dialogue_box").performClick()
             rule.waitForIdle()
             waitFor("$where: page ${pages.size + 1}") { textOf("dialogue_text") != page || has("tutor_rephrase") }
             if (has("tutor_rephrase") && textOf("dialogue_text") == page) return pages

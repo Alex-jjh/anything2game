@@ -136,6 +136,9 @@ class ExplainerFlowTest {
         assertEquals("Concept 3/3", textOf("concept_count"))
         rule.onNodeWithTag("tutor_continue").assertDoesNotExist()
         rule.onNodeWithTag("tutor_finish").performClick()
+        assertEquals(0, back)
+        rule.waitUntil(10000) { has("wrap_up") }
+        rule.onNodeWithTag("wrapup_shelf").performClick()
         assertEquals(1, back)
     }
 }

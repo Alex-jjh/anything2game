@@ -26,6 +26,7 @@ import com.anything2game.app.R
 import com.anything2game.app.ui.common.Badge
 import com.anything2game.app.ui.home.PaperCard
 import com.anything2game.app.ui.theme.A2g
+import com.anything2game.app.data.tutor.SourceDocument
 import com.anything2game.contract.*
 import com.anything2game.contract.tutor.*
 
@@ -39,6 +40,7 @@ fun ReadingContent(deps: AppDependencies, packageId: String, onBack: () -> Unit)
     val profileId by deps.profiles.active.collectAsState()
     val vm = viewModel(key = "tutor:${profileId?.id}:$packageId") { TutorViewModel(deps.tutors, packageId) }
     val state by vm.state.collectAsStateWithLifecycle()
+    val pdf by vm.sourceDocument.collectAsStateWithLifecycle()
     androidx.activity.compose.BackHandler { if (state.busy) vm.cancelPending(); onBack() }
     val c = state.cache
     val s = c?.session
@@ -46,6 +48,8 @@ fun ReadingContent(deps: AppDependencies, packageId: String, onBack: () -> Unit)
     val list = rememberLazyListState()
     var input by rememberSaveable(packageId) { mutableStateOf("") }
     var sourceRefs by remember { mutableStateOf<List<SourceRef>>(emptyList()) }
+    // The PDF as it was when "Show source" was tapped: a late-loading layout must not swap an open viewer into another mode.
+    var sourcePdf by remember { mutableStateOf<SourceDocument?>(null) }
     // Pending intent is only for loading feedback; the displayed reply's mode comes from its saved metadata.
     var requestedIntent by rememberSaveable(packageId) { mutableStateOf<TutorIntent?>(null) }
     val context = LocalContext.current
@@ -62,7 +66,7 @@ fun ReadingContent(deps: AppDependencies, packageId: String, onBack: () -> Unit)
     Scaffold(containerColor = skin.paper) { padding ->
         if (phase == 3 && s != null) ExplainerTheatre(
             s, theme, busy = state.busy, enabled = !state.busy && state.problem == null, offline = state.offline, problem = state.problem,
-            lastIntent = if (state.busy) requestedIntent else c.replyIntent, input = input, onInput = { input = it }, onTurn = turn, onSource = { sourceRefs = it },
+            lastIntent = if (state.busy) requestedIntent else c.replyIntent, input = input, onInput = { input = it }, onTurn = turn, onSource = { sourceRefs = it; sourcePdf = pdf },
             onRetry = vm::retry, onReload = vm::reload, onCancel = vm::cancelPending, onBack = { if (state.busy) vm.cancelPending(); onBack() },
             modifier = Modifier.padding(padding).consumeWindowInsets(padding),
         ) else LazyColumn(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding().testTag("tutor_list"), state = list,
@@ -145,14 +149,5 @@ fun ReadingContent(deps: AppDependencies, packageId: String, onBack: () -> Unit)
             }
         }
     }
-    if (sourceRefs.isNotEmpty() && s != null) AlertDialog(onDismissRequest = { sourceRefs = emptyList() },
-        title = { Text(stringResource(R.string.tutor_source_title)) },
-        text = { LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) { items(sourceRefs) { ref ->
-            val chunk = s.sources.first { it.chunkId == ref.chunkId }
-            Text(stringResource(R.string.evidence_page, chunk.pageLabel ?: (chunk.pageIndex + 1).toString()), color = skin.evidence)
-            Text(ref.quote, style = MaterialTheme.typography.bodyLarge)
-            HorizontalDivider()
-            Text(chunk.text, style = MaterialTheme.typography.bodySmall)
-        }; item { Text(stringResource(R.string.tutor_source_note), style = MaterialTheme.typography.bodySmall) } } },
-        confirmButton = { TextButton(onClick = { sourceRefs = emptyList() }) { Text(stringResource(R.string.tutor_close)) } })
+    if (sourceRefs.isNotEmpty() && s != null) SourceViewer(s.sources, sourceRefs, sourcePdf?.takeIf { it.documentId == s.documentId && it.documentVersion == s.documentVersion }, onDismiss = { sourceRefs = emptyList() })
 }

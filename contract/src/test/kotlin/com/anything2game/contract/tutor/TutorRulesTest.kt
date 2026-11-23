@@ -24,6 +24,26 @@ class TutorRulesTest {
         assertThrows(IllegalArgumentException::class.java) { TutorRules.validate(bp, source.map { it.copy(text = "unrelated") }) }
         assertThrows(IllegalArgumentException::class.java) { TutorRules.validate(bp.copy(schema = "future"), source) }
     }
+    @Test fun `a scene's lines are said on Start and Continue, checked against the source, and skipped by Rephrase`() {
+        val beats = listOf(
+            TutorBeat("Recall is pulling it back out.", section = "1 Intro", sourceRefs = listOf(SourceRef("s1", "retrieving information"))),
+            TutorBeat("So no rereading?", speaker = SPEAKER_PLAYER),
+            TutorBeat("Quick one.", check = TutorCheck("Which is recall?", listOf(TutorOption("a", "Retrieve"), TutorOption("b", "Reread")), "a", "Yes.", "Rereading is not recall.")),
+        )
+        val scene = bp.copy(concepts = listOf(bp.concepts.single().copy(beats = beats)))
+        TutorRules.validate(scene, source)
+        val s = TutorSession(sessionId = "t", documentId = "d", documentVersion = "v", title = "T", language = "en", mode = "local-mock", questions = listOf(q), sources = source,
+            assessment = listOf(ConceptAssessment("q1", "c1", Understanding.NOT_YET_ASSESSED)))
+        val start = TutorRules.scriptedReply(s, scene, TutorIntent.START)
+        assertEquals(beats, start.beats)
+        assertEquals("Recall is pulling it back out.\nSo no rereading?\nQuick one.", TutorRules.splitScripted(start.text, listOf("Recall"))!!.body)
+        assertTrue(TutorRules.scriptedReply(s, scene, TutorIntent.REPHRASE).let { it.beats.isEmpty() && it.text.endsWith("Simple") })
+        // A line quoting what the source does not say, an unknown speaker, or a check without its answer is refused.
+        for (bad in listOf(beats[0].copy(sourceRefs = listOf(SourceRef("s1", "not in the text"))), beats[1].copy(speaker = "narrator"), beats[2].copy(check = beats[2].check!!.copy(correctOptionId = "z"))))
+            assertThrows(IllegalArgumentException::class.java) { TutorRules.validate(bp.copy(concepts = listOf(bp.concepts.single().copy(beats = listOf(bad)))), source) }
+        // Content written before scenes existed still decodes.
+        assertTrue(ContractJson.json.decodeFromString(TutorMessage.serializer(), "{\"id\":\"m\",\"role\":\"tutor\",\"text\":\"x\"}").beats.isEmpty())
+    }
     @Test fun `missing fields and broken JSON fail safely`() {
         for (raw in listOf("{", "{}", "{\"concepts\":[{}]}")) {
             assertTrue(runCatching { ContractJson.json.decodeFromString(TutorBlueprint.serializer(), raw).also { TutorRules.validate(it, source) } }.isFailure)

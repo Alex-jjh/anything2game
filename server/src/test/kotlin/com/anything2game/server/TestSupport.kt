@@ -118,9 +118,9 @@ class Api(val client: HttpClient) {
             ContractJson.json.encodeToString(TextDocumentRequest.serializer(), TextDocumentRequest(kind, title, pages.mapIndexed { i, t -> PageText(i, t, "${i + 1}") })),
         )
 
-    suspend fun uploadPdf(token: String, bytes: ByteArray, fileName: String = "x.pdf", contentType: String = "application/pdf"): HttpResponse =
+    suspend fun uploadPdf(token: String, bytes: ByteArray, fileName: String = "x.pdf", contentType: String = "application/pdf", path: String = "/v1/documents"): HttpResponse =
         client.submitFormWithBinaryData(
-            url = "/v1/documents",
+            url = path,
             formData = formData {
                 append("file", bytes, Headers.build {
                     append(HttpHeaders.ContentType, contentType)
@@ -196,6 +196,30 @@ fun makePdf(pages: List<String>, userPassword: String? = null, ownerPassword: St
             val policy = StandardProtectionPolicy(ownerPassword ?: "owner-secret", userPassword ?: "", AccessPermission())
             policy.encryptionKeyLength = 128
             doc.protect(policy)
+        }
+        return ByteArrayOutputStream().also { doc.save(it) }.toByteArray()
+    }
+}
+
+/** Where [makePdfLines] put each line: baseline x/y in PDF points (y from the bottom, as PDFBox draws). */
+const val LINES_LEFT = 72f
+const val LINES_TOP = 720f
+const val LINES_LEADING = 18f
+const val LINES_FONT_SIZE = 12f
+
+/** A PDF whose pages each hold several Helvetica 12 lines at known baselines ([LINES_LEFT], [LINES_TOP] - i * [LINES_LEADING]). */
+fun makePdfLines(pages: List<List<String>>): ByteArray {
+    PDDocument().use { doc ->
+        for (lines in pages) {
+            val page = PDPage()
+            doc.addPage(page)
+            PDPageContentStream(doc, page).use { cs ->
+                cs.beginText()
+                cs.setFont(PDType1Font(Standard14Fonts.FontName.HELVETICA), LINES_FONT_SIZE)
+                cs.newLineAtOffset(LINES_LEFT, LINES_TOP)
+                lines.forEachIndexed { i, line -> if (i > 0) cs.newLineAtOffset(0f, -LINES_LEADING); cs.showText(line) }
+                cs.endText()
+            }
         }
         return ByteArrayOutputStream().also { doc.save(it) }.toByteArray()
     }

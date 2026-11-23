@@ -40,9 +40,11 @@ class ReadingFlowTest {
         rule.waitUntil(10000) { rule.onAllNodesWithTag("explainer_stage").fetchSemanticsNodes().isNotEmpty() }
         // The explanation is a scene now: page through the first message, then the choice bar offers the next step.
         rule.waitUntil(10000) { rule.onAllNodesWithTag("dialogue_text").fetchSemanticsNodes().isNotEmpty() }
-        repeat(4) { if (rule.onAllNodesWithTag("tutor_example").fetchSemanticsNodes().isEmpty()) rule.onNodeWithTag("dialogue_box").performClick() }
+        repeat(40) { if (rule.onAllNodesWithTag("tutor_example").fetchSemanticsNodes().isEmpty()) rule.onNodeWithTag("dialogue_next").performClick() }
         rule.onNodeWithTag("tutor_example").performClick()
-        rule.waitUntil(10000) { rule.onAllNodesWithTag("typing_indicator").fetchSemanticsNodes().isEmpty() && rule.onAllNodesWithTag("message_source").fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(10000) { rule.onAllNodesWithTag("typing_indicator").fetchSemanticsNodes().isEmpty() && rule.onAllNodesWithTag("dialogue_text").fetchSemanticsNodes().isNotEmpty() }
+        // The player's own character asks for the example first; the explainer's page after it carries the source.
+        repeat(3) { if (rule.onAllNodesWithTag("message_source").fetchSemanticsNodes().isEmpty()) { rule.onNodeWithTag("dialogue_box").performClick(); rule.waitForIdle() } }
         rule.onAllNodesWithTag("message_source").onFirst().assertExists()
         rule.onNodeWithText("Start practice").assertDoesNotExist()
     }

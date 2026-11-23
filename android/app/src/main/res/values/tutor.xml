@@ -68,4 +68,13 @@
     <string name="tutor_card_continue">Continue</string>
     <string name="tutor_card_continue_concept">Continue · concept %1$d/%2$d</string>
     <string name="tutor_card_explained">Explained</string>
+    <string name="source_page_of">p. %1$s · %2$d pages</string>
+    <string name="source_prev_page">Prev</string>
+    <string name="source_next_page">Next</string>
+    <string name="source_marker_note">Quoted in the explanation</string>
+    <string name="source_pdf_page_desc">Original PDF, page %1$s of %2$d</string>
+    <string name="source_pdf_loading">Opening the PDF</string>
+    <string name="source_pdf_quote">Marked on this page: “%1$s”</string>
+    <string name="source_pdf_quote_unplaced">Quoted on this page (not marked): “%1$s”</string>
+    <string name="source_pdf_zoom_hint">Pinch to zoom, double-tap to reset</string>
 </resources>

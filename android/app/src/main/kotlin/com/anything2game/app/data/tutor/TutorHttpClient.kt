@@ -44,26 +44,34 @@ class TutorHttpClient(private val context: Context, private val baseUrl: String 
         val text = when (request) {
             is ImportRequest.SharedText -> request("POST", "/v1/documents", ContractJson.json.encodeToString(TextDocumentRequest.serializer(),
                 TextDocumentRequest(DocumentKind.TEXT, request.title, listOf(PageText(0, request.text, "1")))))
-            is ImportRequest.PdfFile -> {
-                val bytes = withContext(Dispatchers.IO) {
-                    if ((request.sizeBytes ?: 0L) > MAX_PDF) throw TutorApiException("FILE_TOO_LARGE", false)
-                    context.contentResolver.openInputStream(request.uri)?.use { stream ->
-                        val data = readBounded(stream, MAX_PDF + 1)
-                        if (data.size > MAX_PDF) throw TutorApiException("FILE_TOO_LARGE", false)
-                        data
-                    } ?: throw TutorApiException("FILE_UNAVAILABLE", false)
-                }
-                val boundary = "a2g-" + UUID.randomUUID()
-                val title = request.title.replace(Regex("[\\r\\n]"), " ").take(200)
-                // Fixed filename avoids injecting untrusted metadata into multipart headers.
-                val prefix = "--$boundary\r\nContent-Disposition: form-data; name=\"title\"\r\n\r\n$title\r\n--$boundary\r\nContent-Disposition: form-data; name=\"file\"; filename=\"document.pdf\"\r\nContent-Type: application/pdf\r\n\r\n"
-                raw("POST", "/v1/documents", "multipart/form-data; boundary=$boundary", prefix.toByteArray() + bytes + "\r\n--$boundary--\r\n".toByteArray(), token())
-            }
+            is ImportRequest.PdfFile -> return uploadPdf(request.title, readPdf(request), layout = false)
         }
         return ContractJson.json.decodeFromString(DocumentResponse.serializer(), text)
     }
 
-    private suspend fun raw(method: String, path: String, type: String, body: ByteArray?, token: String?): String = withContext(Dispatchers.IO) {
+    /** The picked PDF's bytes, read once (the content:// grant is temporary) and bounded like the server's limit. */
+    suspend fun readPdf(request: ImportRequest.PdfFile): ByteArray = withContext(Dispatchers.IO) {
+        if ((request.sizeBytes ?: 0L) > MAX_PDF) throw TutorApiException("FILE_TOO_LARGE", false)
+        context.contentResolver.openInputStream(request.uri)?.use { stream ->
+            val data = readBounded(stream, MAX_PDF + 1)
+            if (data.size > MAX_PDF) throw TutorApiException("FILE_TOO_LARGE", false)
+            data
+        } ?: throw TutorApiException("FILE_UNAVAILABLE", false)
+    }
+
+    /** [layout]: also ask for the text geometry ("Show source" on the real page); that answer may be a few MB, hence its own cap. */
+    suspend fun uploadPdf(title: String, bytes: ByteArray, layout: Boolean): DocumentResponse {
+        val boundary = "a2g-" + UUID.randomUUID()
+        val clean = title.replace(Regex("[\\r\\n]"), " ").take(200)
+        // Fixed filename avoids injecting untrusted metadata into multipart headers.
+        val prefix = "--$boundary\r\nContent-Disposition: form-data; name=\"title\"\r\n\r\n$clean\r\n--$boundary\r\nContent-Disposition: form-data; name=\"file\"; filename=\"document.pdf\"\r\nContent-Type: application/pdf\r\n\r\n"
+        val text = raw("POST", if (layout) "/v1/documents?layout=1" else "/v1/documents", "multipart/form-data; boundary=$boundary",
+            prefix.toByteArray() + bytes + "\r\n--$boundary--\r\n".toByteArray(), token(), if (layout) MAX_LAYOUT_RESPONSE else MAX_RESPONSE)
+        // With a layout this is MBs of JSON; the caller is usually a viewModelScope (Main).
+        return withContext(Dispatchers.Default) { ContractJson.json.decodeFromString(DocumentResponse.serializer(), text) }
+    }
+
+    private suspend fun raw(method: String, path: String, type: String, body: ByteArray?, token: String?, limit: Int = MAX_RESPONSE): String = withContext(Dispatchers.IO) {
         validateUrl()
         val connection = URI(baseUrl.trimEnd('/') + path).toURL().openConnection() as HttpURLConnection
         try {
@@ -81,8 +89,8 @@ class TutorHttpClient(private val context: Context, private val baseUrl: String 
             }
             val status = connection.responseCode
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-            val data = stream?.use { readBounded(it, 2 * 1024 * 1024 + 1) } ?: byteArrayOf()
-            if (data.size > 2 * 1024 * 1024) throw TutorApiException("RESPONSE_TOO_LARGE", false)
+            val data = stream?.use { readBounded(it, limit + 1) } ?: byteArrayOf()
+            if (data.size > limit) throw TutorApiException("RESPONSE_TOO_LARGE", false)
             val result = data.toString(Charsets.UTF_8)
             if (status !in 200..299) {
                 val error = runCatching { ContractJson.json.decodeFromString(ErrorBody.serializer(), result).error }.getOrNull()
@@ -101,5 +109,9 @@ class TutorHttpClient(private val context: Context, private val baseUrl: String 
         }
         return output.toByteArray()
     }
-    companion object { private const val MAX_PDF = 20 * 1024 * 1024 }
+    companion object {
+        private const val MAX_PDF = 20 * 1024 * 1024
+        private const val MAX_RESPONSE = 2 * 1024 * 1024
+        private const val MAX_LAYOUT_RESPONSE = 12 * 1024 * 1024
+    }
 }

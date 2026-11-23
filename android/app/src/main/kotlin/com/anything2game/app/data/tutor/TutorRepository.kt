@@ -36,6 +36,8 @@ interface TutorRepository {
     suspend fun create(document: DocumentResponse, requestId: String): TutorSession
     /** Remembers what the reader wants out of the reading (kept on this device) and orders the questions by it. */
     suspend fun setFocus(cache: TutorCache, facets: List<Facet>, note: String): TutorCache = cache.withFocus(facets, note)
+    /** The reader's own PDF of this document version with its text geometry, when this phone kept one; null shows the text. */
+    suspend fun sourceDocument(documentId: String, documentVersion: String): SourceDocument? = null
 }
 
 /** Key of the saved local session of a scripted course. The retrieval example keeps its original key so saved sessions survive. */
@@ -50,9 +52,11 @@ class AndroidTutorRepository(
     private val installPackage: suspend (LearningPackage) -> Unit,
     sessionsDir: File = File(context.applicationContext.filesDir, "tutor-sessions"),
     connectionPrefs: String = "tutor_connection",
+    sourceDocumentsDir: File = File(context.applicationContext.filesDir, "source-documents"),
 ) : TutorRepository {
     private val app = context.applicationContext
     private val files = TutorCacheStore(sessionsDir)
+    private val sourceFiles = SourceDocumentStore(sourceDocumentsDir)
     private val http = TutorHttpClient(app, prefsName = connectionPrefs)
     private val json = ContractJson.json
     override val endpoint get() = http.endpoint
@@ -131,7 +135,20 @@ class AndroidTutorRepository(
     }
     override suspend fun cancel(cache: TutorCache, requestId: String): TutorSession = if (cache.session.mode == "local-mock") cache.session else
         decode(http.request("POST", "/v1/tutors/${cache.session.sessionId}/cancel", json.encodeToString(CreateTutorRequest.serializer(), CreateTutorRequest(clientRequestId = requestId)))).keepingFocusOf(cache.session)
-    override suspend fun upload(request: ImportRequest) = http.upload(request)
+    /**
+     * A PDF is read once, sent asking for its text geometry, and kept here with that geometry before the import goes on
+     * (the import's retry path skips upload, so later would be never). The geometry goes no further: sessions don't need it.
+     */
+    override suspend fun upload(request: ImportRequest): DocumentResponse {
+        if (request !is ImportRequest.PdfFile) return http.upload(request)
+        val bytes = http.readPdf(request)
+        val document = http.uploadPdf(request.title, bytes, layout = true)
+        // Not keeping it (full disk, an older server without layout) only means "Show source" stays text; the import goes on.
+        if (document.layout != null) try { sourceFiles.save(document, bytes) } catch (e: CancellationException) { throw e } catch (e: Exception) { }
+        return document.copy(layout = null)
+    }
+    override suspend fun sourceDocument(documentId: String, documentVersion: String): SourceDocument? =
+        try { sourceFiles.load(documentId, documentVersion) } catch (e: CancellationException) { throw e } catch (e: Exception) { null }
     override suspend fun create(document: DocumentResponse, requestId: String): TutorSession {
         val s = decode(http.request("POST", "/v1/documents/${document.documentId}/tutor", json.encodeToString(CreateTutorRequest.serializer(), CreateTutorRequest("zh", requestId))))
         require(s.documentId == document.documentId && s.documentVersion == document.documentVersion)

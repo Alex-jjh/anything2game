@@ -20,7 +20,7 @@ The server is **cloud-portable**: one container, state in PostgreSQL, configurat
 |---|---|
 | `config` | `ServerConfig.fromEnv()`: all settings from environment variables, safe defaults, fails fast on a missing key. `Limits` holds the hard limits. |
 | `api` | Ktor routes (`ApiRoutes.kt`), error mapping, request ids and access log (`ApiModule.kt`), the `Authenticator` port with install tokens and the default-deny plugin (`Auth.kt`), OIDC JWT verification (`OidcJwtAuthenticator.kt`), quotas (`Quotas.kt`). |
-| `ingest` | `PdfTextExtractor` (PDFBox 3, text per page, encrypted and no-text detection, time limit), `Chunker` (paragraphs to 300-1200 char chunks, never across pages, `c1..cn`), `documentVersion`. |
+| `ingest` | `PdfTextExtractor` (PDFBox 3, text per page, encrypted and no-text detection, time limit; optionally every character's box), `Chunker` (paragraphs to 300-1200 char chunks, never across pages, `c1..cn`), `documentVersion`, `ChunkLayouts` (character boxes aligned to chunks). |
 | `llm` | `LlmClient` + `OpenAiCompatibleLlmClient`, `AnthropicLlmClient`, `FakeLlmClient`, `LlmRouter` (tiers `compile`, `frame`, `flash`), prompt loading and the untrusted-text format (`Prompts.kt`). |
 | `compile` | The pipeline nodes, `CompileJobRunner` (job worker: claims jobs with a lease, runs the state machine), frame nodes, `FrameService`. |
 | `adapt` | `AskService` (retrieval + flash model), `Retrieval` (keyword overlap, Chinese by character bigrams). |
@@ -304,7 +304,7 @@ All routes are under `/v1`. Everything except `GET /v1/health`, `GET /v1/ready` 
 | `GET /health` | `{"status":"ok","contract":"v1"}` (liveness) |
 | `GET /ready` | `{"status":"ready","contract":"v1"}` when the store answers, `503` with an `ErrorBody` otherwise |
 | `POST /installs` | `201 InstallResponse {installId, token}` |
-| `POST /documents` | multipart part `file` (PDF, optional form field `title`) **or** JSON `TextDocumentRequest` (`kind` text or ocr). `201 DocumentResponse` |
+| `POST /documents` | multipart part `file` (PDF, optional form field `title`) **or** JSON `TextDocumentRequest` (`kind` text or ocr). `201 DocumentResponse`; a PDF sent to `/documents?layout=1` also gets `layout` (where each chunk's text sits on its page, for highlights on the real page; not stored, see ADR 018) |
 | `POST /compile-jobs` | `CompileJobRequest` -> `202` + `CompileJobStatus` (it contains `jobId`) |
 | `GET /compile-jobs/{id}` | `CompileJobStatus` |
 | `POST /compile-jobs/{id}/cancel` | `CompileJobStatus` (a terminal state wins: cancelling a finished job returns that state) |
