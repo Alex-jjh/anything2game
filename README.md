@@ -4,21 +4,17 @@
 
 CSI301 Mobile Computing group project. Everything is due **2026-12-07** (ad + demo video, group report + code, individual reports).
 
-## Concept games and learning Spaces (2026-11-23)
-
-The API edition now has three entrances. Implementation, test results, screenshots and known limits are recorded in the [acceptance record](docs/design/concept-games-spaces-acceptance.md).
+## What the app does (2026-11-24)
 
 | Tab | What happens |
 |---|---|
-| **Playground / 游乐场** | Explore a concept through a native game, without uploading a PDF. The first mechanisms are information partition and finite resource allocation, each with a changed-condition transfer challenge. Installed reviewed games work offline; supported concept generation uses the server. |
-| **Spaces / 学习空间** (default) | One card per learning Space, with multiple PDFs and a route through grounded explanation, light practice and the existing Classic / Case / Rookie / Escape activities. Materials remain directly accessible. |
-| **Me / 我的** | Local nickname and character, shared learning-day and progress records, historical learning and profile switching. |
+| **Spaces / 学习空间** (default) | Each Space holds your readings (PDFs or course packs) and a **Duolingo-style learning map**: one coloured unit per chapter and a winding path of round steps that show done / current / locked. The current step has a "Start" bubble with your character beside it. Tap a step to get a card with its kind, minutes and source page. The steps are the visual-novel **explainer** (Aya walks you through the concept, every line with its page) and **practice** in a game frame (Classic / Case / Rookie / Escape: swipe, drag-sort, drag-order, cross-examine, verdict stamps). |
+| **Playground / 游乐场** | **10 pixel-art concept games** (EN/ZH) on two native mechanics. **Partition**: git bisect, guess the number, a dictionary, "which layer broke", a locker search. **Allocation**: comparative advantage, revision time, a GPU budget, a farm, two workshops. Each has a practice round, a changed-condition transfer round, stars and a source card. **＋ Add a game** plays the generation sequence and opens the matching pre-generated game, labelled *Demo · pre-generated*. The demo never generates live. |
+| **Me / 我的** | Nickname and character (Mochi / Pip / Kumo), learning days and progress across Spaces and games, switch profile (sample student **Lin** / guest), and an opt-in *Pause when I'm walking*. |
 
-The server and Android use one typed content contract, pack codec and deterministic game runtime. One transport handles the client's API calls; the existing worker and model router handle both PDF and concept generation. There is no additional deployed microservice or model-written executable code.
+Content ships as checksummed **content packs** in one format for presets, server output and imports. A shared deterministic game runtime runs on both phone and server. The phone never calls a model provider; real generation (PDF → route, concept → game) runs on our server and is not used in the demo.
 
-Generation currently accepts reviewed topics for **binary search / 二分查找** and **opportunity cost / 机会成本**. Other concepts return an explicit unsupported result. Presets and fake-provider artifacts retain their labels. The phone never calls a model provider directly.
-
-**Start here:** [product state](docs/product/PRODUCT.md), [approved design and three-repository research](docs/superpowers/specs/2026-11-23-concept-games-spaces-design.md), [implemented architecture and protocols](docs/architecture/concept-games-spaces.md).
+**Start here:** [product state](docs/product/PRODUCT.md) · [architecture: games and Spaces](docs/architecture/concept-games-spaces.md) · [screens: map](docs/design/screens/spaces-map/) · [screens: playground](docs/design/screens/playground/).
 
 ## Quick start
 
@@ -30,10 +26,12 @@ Generation currently accepts reviewed topics for **binary search / 二分查找*
 adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Offline demo path:
-1. Continue as **Lin** and open a Space to resume the saved ResNet case or the Attention explanation.
-2. Open **Playground** and play a reviewed partition or resource-allocation game through its transfer challenge.
-3. Open **Me** to inspect the same local learning records.
+Demo path for the video (offline, presets only):
+1. **Continue as Lin.** Spaces opens on the Attention map, part-way done. Tap the current step → **Start** → Aya's explanation → back: the map has advanced.
+2. Tap a practice step and play it as a **Case**: drag-sort, then cross-examine the AI summary. Case closed.
+3. **Playground**: play *Hunt the broken commit* (partition) and *Wine or cloth?* (drag workers onto the vineyard and the looms) through the transfer round for stars.
+4. **＋ Add a game**: type "机会成本" or "git bisect". The generation sequence plays, then the matching demo game opens.
+5. **Me**: the same progress, the character and the profile switch.
 
 Uploading PDFs and generating new activities need the API: see [server setup](server/README.md) and [protocols and recovery](docs/architecture/concept-games-spaces.md). The existing Learn and Practice preferences both migrate to Spaces. Historical mastery without a known content version stays history.
 
