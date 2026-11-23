@@ -107,6 +107,9 @@ data class StoredPackage(
     val pkg: LearningPackage,
 )
 
+data class QuotaCharge(val scope: String, val bucket: String, val limit: Int)
+class QuotaDenied(val charge: QuotaCharge) : RuntimeException()
+
 /** Installs and the counters behind every quota and global cost guard. All methods are blocking and thread-safe. */
 interface InstallRepository {
     fun createInstall(record: InstallRecord)
@@ -192,6 +195,10 @@ interface PackageRepository {
  * not on this interface. Implementations: [FileStore] (local development and tests) and [PostgresStore] (cloud).
  */
 interface Store : ActivityRepository, com.anything2game.server.tutor.TutorStore, InstallRepository, DocumentRepository, JobRepository, PackageRepository, AutoCloseable {
+    /** Atomically charge every budget and optionally persist its admitted job. Throws QuotaDenied without charging on refusal.
+     * Job submissions call under withOwnerLock after checking that the operation/request key is new. */
+    fun admit(charges: List<QuotaCharge>, job: JobRecord? = null)
+
     /** Throws if the backend cannot be reached (readiness probe). */
     fun ping()
 

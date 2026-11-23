@@ -46,10 +46,13 @@ internal class PathSources(private val store: Store, private val tutors: TutorSe
                         if (ref != null) nodes += PathNode(id, question.concept.take(120),
                             ActivityRef.Tutor(doc.documentId, doc.documentVersion, question.conceptId), evidence = listOf(ref))
                     }
-                    val pkg = store.listJobsByDocument(doc.documentId).sortedByDescending { it.createdAt }
-                        .asSequence().filter { it.ownerId == owner && it.documentVersion == doc.documentVersion && it.state.isTerminal }
-                        .mapNotNull { store.getPackage(it.packageId) }.firstOrNull { it.complete && it.ownerId == owner &&
-                            it.pkg.documentId == doc.documentId && it.pkg.documentVersion == doc.documentVersion && it.pkg.levels.isNotEmpty() }?.pkg
+                    // Prefer the newest matching-language practice; keep the newest other-language practice as a fallback.
+                    val packages = store.listJobsByDocument(doc.documentId)
+                        .sortedWith(compareByDescending<JobRecord> { it.createdAt }.thenBy { it.jobId })
+                        .filter { it.ownerId == owner && it.documentVersion == doc.documentVersion && it.state.isTerminal }
+                        .mapNotNull { store.getPackage(it.packageId) }.filter { it.complete && it.ownerId == owner &&
+                            it.pkg.documentId == doc.documentId && it.pkg.documentVersion == doc.documentVersion && it.pkg.levels.isNotEmpty() }
+                    val pkg = (packages.firstOrNull { it.pkg.language == language } ?: packages.firstOrNull())?.pkg
                     val level = pkg?.levels?.firstOrNull()
                     if (level != null && nodes.size < 16) {
                         val id = "practice-$index"

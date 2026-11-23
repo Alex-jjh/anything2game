@@ -3,6 +3,7 @@ package com.anything2game.server.activity
 import com.anything2game.contract.*
 import com.anything2game.contract.game.*
 import com.anything2game.contract.space.*
+import com.anything2game.server.api.Quotas
 import com.anything2game.server.api.ApiException
 import com.anything2game.server.store.*
 import io.ktor.http.HttpStatusCode
@@ -11,7 +12,7 @@ import java.util.UUID
 
 /** A ready path job is also the durable activation record. Even the file backend exposes the
  * artifact, the new revision and the active path together on one atomic job-file rename. */
-class SpaceService(private val store: Store) {
+class SpaceService(private val store: Store, private val quotas: Quotas) {
     private fun readyPaths(owner: String) = store.listJobsByOwner(owner).filter {
         it.state == CompileJobState.READY && it.generation?.input is GenerationInput.SpacePath
     }.groupBy { (it.generation!!.input as GenerationInput.SpacePath).spaceId }
@@ -87,7 +88,7 @@ class SpaceService(private val store: Store) {
             updated.copy(revision = prior.revision + delta, activePathVersion = prior.activePathVersion)
         }
 
-    fun submit(owner: String, req: GenerationRequest, consumeQuota: () -> Unit): JobRecord = store.withOwnerLock(owner) {
+    fun submit(owner: String, req: GenerationRequest): JobRecord = store.withOwnerLock(owner) {
         requestId(req.clientRequestId)
         val input = req.input
         store.listJobsByOwner(owner).firstOrNull { it.operation == input.operation && it.clientRequestId == req.clientRequestId }?.let {
@@ -106,11 +107,10 @@ class SpaceService(private val store: Store) {
             }
         }
         if (language !in setOf("en", "zh")) throw ApiException.badRequest("Language must be en or zh.")
-        consumeQuota()
         val id = UUID.randomUUID().toString()
         val now = System.currentTimeMillis()
         val contentId = if (input is GenerationInput.SpacePath) "path_${input.spaceId}" else "game_$id"
-        store.createJob(JobRecord("job_$id", owner, null, null, null, req.clientRequestId, contentId,
+        quotas.admitCompile(JobRecord("job_$id", owner, null, null, null, req.clientRequestId, contentId,
             createdAt = now, updatedAt = now, generation = GenerationWork(input)))
     }
 

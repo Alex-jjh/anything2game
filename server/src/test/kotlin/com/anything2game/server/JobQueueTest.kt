@@ -94,6 +94,49 @@ abstract class JobQueueTest : StoreBackendTest() {
         assertTrue(store.getPackage(job.packageId)!!.complete)
     }
 
+    @Test fun `delayed recovery preserves the replacement package and frames`() = delayedRecovery(cancel = false)
+    @Test fun `delayed recovery preserves the cancelled package and frames`() = delayedRecovery(cancel = true)
+
+    private fun delayedRecovery(cancel: Boolean) {
+        val doc = newDocument()
+        val job = store.createJob(newJob(doc, createdAt = 1))
+        store.updateJob(job.jobId) { it.copy(state = CompileJobState.GENERATING, levelsReady = 1) }
+        val blocked = CountDownLatch(1)
+        val resumed = CountDownLatch(1)
+        val backend = anotherInstance()
+        val paused = object : Store by backend {
+            override fun getDocument(documentId: String): com.anything2game.server.store.StoredDocument? {
+                if (documentId == doc.documentId) {
+                    blocked.countDown()
+                    check(resumed.await(10, TimeUnit.SECONDS))
+                }
+                return backend.getDocument(documentId)
+            }
+        }
+        val worker = instance("recovery-$cancel", on = paused, concurrency = 1)
+        val saved = StoredPackage(doc.ownerId, job.jobId, !cancel, Examples.retrieval.copy(packageId = job.packageId, documentId = doc.documentId))
+        val frame = frameFor(job.packageId)
+        try {
+            worker.start()
+            assertTrue(blocked.await(10, TimeUnit.SECONDS))
+            store.savePackage(saved)
+            store.saveFrame(frame)
+            if (cancel) {
+                instance("canceller", on = anotherInstance()).runner.cancel(job.jobId)
+            } else {
+                val stolen = store.claimNext("replacement", 60_000, System.currentTimeMillis() + 60_000)
+                assertEquals(job.jobId, stolen!!.jobId)
+                store.updateIfNotTerminal(job.jobId) { it.copy(state = CompileJobState.READY) }
+            }
+            // Another job consumes this worker's only slot after the delayed recovery returns.
+            val next = store.createJob(newJob(newDocument(), createdAt = 2))
+            resumed.countDown()
+            awaitJobs(listOf(next.jobId))
+            assertEquals(saved.copy(complete = true), store.getPackage(job.packageId))
+            assertEquals(frame, store.getFrame(job.packageId, frame.frameId))
+        } finally { resumed.countDown(); worker.close() }
+    }
+
     @Test fun `a worker that keeps renewing its lease is not robbed while it works`() {
         val llm = GatedLlm()
         val rec = RecordingLlm(llm)

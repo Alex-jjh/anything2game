@@ -157,32 +157,32 @@ fun Route.apiRoutes(ctx: AppContext) {
                 if (req.options.language !in setOf("en", "zh")) throw ApiException.badRequest("options.language must be 'en' or 'zh'.")
                 if (req.options.minutesPerLevel !in 1..30) throw ApiException.badRequest("options.minutesPerLevel must be 1 to 30.")
                 if (!idShape.matches(req.documentId)) throw ApiException.notFound()
-                val doc = store.getDocument(req.documentId)?.takeIf { it.ownerId == owner } ?: throw ApiException.notFound()
+                val stored = store.withOwnerLock(owner) {
+                    val doc = store.getDocument(req.documentId)?.takeIf { it.ownerId == owner } ?: throw ApiException.notFound()
 
-                val mine = store.listJobsByOwner(owner).filter { it.generation == null }
-                // idempotent on clientRequestId
-                mine.firstOrNull { it.clientRequestId == req.clientRequestId }?.let { existing ->
-                    if (existing.documentId != req.documentId || existing.options != req.options) {
-                        throw ApiException.badRequest("clientRequestId was already used for a different request.")
+                    val mine = store.listJobsByOwner(owner).filter { it.generation == null }
+                    // idempotent on clientRequestId
+                    mine.firstOrNull { it.clientRequestId == req.clientRequestId }?.let { existing ->
+                        if (existing.documentId != req.documentId || existing.options != req.options) {
+                            throw ApiException.badRequest("clientRequestId was already used for a different request.")
+                        }
+                        return@withOwnerLock existing
                     }
-                    return@post call.respond(HttpStatusCode.Accepted, existing.toStatus())
-                }
-                // same document version + options already compiled (or running): reuse, no new work, no quota
-                mine.firstOrNull {
-                    it.documentId == doc.documentId && it.documentVersion == doc.documentVersion && it.options == req.options &&
-                        it.state != CompileJobState.FAILED && it.state != CompileJobState.CANCELLED
-                }?.let { return@post call.respond(HttpStatusCode.Accepted, it.toStatus()) }
+                    // same document version + options already compiled (or running): reuse, no new work, no quota
+                    mine.firstOrNull {
+                        it.documentId == doc.documentId && it.documentVersion == doc.documentVersion && it.options == req.options &&
+                            it.state != CompileJobState.FAILED && it.state != CompileJobState.CANCELLED
+                    }?.let { return@withOwnerLock it }
 
-                ctx.quotas.consumeCompile(owner)
-                val now = System.currentTimeMillis()
-                val job = JobRecord(
-                    jobId = newId("job_"), ownerId = owner, documentId = doc.documentId, documentVersion = doc.documentVersion,
-                    options = req.options, clientRequestId = req.clientRequestId, packageId = newId("pkg_"), createdAt = now, updatedAt = now,
-                )
-                // a concurrent request with the same clientRequestId (maybe on another instance) wins: its job is returned
-                val stored = store.createJob(job)
+                    val now = System.currentTimeMillis()
+                    val job = JobRecord(
+                        jobId = newId("job_"), ownerId = owner, documentId = doc.documentId, documentVersion = doc.documentVersion,
+                        options = req.options, clientRequestId = req.clientRequestId, packageId = newId("pkg_"), createdAt = now, updatedAt = now,
+                    )
+                    ctx.quotas.admitCompile(job)
+                }
                 ctx.runner.wake()
-                log.info("job {} queued for document {}", stored.jobId, doc.documentId)
+                log.info("compile request for document {} uses job {}", req.documentId, stored.jobId)
                 call.respond(HttpStatusCode.Accepted, stored.toStatus())
             }
 

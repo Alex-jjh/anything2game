@@ -34,7 +34,7 @@ internal fun Route.activityRoutes(ctx: AppContext) {
     post("/generation-jobs") {
         val owner = call.principal.ownerId
         val req = call.receiveJson(GenerationRequest.serializer(), max, strict = true)
-        val job = ctx.spaces.submit(owner, req) { ctx.quotas.consumeCompile(owner) }
+        val job = ctx.spaces.submit(owner, req)
         ctx.runner.wake()
         call.respond(HttpStatusCode.Accepted, job.generationStatus())
     }

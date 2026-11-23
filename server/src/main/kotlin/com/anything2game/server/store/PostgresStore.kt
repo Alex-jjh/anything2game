@@ -158,6 +158,25 @@ class PostgresStore private constructor(private val ds: DataSource, private val 
         }
     }
 
+    override fun admit(charges: List<QuotaCharge>, job: JobRecord?) {
+        transaction { c ->
+            // Admission also runs inside an owner transaction. A caller catching a quota rejection
+            // inside its own transaction must not commit the first half of a multi-counter charge.
+            val savepoint = c.setSavepoint()
+            try {
+                for (charge in charges) {
+                    if (!tryConsume(charge.scope, charge.bucket, charge.limit)) throw QuotaDenied(charge)
+                }
+                if (job != null) check(createJob(job) == job) { "Admission requires a new request key" }
+            } catch (failure: Throwable) {
+                c.rollback(savepoint)
+                throw failure
+            } finally {
+                c.releaseSavepoint(savepoint)
+            }
+        }
+    }
+
     override fun purgeCounters(beforeEpochMillis: Long) {
         withConnection { c -> c.update("DELETE FROM quota_counters WHERE updated_at < ?") { setLong(1, beforeEpochMillis) } }
     }

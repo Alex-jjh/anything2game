@@ -199,9 +199,12 @@ class CompileJobRunner(
             }
             if (job.state != CompileJobState.QUEUED) {
                 // a previous worker died half-way: start again from a clean package
-                packages.deletePackage(job.packageId)
+                val reset = transition(jobId, CompileJobState.QUEUED) {
+                    packages.deletePackage(it.packageId)
+                    it.copy(levelsReady = 0, levelsPlanned = 0)
+                }
+                if (!reset) return false
                 log.info("job {} re-queued after a worker stopped (was {})", jobId, job.state)
-                if (!transition(jobId, CompileJobState.QUEUED) { it.copy(levelsReady = 0, levelsPlanned = 0) }) return false
             }
             if (!transition(jobId, CompileJobState.PLANNING) { it }) return false
             if (layered != null) return runLayered(layered, job, doc)

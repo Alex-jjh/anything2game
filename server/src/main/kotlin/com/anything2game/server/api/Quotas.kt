@@ -1,7 +1,7 @@
 package com.anything2game.server.api
 
 import com.anything2game.server.config.Limits
-import com.anything2game.server.store.InstallRepository
+import com.anything2game.server.store.*
 import java.time.LocalDate
 
 /**
@@ -9,7 +9,7 @@ import java.time.LocalDate
  * many installs. All counters live in the store ([InstallRepository.tryConsume], an atomic conditional increment), so the limits
  * hold across restarts and across server instances that share a database. The install limit is a fixed window per clock hour.
  */
-class Quotas(private val store: InstallRepository, private val limits: Limits, private val clock: () -> Long = System::currentTimeMillis) {
+class Quotas(private val store: Store, private val limits: Limits, private val clock: () -> Long = System::currentTimeMillis) {
     private fun day(): String = LocalDate.ofEpochDay(clock() / 86_400_000L).toString()
     private fun hour(): String = (clock() / 3_600_000L).toString()
 
@@ -17,11 +17,23 @@ class Quotas(private val store: InstallRepository, private val limits: Limits, p
         if (!store.tryConsumeGlobal("installs", hour(), limits.installsPerHour)) throw ApiException.quota("Too many new installs right now. Try again later.")
     }
 
-    fun consumeCompile(ownerId: String) {
-        if (!store.tryConsumeQuota(ownerId, "compile", day(), limits.compilesPerInstallPerDay)) {
-            throw ApiException.quota("Daily compile limit of ${limits.compilesPerInstallPerDay} reached for this install.")
+    fun admitCompile(job: JobRecord): JobRecord {
+        chargeCompile(job.ownerId, job)
+        return job
+    }
+
+    fun consumeCompile(ownerId: String) = chargeCompile(ownerId, null)
+
+    private fun chargeCompile(ownerId: String, job: JobRecord?) {
+        val bucket = "compile:${day()}"
+        val owner = QuotaCharge(ownerId, bucket, limits.compilesPerInstallPerDay)
+        val global = QuotaCharge(InstallRepository.GLOBAL_SCOPE, bucket, limits.globalCompilesPerDay)
+        try {
+            store.admit(listOf(owner, global), job)
+        } catch (e: QuotaDenied) {
+            if (e.charge == owner) throw ApiException.quota("Daily compile limit of ${limits.compilesPerInstallPerDay} reached for this install.")
+            throw ApiException.quota("The service is at capacity today. Try again tomorrow.")
         }
-        if (!store.tryConsumeGlobal("compile", day(), limits.globalCompilesPerDay)) throw ApiException.quota("The service is at capacity today. Try again tomorrow.")
     }
 
     fun consumeAsk(ownerId: String) {

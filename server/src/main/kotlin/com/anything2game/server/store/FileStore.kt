@@ -38,6 +38,7 @@ class FileStore(private val root: Path) : Store {
     private val artifactsDir = dir("artifacts")
     private val tutorsDir = dir("tutors")
 
+    private val pendingAdmission = root.resolve("pending-admission.json")
     private val countersFile = root.resolve("counters.json")
 
     /** tokenHash -> installId, rebuilt from disk at startup. */
@@ -52,8 +53,12 @@ class FileStore(private val root: Path) : Store {
     @kotlinx.serialization.Serializable
     private data class Counter(val scope: String, val bucket: String, val n: Int, val updatedAt: Long)
 
+    @kotlinx.serialization.Serializable
+    private data class Admission(val job: JobRecord, val charged: List<Counter>)
+
     init {
         read(countersFile, kotlinx.serialization.builtins.ListSerializer(Counter.serializer()))?.forEach { counters[it.scope to it.bucket] = it }
+        recoverAdmission()
         listPaths(jobsDir).mapNotNull { read(it, JobRecord.serializer()) }.filter { !it.state.isTerminal }.forEach { activeJobs += it.jobId }
         Files.list(installsDir).use { files ->
             files.filter { it.name.endsWith(".json") }.forEach { f ->
@@ -64,7 +69,10 @@ class FileStore(private val root: Path) : Store {
 
     private fun dir(name: String): Path = Files.createDirectories(root.resolve(name))
 
-    override fun <T> withOwnerLock(ownerId: String, block: () -> T): T = lock.withLock(block)
+    override fun <T> withOwnerLock(ownerId: String, block: () -> T): T = lock.withLock {
+        recoverAdmission()
+        block()
+    }
     override fun saveSpace(space: StoredSpace) = lock.withLock { write(file(spacesDir, space.space.spaceId), StoredSpace.serializer(), space) }
     override fun getSpace(id: String) = read(file(spacesDir, id), StoredSpace.serializer())
     override fun listSpaces(ownerId: String) = listPaths(spacesDir).mapNotNull { read(it, StoredSpace.serializer()) }.filter { it.ownerId == ownerId }
@@ -105,21 +113,54 @@ class FileStore(private val root: Path) : Store {
         return read(file(installsDir, id), InstallRecord.serializer())
     }
 
-    override fun tryConsume(scope: String, bucket: String, limit: Int): Boolean = lock.withLock {
-        val key = scope to bucket
-        val used = counters[key]?.n ?: 0
-        if (limit <= 0 || used >= limit) return false
-        counters[key] = Counter(scope, bucket, used + 1, System.currentTimeMillis())
-        saveCounters()
+    override fun tryConsume(scope: String, bucket: String, limit: Int): Boolean = try {
+        admit(listOf(QuotaCharge(scope, bucket, limit)))
         true
+    } catch (_: QuotaDenied) {
+        false
+    }
+
+    override fun admit(charges: List<QuotaCharge>, job: JobRecord?) = lock.withLock {
+        recoverAdmission()
+        val after = mutableMapOf<Pair<String, String>, Counter>()
+        for (charge in charges) {
+            val key = charge.scope to charge.bucket
+            val used = (after[key] ?: counters[key])?.n ?: 0
+            if (used >= charge.limit) throw QuotaDenied(charge)
+            after[key] = Counter(charge.scope, charge.bucket, used + 1, System.currentTimeMillis())
+        }
+        if (job == null) {
+            persistCounters(counters + after)
+        } else {
+            // The journal records absolute post-charge values and the complete job before either becomes visible.
+            val admission = Admission(job, after.values.toList())
+            write(pendingAdmission, Admission.serializer(), admission)
+            finishAdmission(admission)
+        }
+    }
+
+    private fun recoverAdmission() {
+        read(pendingAdmission, Admission.serializer())?.let(::finishAdmission)
+    }
+
+    private fun finishAdmission(admission: Admission) {
+        persistCounters(counters + admission.charged.associateBy { it.scope to it.bucket })
+        // Recovery can follow a crash after the job rename; retain any subsequent job state.
+        if (getJob(admission.job.jobId) == null) writeJob(admission.job)
+        Files.delete(pendingAdmission)
     }
 
     override fun purgeCounters(beforeEpochMillis: Long) = lock.withLock {
-        if (counters.values.removeIf { it.updatedAt < beforeEpochMillis }) saveCounters()
-        Unit
+        recoverAdmission()
+        val kept = counters.filterValues { it.updatedAt >= beforeEpochMillis }
+        if (kept.size != counters.size) persistCounters(kept)
     }
 
-    private fun saveCounters() = write(countersFile, kotlinx.serialization.builtins.ListSerializer(Counter.serializer()), counters.values.toList())
+    private fun persistCounters(next: Map<Pair<String, String>, Counter>) {
+        write(countersFile, kotlinx.serialization.builtins.ListSerializer(Counter.serializer()), next.values.toList())
+        counters.clear()
+        counters.putAll(next)
+    }
 
     // ---- documents ------------------------------------------------------------------------------------------
 
@@ -128,6 +169,7 @@ class FileStore(private val root: Path) : Store {
     override fun getDocument(documentId: String): StoredDocument? = read(file(documentsDir, documentId), StoredDocument.serializer())
 
     override fun deleteDocument(documentId: String) = lock.withLock {
+        recoverAdmission()
         getDocument(documentId)?.let { cancelPathsUsing(it.ownerId, documentId) }
         for (job in listJobsByDocument(documentId)) {
             Files.deleteIfExists(file(jobsDir, job.jobId))
@@ -171,6 +213,7 @@ class FileStore(private val root: Path) : Store {
         updateJob(jobId) { if (it.state.isTerminal) it else transform(it) }
 
     override fun claimNext(workerId: String, leaseMillis: Long, now: Long, runningHere: Set<String>): JobRecord? = lock.withLock {
+        recoverAdmission()
         val candidate = activeJobs.asSequence().filterNot { it in runningHere }.mapNotNull { getJob(it) }
             .filter { !it.state.isTerminal && (it.leaseUntil == null || it.leaseUntil < now) }
             .minWithOrNull(compareBy({ it.createdAt }, { it.jobId })) ?: return null
