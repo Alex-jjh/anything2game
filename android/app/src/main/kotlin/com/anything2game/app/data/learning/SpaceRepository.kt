@@ -13,20 +13,27 @@ import java.util.UUID
 
 @Serializable private enum class EditKind { CREATE, RENAME, ADD, REMOVE }
 @Serializable private data class SpaceEdit(val kind: EditKind, val requestId: String, val title: String? = null,
-    val member: SpaceMember? = null, val rejection: ApiError? = null)
+    val member: SpaceMember? = null, val rejection: ApiError? = null, val verificationFor: SpaceMember? = null)
 @Serializable private data class SavedSpace(val id: String, val remote: Space? = null, val edits: List<SpaceEdit> = emptyList(),
     val installedPath: ContentVersion? = null, val creationStarted: Boolean = false) {
-    fun view(): Space {
+    fun view(aliases: Map<SpaceMember, SpaceMember> = emptyMap()): Space {
+        fun canonical(member: SpaceMember) = aliases[member] ?: member
         var space = remote?.copy(spaceId = id) ?: Space(id, "", 0)
+        if (aliases.isNotEmpty()) space = space.copy(members = space.members.map(::canonical).distinct())
         for (edit in edits) space = when (edit.kind) {
             EditKind.CREATE, EditKind.RENAME -> space.copy(title = requireNotNull(edit.title))
-            EditKind.ADD -> space.copy(members = (space.members + requireNotNull(edit.member)).distinct())
-            EditKind.REMOVE -> space.copy(members = space.members - requireNotNull(edit.member))
+            EditKind.ADD -> space.copy(members = (space.members + canonical(requireNotNull(edit.member))).distinct())
+            EditKind.REMOVE -> space.copy(members = space.members - canonical(requireNotNull(edit.member)))
         }
         return space.copy(activePathVersion = installedPath)
     }
 }
 @Serializable private data class SpaceState(val entries: Map<String, SavedSpace> = emptyMap(), val migrated: Set<String> = emptySet())
+
+private fun List<Material>.verifiedAliases(): Map<SpaceMember, SpaceMember> = mapNotNull { material ->
+    val document = material.member as? SpaceMember.ServerDocumentRef ?: return@mapNotNull null
+    material.localPack?.let { it to document }
+}.toMap()
 
 /** Device IDs remain stable after the server assigns its owner-scoped identity. Only relationships enter the outbox. */
 class SpaceRepository(file: File, private val materials: suspend () -> List<Material>,
@@ -42,25 +49,43 @@ class SpaceRepository(file: File, private val materials: suspend () -> List<Mate
         is SpaceMember.LocalPackRef -> stableId("local", member.packageId, source.contentId, source.contentVersion)
     }
 
+    private fun migrationKey(source: ContentVersion, member: SpaceMember) = stableId(source.contentId, source.contentVersion,
+        if (member is SpaceMember.LocalPackRef) "pack" else "document", member.version().contentId, member.version().contentVersion)
+
+    private fun SavedSpace.reconcile(aliases: Map<SpaceMember, SpaceMember>): SavedSpace {
+        if (aliases.isEmpty()) return this
+        val actual = view().members
+        val desired = view(aliases).members
+        val retire = actual - desired.toSet()
+        // Removing an alias also removes its logical document when pending edits are replayed.
+        // Reassert that document last if it is still wanted, even if the server already lists it.
+        val retiredDocuments = retire.mapNotNull(aliases::get).toSet()
+        val add = desired.filter { it !in actual || it in retiredDocuments }
+        if (retire.isEmpty() && add.isEmpty()) return this
+        // The existing head may already have reached the server. Keep its request ID and payload intact.
+        return copy(edits = edits + retire.map { SpaceEdit(EditKind.REMOVE, id(), member = it, verificationFor = aliases[it] ?: it) } +
+            add.map { SpaceEdit(EditKind.ADD, id(), member = it, verificationFor = it) })
+    }
+
     suspend fun list(): List<Space> {
         val catalog = materials()
-        val aliases = catalog.filter { it.member is SpaceMember.ServerDocumentRef && it.localPack != null }.groupBy { it.member }
+        val aliases = catalog.verifiedAliases()
         return disk.update { prior ->
-            val entries = prior.entries.toMutableMap()
+            val entries = prior.entries.mapValues { it.value.reconcile(aliases) }.toMutableMap()
             val migrated = prior.migrated.toMutableSet()
+            // A migrated relationship may have been removed or moved. Its verified identity is
+            // already accounted for, including when the owned tutor appears first in the catalogue.
+            for (material in catalog) {
+                val local = material.localPack ?: continue
+                if (local in aliases && migrationKey(material.source, local) in prior.migrated)
+                    migrated += migrationKey(material.source, material.member)
+            }
             for (material in catalog) {
                 val source = material.source
                 val member = material.member
-                val key = stableId(source.contentId, source.contentVersion, if (member is SpaceMember.LocalPackRef) "pack" else "document",
-                    member.version().contentId, member.version().contentVersion)
-                if (!migrated.add(key)) continue
+                if (!migrated.add(migrationKey(source, member))) continue
                 if (entries.values.any { member in it.view().members }) continue
-                // A formerly unverified installation may already have its own migrated Space. Keep that ID and its local relationships.
-                val priorLocalId = aliases[member].orEmpty().firstNotNullOfOrNull { verified ->
-                    val alias = requireNotNull(verified.localPack)
-                    migratedId(source, alias).takeIf { alias in entries[it]?.view()?.members.orEmpty() }
-                }
-                val id = priorLocalId ?: migratedId(source, member)
+                val id = migratedId(source, member)
                 val saved = entries[id] ?: creation(id, material.title.filterNot(Char::isISOControl).trim().ifBlank { source.contentId }.take(120))
                 entries[id] = saved.copy(edits = saved.edits + SpaceEdit(EditKind.ADD, this.id(), member = member))
             }
@@ -82,23 +107,35 @@ class SpaceRepository(file: File, private val materials: suspend () -> List<Mate
         return edit(id) { saved -> if (saved.view().title == title.trim()) saved else
             saved.copy(edits = saved.edits + SpaceEdit(EditKind.RENAME, this.id(), title.trim())) }.view()
     }
-    suspend fun add(id: String, member: SpaceMember): Space = edit(id) { saved ->
-        if (member in saved.view().members) saved else {
-            require(saved.view().members.size < 128)
-            saved.copy(edits = saved.edits + SpaceEdit(EditKind.ADD, this.id(), member = member))
-        }
-    }.view()
-    suspend fun remove(id: String, member: SpaceMember): Space = edit(id) { saved ->
-        val remaining = saved.copy(edits = saved.edits.filterNot {
-            it.kind == EditKind.ADD && it.member == member && it.rejection != null
-        })
-        if (member !in remaining.view().members) remaining else
-            remaining.copy(edits = remaining.edits + SpaceEdit(EditKind.REMOVE, this.id(), member = member))
-    }.view()
+    suspend fun add(id: String, member: SpaceMember): Space {
+        val aliases = materials().verifiedAliases()
+        val canonical = aliases[member] ?: member
+        return edit(id) { entry ->
+            val saved = entry.reconcile(aliases)
+            val members = saved.view().members
+            if (canonical in members) saved else {
+                require(members.size < 128)
+                saved.copy(edits = saved.edits + SpaceEdit(EditKind.ADD, this.id(), member = canonical))
+            }
+        }.view()
+    }
+    suspend fun remove(id: String, member: SpaceMember): Space {
+        val aliases = materials().verifiedAliases()
+        val canonical = aliases[member] ?: member
+        return edit(id) { entry ->
+            val remaining = entry.copy(edits = entry.edits.filterNot {
+                it.kind == EditKind.ADD && it.rejection != null && (aliases[it.member] ?: it.member) == canonical
+            }).reconcile(aliases)
+            if (canonical !in remaining.view().members) remaining else
+                remaining.copy(edits = remaining.edits + SpaceEdit(EditKind.REMOVE, this.id(), member = canonical))
+        }.view()
+    }
 
     /** Each request uses the last acknowledged revision. Lost acknowledgements replay the exact same body and request ID. */
     suspend fun sync(id: String): Space = syncLock.withLock {
         val service = requireNotNull(api)
+        val aliases = materials().verifiedAliases()
+        edit(id) { it.reconcile(aliases) }
         while (true) {
             val saved = disk.read().entries.getValue(id)
             val op = saved.edits.firstOrNull() ?: break
@@ -129,11 +166,22 @@ class SpaceRepository(file: File, private val materials: suspend () -> List<Mate
     suspend fun rejectedEdits(id: String): Map<String, ApiError> =
         disk.read().entries.getValue(id).edits.mapNotNull { e -> e.rejection?.let { e.requestId to it } }.toMap()
 
-    suspend fun withdrawRejected(id: String, requestId: String): Space = edit(id) { saved ->
-        val op = saved.edits.single { it.requestId == requestId }
-        require(op.rejection != null && op.kind != EditKind.CREATE)
-        saved.copy(edits = saved.edits - op)
-    }.view()
+    suspend fun withdrawRejected(id: String, requestId: String): Space {
+        val aliases = materials().verifiedAliases()
+        return edit(id) { saved ->
+            val op = saved.edits.single { it.requestId == requestId }
+            require(op.rejection != null && op.kind != EditKind.CREATE)
+            val document = aliases[op.member] ?: saved.edits.firstNotNullOfOrNull {
+                if (it.member == op.member) it.verificationFor else null
+            } ?: op.member
+            // Edits behind a rejected head are unsent. Recompute its derived membership changes
+            // from the remaining user edits, so withdrawing an ADD cannot leave a replacement ADD.
+            val retained = saved.edits.filterNot {
+                it == op || (op.verificationFor == null && document != null && it.verificationFor == document)
+            }
+            saved.copy(edits = retained).reconcile(aliases)
+        }.view()
+    }
 
     suspend fun retryRejected(id: String, requestId: String): Space = edit(id) { saved ->
         val failed = saved.edits.single { it.requestId == requestId }
@@ -152,6 +200,7 @@ class SpaceRepository(file: File, private val materials: suspend () -> List<Mate
 
     suspend fun refreshRemote(): List<Space> = syncLock.withLock {
         val remote = requireNotNull(api).spaces()
+        val aliases = materials().verifiedAliases()
         disk.update { prior ->
             val entries = prior.entries.toMutableMap()
             for (space in remote) {
@@ -162,7 +211,7 @@ class SpaceRepository(file: File, private val materials: suspend () -> List<Mate
                 val entry = saved?.copy(remote = space) ?: SavedSpace(space.spaceId, remote = space)
                 entries[entry.id] = entry
             }
-            prior.copy(entries = entries)
+            prior.copy(entries = entries.mapValues { it.value.reconcile(aliases) })
         }.entries.values.map { it.view() }
     }
 

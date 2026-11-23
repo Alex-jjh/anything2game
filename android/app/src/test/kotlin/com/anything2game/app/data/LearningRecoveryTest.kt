@@ -271,7 +271,7 @@ class LearningRecoveryTest {
         assertTrue(after.route(only.spaceId, "en")!!.nodes.any { it.activity.contentId == pkg.packageId })
     }
 
-    @Test fun `an already migrated local practice remains accessible by its original Space after verification`() = runBlocking {
+    @Test fun `verification leaves one removable membership in the original and manually assigned Spaces`() = runBlocking {
         val deps = AndroidAppContainer(app)
         val store = tmp.newFolder()
         val pkg = deps.packages.load(EXAMPLE_TUTOR_PACKAGE).getOrThrow().copy(packageId = "local-before-verification")
@@ -285,10 +285,134 @@ class LearningRecoveryTest {
         assertEquals(listOf(alias), original.members)
         val other = reopen().create("Personal collection")
         reopen().add(other.spaceId, alias)
+        val document = SpaceMember.ServerDocumentRef(pkg.documentId, pkg.documentVersion)
+        // A snapshot written by the earlier migration can already contain both references.
+        reopen().add(original.spaceId, document)
         receipts.install(pkg)
         val upgraded = reopen()
         assertEquals(setOf(original.spaceId, other.spaceId), upgraded.list().map { it.spaceId }.toSet())
-        for (space in listOf(original, other)) assertTrue(upgraded.route(space.spaceId, "en")!!.nodes.any { it.activity.contentId == pkg.packageId })
+        for (space in upgraded.list()) {
+            assertEquals(listOf(document), space.members)
+            assertEquals(listOf(document), upgraded.add(space.spaceId, alias).members)
+            assertTrue(upgraded.route(space.spaceId, "en")!!.nodes.any { it.activity.contentId == pkg.packageId })
+        }
+        assertTrue(upgraded.remove(original.spaceId, document).members.isEmpty())
+        assertTrue(upgraded.remove(other.spaceId, alias).members.isEmpty())
+        for (space in reopen().list()) {
+            assertTrue(space.members.isEmpty())
+            assertNull(reopen().route(space.spaceId, "en"))
+        }
+        assertEquals(pkg, content.load(pkg.packageId, pkg.contentVersion).getOrThrow())
+    }
+
+    @Test fun `verification respects earlier removal and independent local packs with the same document labels`() = runBlocking {
+        val deps = AndroidAppContainer(app)
+        val store = tmp.newFolder()
+        val pkg = deps.packages.load(EXAMPLE_TUTOR_PACKAGE).getOrThrow().copy(packageId = "removed")
+        val unrelated = pkg.copy(packageId = "independent")
+        val content = ContentLibrary(listOf(DirectoryPackSource(File(store, "packs"))))
+        val receipts = AuthenticatedCourses(File(store, "receipts"), content) { "owner" }
+        val catalog = MaterialCatalog(content, deps.tutors, authenticated = receipts::owns)
+        fun reopen() = SpaceRepository(File(store, "spaces"), catalog::materials)
+        for (course in listOf(pkg, unrelated))
+            content.install(PackCodec.toBytes(PackCodec.build(course, emptyList(), PackOrigin.SERVER)).inputStream())
+        val alias = SpaceMember.LocalPackRef(pkg.packageId, pkg.contentVersion)
+        val independent = SpaceMember.LocalPackRef(unrelated.packageId, unrelated.contentVersion)
+        val before = reopen().list()
+        val removed = before.single { alias in it.members }
+        val kept = before.single { independent in it.members }
+        reopen().remove(removed.spaceId, alias)
+        val pending = reopen().create("Removing an old duplicate")
+        val document = SpaceMember.ServerDocumentRef(pkg.documentId, pkg.documentVersion)
+        reopen().add(pending.spaceId, alias)
+        reopen().add(pending.spaceId, document)
+        reopen().remove(pending.spaceId, document)
+        receipts.install(pkg)
+        assertEquals(setOf(removed.spaceId, kept.spaceId, pending.spaceId), reopen().list().map { it.spaceId }.toSet())
+        assertNull(reopen().route(removed.spaceId, "en"))
+        assertNull(reopen().route(pending.spaceId, "en"))
+        assertEquals(listOf(independent), reopen().list().single { it.spaceId == kept.spaceId }.members)
+        val route = reopen().route(kept.spaceId, "en")!!
+        assertEquals(setOf(unrelated.packageId), route.nodes.map { it.activity.contentId }.toSet())
+        assertEquals(pkg, content.load(pkg.packageId, pkg.contentVersion).getOrThrow())
+    }
+
+    @Test fun `verification preserves an unacknowledged membership request and converges on one server relationship`() = runBlocking {
+        val deps = AndroidAppContainer(app)
+        val store = tmp.newFolder()
+        val pkg = deps.packages.load(EXAMPLE_TUTOR_PACKAGE).getOrThrow().copy(packageId = "in-flight")
+        val content = ContentLibrary(listOf(DirectoryPackSource(File(store, "packs"))))
+        val receipts = AuthenticatedCourses(File(store, "receipts"), content) { "owner" }
+        val catalog = MaterialCatalog(content, deps.tutors, authenticated = receipts::owns)
+        content.install(PackCodec.toBytes(PackCodec.build(pkg, emptyList(), PackOrigin.SERVER)).inputStream())
+        val alias = SpaceMember.LocalPackRef(pkg.packageId, pkg.contentVersion)
+        val document = SpaceMember.ServerDocumentRef(pkg.documentId, pkg.documentVersion)
+        var remote = Space("remote", pkg.title, 1)
+        val received = mutableListOf<String>()
+        server({ path, method, body -> when {
+            path == "/v1/spaces" || method == "GET" -> 200 to json.encodeToString(remote)
+            method == "PATCH" -> {
+                val req = json.decodeFromString<RenameSpaceRequest>(body)
+                if (req.expectedRevision != remote.revision) errorResponse(409, "SPACE_STALE") else {
+                    remote = remote.copy(title = req.title, revision = remote.revision + 1)
+                    200 to json.encodeToString(remote)
+                }
+            }
+            else -> {
+                val req = json.decodeFromString<SpaceMemberRequest>(body)
+                val replay = method == "PUT" && body in received
+                received += body
+                when {
+                    replay -> 200 to json.encodeToString(remote)
+                    req.expectedRevision != remote.revision -> errorResponse(409, "SPACE_STALE")
+                    else -> {
+                        val members = if (method == "PUT") (remote.members + req.member).distinct() else remote.members - req.member
+                        remote = remote.copy(members = members, revision = remote.revision + 1)
+                        if (received.size == 1) errorResponse(503, "UNAVAILABLE") else 200 to json.encodeToString(remote)
+                    }
+                }
+            }
+        } }) { transport ->
+            fun reopen() = SpaceRepository(File(store, "spaces"), catalog::materials, ActivityApi(transport))
+            val original = reopen().list().single()
+            reopen().rename(original.spaceId, "My collection")
+            assertEquals("UNAVAILABLE", (runCatching { reopen().sync(original.spaceId) }.exceptionOrNull() as ApiException).code)
+            assertEquals(listOf(alias), remote.members)
+            receipts.install(pkg)
+            val synced = reopen().sync(original.spaceId)
+            assertEquals(listOf(document), synced.members)
+            assertEquals("My collection", synced.title)
+            assertEquals(received[0], received[1])
+            assertEquals(listOf(document), reopen().list().single().members)
+            reopen().remove(original.spaceId, document)
+            assertTrue(reopen().sync(original.spaceId).members.isEmpty())
+            assertNull(reopen().route(original.spaceId, "en"))
+            assertEquals(pkg, content.load(pkg.packageId, pkg.contentVersion).getOrThrow())
+        }
+    }
+
+    @Test fun `withdrawing a rejected add after verification also withdraws its queued identity change`() = runBlocking {
+        val deps = AndroidAppContainer(app)
+        val store = tmp.newFolder()
+        val pkg = deps.packages.load(EXAMPLE_TUTOR_PACKAGE).getOrThrow().copy(packageId = "rejected-local")
+        val content = ContentLibrary(listOf(DirectoryPackSource(File(store, "packs"))))
+        val receipts = AuthenticatedCourses(File(store, "receipts"), content) { "owner" }
+        val catalog = MaterialCatalog(content, deps.tutors, authenticated = receipts::owns)
+        content.install(PackCodec.toBytes(PackCodec.build(pkg, emptyList(), PackOrigin.SERVER)).inputStream())
+        val remote = Space("remote", pkg.title, 1)
+        server({ _, method, _ ->
+            if (method == "PUT") errorResponse(409, "SPACE_STALE") else 200 to json.encodeToString(remote)
+        }) { transport ->
+            fun reopen() = SpaceRepository(File(store, "spaces"), catalog::materials, ActivityApi(transport))
+            val id = reopen().list().single().spaceId
+            assertEquals("SPACE_STALE", (runCatching { reopen().sync(id) }.exceptionOrNull() as ApiException).code)
+            receipts.install(pkg)
+            assertEquals(listOf(SpaceMember.ServerDocumentRef(pkg.documentId, pkg.documentVersion)), reopen().list().single().members)
+            val rejected = reopen().rejectedEdits(id).keys.single()
+            assertTrue(reopen().withdrawRejected(id, rejected).members.isEmpty())
+            assertNull(reopen().route(id, "en"))
+            assertTrue(reopen().sync(id).members.isEmpty())
+        }
     }
 
     private suspend fun server(handler: (String, String, String) -> Pair<Int, String>,
