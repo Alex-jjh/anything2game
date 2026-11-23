@@ -101,7 +101,7 @@ class GenerationRepository(private val file: File, private val api: ActivityApi,
         require(declared.origin == PackOrigin.SERVER)
         if (status != null) require(declared.fixture == status.fixture && declared.modelId == status.modelId)
         require(declared.packageSchema == if (result.kind == ContentKind.GAME) GAME_SCHEMA else PATH_SCHEMA)
-        content.install(bytes.inputStream(), catalog.availableDocuments(), result.content) { pack ->
+        content.install(bytes.inputStream(), catalog.availableDocuments(), result.content, authenticatedGame = result.kind == ContentKind.GAME) { pack ->
             when (val payload = pack.payload) {
                 is ActivityPayload.Path -> {
                     require(input is GenerationInput.SpacePath && payload.path.spaceId == input.spaceId)

@@ -46,9 +46,12 @@ internal fun Route.activityRoutes(ctx: AppContext) {
     get("/content/{contentId}/versions/{version}") {
         val id = call.pathId("contentId")
         val version = call.pathId("version")
-        val job = ctx.store.getJob(version)?.takeIf { it.ownerId == call.principal.ownerId &&
-            it.state == CompileJobState.READY && it.generation?.result?.content == ContentVersion(id, version) } ?: throw ApiException.notFound()
-        val bytes = ctx.store.readArtifact(job.jobId) ?: throw ApiException.notFound()
+        val owner = call.principal.ownerId
+        val bytes = ctx.store.withOwnerLock(owner) {
+            val job = ctx.store.getJob(version)?.takeIf { it.ownerId == owner &&
+                it.state == CompileJobState.READY && it.generation?.result?.content == ContentVersion(id, version) } ?: throw ApiException.notFound()
+            ctx.store.readArtifact(job.jobId) ?: throw ApiException.notFound()
+        }
         call.response.header(HttpHeaders.CacheControl, "private, immutable")
         call.respondBytes(bytes, ContentType.parse("application/vnd.anything2game.pack+zip"))
     }

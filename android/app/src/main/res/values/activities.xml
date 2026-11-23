@@ -109,7 +109,7 @@
     <string name="games_door_right">Right group</string>
     <string name="games_door_in">Still possible</string>
     <string name="games_tradeoff">One token produced %1$d in %2$s. It could have produced %3$d in %4$s.</string>
-    <string name="games_imported">Imported game</string>
+    <string name="games_imported">Installed archive · provider unverified</string>
     <string name="games_provider_unknown">Generated game</string>
     <string name="material_read_all">Read full source</string>
     <string name="share_space">Choose a Space for %1$s</string>

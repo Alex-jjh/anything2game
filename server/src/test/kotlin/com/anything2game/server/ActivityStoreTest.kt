@@ -119,6 +119,112 @@ abstract class ActivityStoreTest : StoreBackendTest() {
         } finally { ctx.close() }
     }
 
+    @Test fun `a route uses its actual other-language tutor until a matching tutor exists`() = runBlocking {
+        val doc = newDocument()
+        val ctx = instance(anotherInstance(), FakeLlmClient())
+        val space = Space("space", "Study", 1, listOf(SpaceMember.ServerDocumentRef(doc.documentId, doc.documentVersion)))
+        val sources = com.anything2game.server.activity.PathSources(store, ctx.tutor)
+        suspend fun lesson(lang: String) = ctx.tutor.create(doc, com.anything2game.contract.tutor.CreateTutorRequest(lang, lang)) {}
+        fun check(session: com.anything2game.contract.tutor.TutorSession, requested: String) {
+            val question = session.questions.first()
+            val node = sources.collect(doc.ownerId, space, requested).nodes.single()
+            assertEquals(session.sessionId, (node.activity as ActivityRef.Tutor).sessionId)
+            assertEquals(question.concept, node.title)
+            assertEquals(question.conceptId, node.activity.activityId)
+            assertEquals(question.sourceRefs.first().quote.take(240), (node.evidence.single() as EvidenceRef.Pdf).quote)
+        }
+        try {
+            val zh = lesson("zh")
+            check(zh, "en")
+            val en = lesson("en")
+            check(en, "en")
+            check(zh, "zh")
+        } finally { ctx.close() }
+    }
+
+    @Test fun `newest eligible practice stops history reads at the first language match`() {
+        val doc = newDocument()
+        val ctx = instance(anotherInstance(), FakeLlmClient())
+        val opened = mutableListOf<String>()
+        val counting = object : Store by store {
+            override fun getPackage(packageId: String): StoredPackage? {
+                opened += packageId
+                return store.getPackage(packageId)
+            }
+        }
+        val space = Space("space", "Read", 1, listOf(SpaceMember.ServerDocumentRef(doc.documentId, doc.documentVersion)))
+        try {
+            val history = listOf("en", "en", "zh").mapIndexed { i, lang ->
+                val job = newJob(doc, createdAt = i.toLong())
+                store.saveJob(job.copy(state = CompileJobState.READY))
+                store.savePackage(StoredPackage(doc.ownerId, job.jobId, true, Examples.retrieval.copy(packageId = job.packageId,
+                    documentId = doc.documentId, documentVersion = doc.documentVersion, language = lang)))
+                job.packageId
+            }
+            val node = com.anything2game.server.activity.PathSources(counting, ctx.tutor).collect(doc.ownerId, space, "en").nodes.single()
+            assertEquals(history[1], node.activity.contentId)
+            assertEquals(listOf(history[2], history[1]), opened)
+        } finally { ctx.close() }
+    }
+
+    @Test fun `deleting a removed member revokes every published quotation and never resurrects an older path`() = runBlocking {
+        val ctx = instance(anotherInstance(), FakeLlmClient())
+        val doc = newDocument()
+        val keep = newDocument()
+        val owner = doc.ownerId
+        fun member(space: Space, source: StoredDocument, add: Boolean) = ctx.spaces.member(owner, space.spaceId,
+            SpaceMemberRequest(SpaceMember.ServerDocumentRef(source.documentId, source.documentVersion), space.revision, "member-${space.revision}"), add)
+        suspend fun publish(id: String): String {
+            val job = ctx.spaces.submit(owner, GenerationRequest(GenerationInput.SpacePath(id, ctx.spaces.get(owner, id).revision), java.util.UUID.randomUUID().toString()))
+            ctx.runner.wake()
+            assertEquals(CompileJobState.READY, done(job.jobId).state)
+            return job.jobId
+        }
+        try {
+            ctx.start()
+            for (source in listOf(doc, keep)) ctx.tutor.create(source, com.anything2game.contract.tutor.CreateTutorRequest("en", source.documentId)) {}
+            val space = member(ctx.spaces.create(owner, CreateSpaceRequest("Study", "study")), keep, true)
+            val oldest = publish(space.spaceId)
+            member(ctx.spaces.get(owner, space.spaceId), doc, true)
+            val first = publish(space.spaceId)
+            val second = publish(space.spaceId)
+            // A ready job persisted before publication recorded its source list.
+            store.updateJob(first) { old ->
+                val work = requireNotNull(old.generation)
+                old.copy(generation = GenerationWork(work.input, work.stage, work.result, work.excludedMembers, work.modelId, work.fixture))
+            }
+            val before = member(ctx.spaces.get(owner, space.spaceId), doc, false)
+            val other = ctx.spaces.create(owner, CreateSpaceRequest("Independent", "independent"))
+            ctx.spaces.member(owner, other.spaceId, SpaceMemberRequest(SpaceMember.ServerDocumentRef(keep.documentId, keep.documentVersion), other.revision, "independent-member"), true)
+            val unrelated = publish(other.spaceId)
+            val retained = requireNotNull(store.readArtifact(unrelated))
+            // A damaged, pre-index archive from a prior release cannot vouch for its contents during erasure.
+            val damagedSpace = ctx.spaces.create(owner, CreateSpaceRequest("Damaged publication", "damaged"))
+            ctx.spaces.member(owner, damagedSpace.spaceId, SpaceMemberRequest(SpaceMember.ServerDocumentRef(doc.documentId, doc.documentVersion),
+                damagedSpace.revision, "damaged-member"), true)
+            val damaged = publish(damagedSpace.spaceId)
+            store.updateJob(damaged) { old ->
+                val work = requireNotNull(old.generation)
+                old.copy(generation = GenerationWork(work.input, work.stage, work.result))
+            }
+            store.deleteArtifact(damaged)
+            store.writeArtifact(damaged, retained.copyOf(retained.size / 2))
+            anotherInstance().deleteDocument(doc.documentId)
+            for (job in listOf(first, second, damaged)) {
+                assertNull(store.readArtifact(job))
+                assertNull(store.getJob(job)!!.generationStatus().result)
+            }
+            val after = ctx.spaces.get(owner, space.spaceId)
+            assertNull(after.activePathVersion)
+            assertTrue(after.revision > before.revision)
+            assertNotNull(store.readArtifact(oldest))
+            assertArrayEquals(retained, store.readArtifact(unrelated))
+            assertEquals(unrelated, ctx.spaces.get(owner, other.spaceId).activePathVersion!!.contentVersion)
+            val replacement = publish(space.spaceId)
+            assertEquals(replacement, ctx.spaces.get(owner, space.spaceId).activePathVersion!!.contentVersion)
+        } finally { ctx.close() }
+    }
+
     @Test fun `late typed game response after cancellation does not write an archive`() = runBlocking {
         val model = BlockingActivityModel("game-spec")
         val ctx = instance(anotherInstance(), model)

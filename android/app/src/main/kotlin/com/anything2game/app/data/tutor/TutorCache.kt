@@ -130,10 +130,10 @@ class TutorCacheStore(private val directory: File,
             }
         }
     }
-    suspend fun list(): List<TutorSession> = withContext(Dispatchers.IO) {
+    suspend fun list(includeScripted: Boolean = false): List<TutorSession> = withContext(Dispatchers.IO) {
         lock.withLock {
             targets().mapNotNull { historical(it)?.let { cache -> recover(cache).session } }
-                .filter { it.mode != "local-mock" }.sortedBy { it.title }
+                .filter { includeScripted || it.mode != "local-mock" }.sortedBy { it.title }
         }
     }
 }

@@ -103,4 +103,55 @@ class VerifiedMaterialActionsTest {
         rule.onNodeWithText(RuntimeEnvironment.getApplication().getString(R.string.tutor_resume)).performClick()
         assertEquals("tut_verified", (nav.route.value as Route.Read).packageId)
     }
+
+    @Test fun materials_allows_switching_from_rookie_back_to_classic_with_overlay_only_manifest() {
+        val deps = AndroidAppContainer(RuntimeEnvironment.getApplication())
+        val space = runBlocking {
+            deps.profiles.choose(LocalProfile.GUEST)
+            val pack = deps.materials.materials().single { it.localPack?.packageId == "demo_attention" }.localPack!!
+            assertFalse(com.anything2game.contract.FrameId.CLASSIC in deps.content.manifests().single { it.packageId == pack.packageId }.frames)
+            deps.spaces.list().single { pack in it.members }
+        }
+        val nav = Navigator(SavedStateHandle()).apply { openSpace(space.spaceId, true) }
+        rule.setContent { A2gTheme { AppRoot(deps, nav) } }
+        val list = rule.onNodeWithTag("space_materials")
+        rule.waitUntil(15000) {
+            ShadowLooper.idleMainLooper()
+            runCatching { list.performScrollToNode(hasTestTag("play_as_ROOKIE")); true }.getOrDefault(false)
+        }
+        rule.onNodeWithTag("play_as_ROOKIE").performClick().assertIsSelected()
+        list.performScrollToNode(hasTestTag("play_as_CLASSIC"))
+        rule.onNodeWithTag("play_as_CLASSIC").performClick().assertIsSelected()
+    }
+
+    @Test fun a_local_lesson_citation_names_its_own_material_when_an_uploaded_tutor_uses_the_same_document_labels() {
+        val deps = AndroidAppContainer(RuntimeEnvironment.getApplication())
+        val (space, material) = runBlocking {
+            deps.profiles.choose(LocalProfile.GUEST)
+            val pkg = deps.packages.load(EXAMPLE_TUTOR_PACKAGE).getOrThrow()
+            val other = deps.tutors.open(pkg.packageId).cache.session.copy(sessionId = "tut_other", mode = "mock", title = "Separate uploaded lesson")
+            deps.tutors.save(TutorCache(other))
+            val m = deps.materials.materials().single { it.localPack?.packageId == pkg.packageId }
+            deps.spaces.list().single { m.member in it.members } to m
+        }
+        val node = material.nodes.first { it.activity is com.anything2game.contract.space.ActivityRef.Tutor }
+        val source = node.evidence.single() as com.anything2game.contract.game.EvidenceRef.Pdf
+        runBlocking {
+            val store = SourceDocumentStore(File(RuntimeEnvironment.getApplication().filesDir, "source-documents"))
+            store.save(source.documentId, source.documentVersion, 1,
+                com.anything2game.contract.DocumentLayout(listOf(com.anything2game.contract.PageBox(0, 200f, 400f))), "%PDF-separate-upload".toByteArray())
+            assertNotNull((deps.materials.source(source) as SourceTarget.Pdf).document)
+            assertNull((deps.materials.source(source, material) as SourceTarget.Pdf).document)
+        }
+        val label = RuntimeEnvironment.getApplication().getString(R.string.spaces_source_page, material.title,
+            source.pageLabel ?: (source.pageIndex + 1).toString())
+        val nav = Navigator(SavedStateHandle()).apply { openSpace(space.spaceId) }
+        rule.setContent { A2gTheme { AppRoot(deps, nav) } }
+        val route = rule.onNodeWithTag("space_route")
+        rule.waitUntil(15000) {
+            ShadowLooper.idleMainLooper()
+            runCatching { route.performScrollToNode(hasTestTag("open_node_${node.nodeId}")); true }.getOrDefault(false)
+        }
+        route.performScrollToNode(hasText(label))
+    }
 }

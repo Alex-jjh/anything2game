@@ -41,7 +41,7 @@ sealed interface ActivityRef {
 
     @Serializable @SerialName("tutor")
     data class Tutor(override val contentId: String, override val contentVersion: String, override val activityId: String,
-        override val rulesVersion: Int = TUTOR_RULES_VERSION) : ActivityRef
+        override val rulesVersion: Int = TUTOR_RULES_VERSION, val sessionId: String? = null) : ActivityRef
     @Serializable @SerialName("practice")
     data class Practice(override val contentId: String, override val contentVersion: String, override val activityId: String,
         val frame: FrameId = FrameId.CLASSIC, override val rulesVersion: Int = PRACTICE_RULES_VERSION) : ActivityRef
@@ -53,7 +53,7 @@ sealed interface ActivityRef {
         is Tutor -> ActivityKind.TUTOR
         is Practice -> ActivityKind.PRACTICE
         is Game -> ActivityKind.GAME
-    }, contentId, contentVersion, activityId, rulesVersion)
+    }, contentId, contentVersion, activityId, rulesVersion, (this as? Tutor)?.sessionId)
 }
 
 @Serializable

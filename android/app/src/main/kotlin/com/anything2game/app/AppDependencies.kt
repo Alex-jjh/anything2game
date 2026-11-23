@@ -96,7 +96,8 @@ class AndroidAppContainer(context: Context, private val apiBaseUrl: String = Bui
     /** Everything that belongs to one person on this phone, built from the same store classes for every profile. */
     private inner class UserScope(val profile: LocalProfile) {
         private val dir = profile.dir(app)
-        val progress: LearningProgress = LearningProgress(File(dir, "learning.json"), profile.id, clock, beforeProjection = ::recoverProgress)
+        val progress: LearningProgress = LearningProgress(File(dir, "learning.json"), profile.id, clock,
+            tutorHistory = { tutors.savedHistory() }, beforeProjection = ::recoverProgress)
         private suspend fun recoverProgress() {
             practice.recover()
             tutors.recoverPendingReads()

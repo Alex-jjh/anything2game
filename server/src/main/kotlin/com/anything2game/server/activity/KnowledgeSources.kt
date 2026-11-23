@@ -37,22 +37,30 @@ internal class PathSources(private val store: Store, private val tutors: TutorSe
             if (nodes.size < 16 && member is SpaceMember.ServerDocumentRef) {
                 val doc = store.getDocument(member.documentId)?.takeIf { it.ownerId == owner && it.documentVersion == member.documentVersion }
                 if (doc != null) {
-                    val tutor = store.getTutor(tutors.sessionId(doc, language))?.takeIf { it.ownerId == owner &&
-                        it.session.documentVersion == doc.documentVersion && it.session.documentId == doc.documentId }
+                    val tutor = sequenceOf(language, if (language == "en") "zh" else "en").mapNotNull { lang ->
+                        store.getTutor(tutors.sessionId(doc, lang))?.takeIf { it.ownerId == owner && it.session.language == lang &&
+                            it.session.documentVersion == doc.documentVersion && it.session.documentId == doc.documentId && it.session.questions.isNotEmpty() }
+                    }.firstOrNull()
                     val question = tutor?.session?.questions?.firstOrNull()
                     if (question != null) {
                         val id = "tutor-$index"
                         val ref = evidence(doc, question.sourceRefs.firstOrNull(), id)
                         if (ref != null) nodes += PathNode(id, question.concept.take(120),
-                            ActivityRef.Tutor(doc.documentId, doc.documentVersion, question.conceptId), evidence = listOf(ref))
+                            ActivityRef.Tutor(doc.documentId, doc.documentVersion, question.conceptId, sessionId = tutor.session.sessionId), evidence = listOf(ref))
                     }
                     // Prefer the newest matching-language practice; keep the newest other-language practice as a fallback.
-                    val packages = store.listJobsByDocument(doc.documentId)
+                    val history = store.listJobsByDocument(doc.documentId)
                         .sortedWith(compareByDescending<JobRecord> { it.createdAt }.thenBy { it.jobId })
+                        .asSequence()
                         .filter { it.ownerId == owner && it.documentVersion == doc.documentVersion && it.state.isTerminal }
                         .mapNotNull { store.getPackage(it.packageId) }.filter { it.complete && it.ownerId == owner &&
                             it.pkg.documentId == doc.documentId && it.pkg.documentVersion == doc.documentVersion && it.pkg.levels.isNotEmpty() }
-                    val pkg = (packages.firstOrNull { it.pkg.language == language } ?: packages.firstOrNull())?.pkg
+                    var fallback: StoredPackage? = null
+                    val preferred = history.firstOrNull {
+                        if (fallback == null) fallback = it
+                        it.pkg.language == language
+                    }
+                    val pkg = (preferred ?: fallback)?.pkg
                     val level = pkg?.levels?.firstOrNull()
                     if (level != null && nodes.size < 16) {
                         val id = "practice-$index"

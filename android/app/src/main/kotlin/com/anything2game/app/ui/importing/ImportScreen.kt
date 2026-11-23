@@ -26,6 +26,17 @@ import com.anything2game.app.R
 import com.anything2game.app.importing.ImportRequest
 import com.anything2game.app.ui.common.Badge
 import com.anything2game.app.ui.theme.A2g
+import com.anything2game.contract.ErrorCodes
+
+@Composable
+internal fun importErrorMessage(code: String): String = when (code) {
+    "INVALID_PDF", ErrorCodes.UNSUPPORTED_TYPE -> stringResource(R.string.import_invalid_pdf)
+    ErrorCodes.FILE_TOO_LARGE -> stringResource(R.string.import_oversized_pdf)
+    ErrorCodes.ENCRYPTED_PDF -> stringResource(R.string.import_encrypted_pdf)
+    ErrorCodes.NO_TEXT_LAYER -> stringResource(R.string.import_scanned_pdf)
+    "FILE_UNAVAILABLE" -> stringResource(R.string.import_unreadable_pdf)
+    else -> stringResource(R.string.tutor_import_error, code)
+}
 
 /**
  * Confirms the material and server destination before upload. Generation and retries are owned
@@ -68,7 +79,7 @@ fun ImportContent(request: ImportRequest, onCancel: () -> Unit, contentPadding: 
             androidx.compose.material3.LinearProgressIndicator(Modifier.fillMaxWidth())
             Text(stringResource(if (state.uploaded) R.string.tutor_preparing else R.string.tutor_uploading), color = skin.inkMuted)
         }
-        state.error?.let { Text(stringResource(R.string.tutor_import_error, it), color = skin.wrong) }
+        state.error?.let { Text(importErrorMessage(it), color = skin.wrong) }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedButton(onClick = onCancel) { Text(stringResource(R.string.import_cancel)) }
             Button(onClick = onStart, enabled = !state.busy && endpoint.isNotBlank()) { Text(stringResource(if (state.error == null) R.string.tutor_upload_start else R.string.home_retry)) }

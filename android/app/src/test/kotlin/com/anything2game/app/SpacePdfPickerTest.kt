@@ -72,6 +72,9 @@ class SpacePdfPickerTest {
                 runCatching { rule.onNodeWithTag("space_materials").performScrollToNode(hasText(row.title)); true }.getOrDefault(false)
             }
             rule.onNodeWithText(row.title).assertExists()
+            rule.onAllNodesWithText(row.error!!, substring = true).assertCountEquals(0)
+            assertTrue(rule.onAllNodes(hasText("PDF", substring = true) and hasText("choose", substring = true, ignoreCase = true))
+                .fetchSemanticsNodes().isNotEmpty())
         }
         assertTrue(runBlocking { deps.spaces.list().first { it.spaceId == id }.members.isEmpty() })
     }

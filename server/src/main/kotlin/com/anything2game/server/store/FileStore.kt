@@ -84,6 +84,10 @@ class FileStore(private val root: Path) : Store {
         requireSafeId(jobId)
         return artifactsDir.resolve("$jobId.a2gpack").takeIf { it.exists() }?.let(Files::readAllBytes)
     }
+    override fun deleteArtifact(jobId: String) {
+        requireSafeId(jobId)
+        lock.withLock { Files.deleteIfExists(artifactsDir.resolve("$jobId.a2gpack")) }
+    }
 
     override fun getTutor(id: String): TutorRecord? = read(file(tutorsDir, id), TutorRecord.serializer())
 

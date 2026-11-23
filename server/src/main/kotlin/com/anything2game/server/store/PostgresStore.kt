@@ -102,6 +102,9 @@ class PostgresStore private constructor(private val ds: DataSource, private val 
     override fun readArtifact(jobId: String) = withConnection { c ->
         c.query("SELECT archive FROM activity_artifacts WHERE job_id = ?", { setString(1, jobId) }) { it.getBytes(1) }.firstOrNull()
     }
+    override fun deleteArtifact(jobId: String) {
+        withConnection { c -> c.update("DELETE FROM activity_artifacts WHERE job_id = ?") { setString(1, jobId) } }
+    }
 
     override fun getTutor(id: String): TutorRecord? = withConnection { c ->
         c.query("SELECT body FROM tutors WHERE session_id = ?", { setString(1, id) }) {

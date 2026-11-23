@@ -258,11 +258,17 @@ class PresetAttachTest {
         val store = SourceDocumentStore(dir)
         val presets = PresetSources(SourceLayouts { presetLayout() }, store)
         val l = presetLayout()
-        // E.g. an imported record (no hash) or a file kept before the layout was re-measured on other bytes.
-        runBlocking { store.save(l.documentId, l.documentVersion, l.pageCount, l.layout, bytes, pdfSha256 = null) }
+        // Pre-edition releases kept one file and one flat record under a hash of the document ID.
+        check(dir.mkdirs())
+        val base = sha(l.documentId.toByteArray())
+        File(dir, "$base.pdf").writeBytes(bytes)
+        val old = File(dir, "$base.layout.json")
+        val fields = """"documentId":"${l.documentId}","documentVersion":"${l.documentVersion}","pageCount":${l.pageCount},"layout":${ContractJson.json.encodeToString(l.layout)}"""
+        old.writeText("{$fields}")
         assertNull(runBlocking { presets.load("demo_tiny", l.documentId, l.documentVersion) })
-        runBlocking { store.save(l.documentId, l.documentVersion, l.pageCount, l.layout, bytes, pdfSha256 = "0".repeat(64)) }
+        old.writeText("""{$fields,"pdfSha256":"${"0".repeat(64)}"}""")
         assertNull(runBlocking { presets.load("demo_tiny", l.documentId, l.documentVersion) })
+        assertTrue(runBlocking { runCatching { store.save(l.documentId, l.documentVersion, l.pageCount, l.layout, bytes, "0".repeat(64)) }.isFailure })
         runBlocking { store.save(l.documentId, l.documentVersion, l.pageCount, l.layout, bytes, pdfSha256 = sha(bytes)) }
         assertNotNull("the measured file under the same ids is", runBlocking { presets.load("demo_tiny", l.documentId, l.documentVersion) })
     }

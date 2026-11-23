@@ -102,7 +102,7 @@ class ActivityGeneration(
                 val kind = if (input is GenerationInput.SpacePath) ContentKind.PATH else ContentKind.GAME
                 locked.copy(state = CompileJobState.READY, generation = locked.generation!!.copy(
                     result = GeneratedContent(ContentVersion(job.packageId, job.jobId), kind), excludedMembers = material.excluded,
-                    modelId = client.modelId, fixture = fixture))
+                    modelId = client.modelId, fixture = fixture, publishedSources = material.path?.quotedDocuments()))
             }
         }
     }

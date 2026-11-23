@@ -90,4 +90,9 @@
     <string name="source_attach_unplaced">PDF attached. This passage has no position on its page, so its text is shown here.</string>
     <string name="source_attach_retry">Choose another file</string>
     <string name="source_attach_download">Open download page</string>
+    <string name="import_invalid_pdf">This file could not be opened as a PDF. Choose a valid PDF file.</string>
+    <string name="import_oversized_pdf">Choose a PDF of 20 MB or less, or split the document into smaller files.</string>
+    <string name="import_encrypted_pdf">Remove the password or encryption, then choose the unlocked PDF.</string>
+    <string name="import_scanned_pdf">This PDF has no readable text. Choose a searchable PDF or add a text layer with OCR.</string>
+    <string name="import_unreadable_pdf">The file could not be read. Download it to this device and choose it again.</string>
 </resources>

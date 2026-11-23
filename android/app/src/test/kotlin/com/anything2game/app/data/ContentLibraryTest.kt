@@ -102,4 +102,18 @@ class ContentLibraryTest {
         assertTrue(ContentLibrary.compareVersions("2", "10") < 0)
         assertEquals(0, ContentLibrary.compareVersions("3", "3"))
     }
+
+    @Test fun `original validated archive repairs a truncated edition but another payload cannot`() = runBlocking {
+        val directory = tmp.newFolder()
+        val disk = DirectoryPackSource(directory)
+        val bytes = packBytes("7", "First edition")
+        disk.install(bytes.inputStream()).getOrThrow()
+        val installed = directory.listFiles()!!.single { it.name.endsWith(".a2gpack") }
+        installed.writeBytes(bytes.copyOf(bytes.size / 2))
+        assertEquals("First edition", disk.list().single().manifest.title)
+        assertTrue(disk.list().single().open().isFailure)
+        assertTrue(disk.install(packBytes("7", "Different lesson").inputStream()).isFailure)
+        disk.install(bytes.inputStream()).getOrThrow()
+        assertEquals("First edition", ContentLibrary(listOf(disk)).load("demo_attention", "7").getOrThrow().title)
+    }
 }

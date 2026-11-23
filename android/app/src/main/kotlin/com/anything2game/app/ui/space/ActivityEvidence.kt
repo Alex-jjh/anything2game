@@ -15,12 +15,12 @@ import com.anything2game.contract.game.EvidenceRef
 import kotlinx.coroutines.CancellationException
 
 @Composable
-internal fun ActivityEvidence(catalog: MaterialCatalog, ref: EvidenceRef, dismiss: () -> Unit) {
+internal fun ActivityEvidence(catalog: MaterialCatalog, ref: EvidenceRef, material: Material? = null, dismiss: () -> Unit) {
     var target by remember(ref) { mutableStateOf<SourceTarget?>(null) }
     var loading by remember(ref) { mutableStateOf(true) }
     var failed by remember(ref) { mutableStateOf(false) }
-    LaunchedEffect(catalog, ref) {
-        try { target = catalog.source(ref) } catch (e: CancellationException) { throw e } catch (_: Exception) { failed = true }
+    LaunchedEffect(catalog, ref, material) {
+        try { target = catalog.source(ref, material) } catch (e: CancellationException) { throw e } catch (_: Exception) { failed = true }
         loading = false
     }
     val t = target

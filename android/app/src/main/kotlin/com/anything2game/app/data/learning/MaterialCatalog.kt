@@ -9,10 +9,41 @@ import com.anything2game.contract.pack.*
 import com.anything2game.contract.space.*
 import com.anything2game.contract.tutor.TutorQuestion
 import com.anything2game.engine.progress.NodeStatus
+import com.anything2game.engine.progress.ActivityProgress
 import com.anything2game.engine.game.completionActivity
 
 data class Material(val source: ContentVersion, val title: String, val member: SpaceMember, val nodes: List<PathNode>,
     val language: String = "", val tutorKey: String? = null, val chunks: List<SourceChunk> = emptyList(), val localPack: SpaceMember.LocalPackRef? = null)
+
+/** Old server paths used document, concept and path language to name their tutor. Only an owned lesson can satisfy those references. */
+private fun List<Material>.lesson(ref: ActivityRef.Tutor, language: String): Material? = singleOrNull { material ->
+    val key = material.tutorKey ?: return@singleOrNull false
+    if (ref.sessionId != null && ref.sessionId != key) return@singleOrNull false
+    if (ref.sessionId == null && (material.member !is SpaceMember.ServerDocumentRef || (language.isNotEmpty() && material.language != language)))
+        return@singleOrNull false
+    material.nodes.any { it.activity == ref.copy(sessionId = key) }
+}
+
+internal fun PathNode.bindTutor(materials: List<Material>, language: String): PathNode {
+    val tutor = activity as? ActivityRef.Tutor ?: return this
+    if (tutor.sessionId != null) return this
+    val key = materials.lesson(tutor, language)?.tutorKey ?: return this
+    return copy(activity = tutor.copy(sessionId = key))
+}
+
+/** One validated device inventory for a refresh, including game completion activities supported by the runtime. */
+internal class MaterialInventory(val materials: List<Material>, games: List<ContentLibrary.DeviceGame>) {
+    private val keys = (materials.flatMap { m -> m.nodes.map { it.activity } } + games.map { it.spec.completionActivity() })
+        .map { it.key("") }.toSet()
+    private val versions = keys.map { ContentVersion(it.contentId, it.contentVersion) }.toSet()
+    fun contains(ref: ActivityRef) = ref.key("") in keys
+
+    fun statuses(path: LearningPath, profile: String, progress: ActivityProgress, now: Long): Map<String, NodeStatus> {
+        val bound = path.copy(nodes = path.nodes.map { it.bindTutor(materials, path.language) })
+        val projected = progress.nodes(profile, bound, versions, now)
+        return bound.nodes.associate { node -> node.nodeId to if (contains(node.activity)) projected.getValue(node.nodeId) else NodeStatus.NEEDS_UPDATE }
+    }
+}
 
 sealed interface OpenActivity {
     data class Tutor(val sessionKey: String, val conceptId: String) : OpenActivity
@@ -34,7 +65,7 @@ class MaterialCatalog(private val content: ContentLibrary, private val tutors: T
         for (s in saved) {
             val source = ContentVersion(s.documentId, s.documentVersion)
             result += Material(source, s.title, SpaceMember.ServerDocumentRef(s.documentId, s.documentVersion),
-                tutorNodes(source, s.questions, s.sources), s.language, s.sessionId, s.sources)
+                tutorNodes(source, s.sessionId, s.questions, s.sources), s.language, s.sessionId, s.sources)
         }
         for (manifest in content.manifests().filter { it.schema == PACK_SCHEMA_V1 }) {
             val version = ContentVersion(manifest.packageId, manifest.contentVersion)
@@ -46,7 +77,7 @@ class MaterialCatalog(private val content: ContentLibrary, private val tutors: T
                 else SpaceMember.LocalPackRef(pkg.packageId, pkg.contentVersion)
             val questions = pack.tutor?.blueprint?.concepts.orEmpty().map { it.question }
             val checkpoint = sessions?.load(pkg.packageId, pkg.contentVersion)?.takeUnless { it.isFinished }
-            val nodes = tutorNodes(source, questions, pkg.sources) + pkg.levels.map { level ->
+            val nodes = tutorNodes(source, localTutorKey(pkg), questions, pkg.sources) + pkg.levels.map { level ->
                 val frame = checkpoint?.takeIf { it.levelId == level.levelId }?.frameId ?: FrameId.CLASSIC
                 val ref = ActivityRef.Practice(pkg.packageId, pkg.contentVersion, level.levelId, frame)
                 val node = nodeId(ref)
@@ -59,10 +90,10 @@ class MaterialCatalog(private val content: ContentLibrary, private val tutors: T
         return result
     }
 
-    private fun nodeId(ref: ActivityRef) = "local-" + stableId(ref.key("").activityKind.name, ref.contentId, ref.contentVersion, ref.activityId)
-    private fun tutorNodes(source: ContentVersion, questions: List<TutorQuestion>, chunks: List<SourceChunk>) = questions.map { q ->
-        val ref = ActivityRef.Tutor(source.contentId, source.contentVersion, q.conceptId)
-        val node = nodeId(ref)
+    private fun nodeId(ref: ActivityRef, vararg identity: String) = "local-" + stableId(ref.key("").activityKind.name, ref.contentId, ref.contentVersion, ref.activityId, *identity)
+    private fun tutorNodes(source: ContentVersion, sessionId: String, questions: List<TutorQuestion>, chunks: List<SourceChunk>) = questions.map { q ->
+        val ref = ActivityRef.Tutor(source.contentId, source.contentVersion, q.conceptId, sessionId = sessionId)
+        val node = nodeId(ref, sessionId)
         val evidence = q.sourceRefs.firstOrNull()?.let { cite -> chunks.firstOrNull { it.chunkId == cite.chunkId }?.let {
             EvidenceRef.Pdf("e-$node", source.contentId, source.contentVersion, it.chunkId, cite.quote, it.pageIndex, it.pageLabel)
         } }
@@ -71,17 +102,16 @@ class MaterialCatalog(private val content: ContentLibrary, private val tutors: T
 
     suspend fun availableDocuments() = materials().filter { it.tutorKey != null }.map { it.source }.toSet()
     suspend fun availableVersions() = content.availableVersions() + availableDocuments()
+    internal suspend fun snapshot() = MaterialInventory(materials(), content.games())
 
     /** Version presence alone cannot prove that the named concept/level actually exists. */
     suspend fun verify(path: LearningPath) {
-        val catalog = materials()
-        val activities = catalog.flatMap { it.nodes }.map { it.activity.key("") }.toSet()
-        for (node in path.nodes) {
-            val activity = node.activity
-            val exists = if (activity is ActivityRef.Game) resolve(activity, path.language) != null else activity.key("") in activities
-            require(exists) { "Missing activity: ${activity.activityId}" }
+        val inventory = snapshot()
+        for (raw in path.nodes) {
+            val node = raw.bindTutor(inventory.materials, path.language)
+            require(inventory.contains(node.activity)) { "Missing activity: ${node.activity.activityId}" }
             for (citation in node.evidence.filterIsInstance<EvidenceRef.Pdf>()) {
-                require(catalog.any { it.matches(citation) }) { "Missing source: ${citation.documentId} / ${citation.chunkId}" }
+                require(inventory.materials.any { it.matches(citation) }) { "Missing source: ${citation.documentId} / ${citation.chunkId}" }
             }
         }
     }
@@ -91,9 +121,7 @@ class MaterialCatalog(private val content: ContentLibrary, private val tutors: T
             PackageValidator.normalise(citation.quote) in PackageValidator.normalise(it.text) }
 
     suspend fun resolve(ref: ActivityRef, language: String = ""): OpenActivity? = when (ref) {
-        is ActivityRef.Tutor -> materials().sortedByDescending { it.language == language }.firstOrNull { m ->
-            m.tutorKey != null && m.nodes.any { it.activity == ref }
-        }?.tutorKey?.let { OpenActivity.Tutor(it, ref.activityId) }
+        is ActivityRef.Tutor -> materials().lesson(ref, language)?.tutorKey?.let { OpenActivity.Tutor(it, ref.activityId) }
         is ActivityRef.Practice -> content.load(ref.contentId, ref.contentVersion).getOrNull()?.level(ref.activityId)?.let {
             val saved = sessions?.load(ref.contentId, ref.contentVersion)?.takeIf { s -> !s.isFinished && s.levelId == ref.activityId }
             OpenActivity.Practice(if (saved == null) ref else ref.copy(frame = saved.frameId))
@@ -103,27 +131,22 @@ class MaterialCatalog(private val content: ContentLibrary, private val tutors: T
         }?.let { OpenActivity.Game(ref, it) }
     }
 
-    suspend fun nodeStatuses(path: LearningPath, progress: LearningProgress, now: Long): Map<String, NodeStatus> {
-        val local = materials()
-        val catalogKeys = local.flatMap { it.nodes }.map { it.activity.key("") }.toSet()
-        val versions = content.availableVersions() + local.filter { it.tutorKey != null }.map { it.source }
-        val projected = progress.projection().nodes(progress.profileId, path, versions, now)
-        return path.nodes.associate { node ->
-            val ref = node.activity
-            val present = if (ref is ActivityRef.Game) resolve(ref, path.language) != null else ref.key("") in catalogKeys
-            node.nodeId to if (present) projected.getValue(node.nodeId) else NodeStatus.NEEDS_UPDATE
-        }
-    }
+    suspend fun nodeStatuses(path: LearningPath, progress: LearningProgress, now: Long) =
+        snapshot().statuses(path, progress.profileId, progress.projection(), now)
 
-    suspend fun source(evidence: EvidenceRef): SourceTarget? {
+    suspend fun source(evidence: EvidenceRef, material: Material? = null): SourceTarget? {
         evidence.validate()
         return when (evidence) {
             is EvidenceRef.Reviewed -> SourceTarget.Card(evidence)
             is EvidenceRef.External -> SourceTarget.External(evidence)
             is EvidenceRef.Pdf -> {
-                val matches = materials().filter { it.matches(evidence) }
+                val scoped = material?.takeIf { it.source == ContentVersion(evidence.documentId, evidence.documentVersion) }
+                val matches = (scoped?.let(::listOf) ?: materials()).filter { it.matches(evidence) }
                 if (matches.isEmpty()) return null
                 val reference = SourceRef(evidence.chunkId, evidence.quote)
+                val pack = scoped?.member as? SpaceMember.LocalPackRef
+                if (pack != null) return SourceTarget.Pdf(scoped.chunks, reference,
+                    presets?.load(pack.packageId, evidence.documentId, evidence.documentVersion, pack.contentVersion))
                 val existing = tutors.sourceDocument(evidence.documentId, evidence.documentVersion)
                 if (existing != null) return SourceTarget.Pdf(matches.first().chunks, reference, existing)
                 for (material in matches) {

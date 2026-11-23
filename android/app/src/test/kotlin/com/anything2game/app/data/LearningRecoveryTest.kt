@@ -53,6 +53,11 @@ class LearningRecoveryTest {
             before.profiles.choose(LocalProfile.SAMPLE)
             requireNotNull(before.sessions.load("demo_resnet"))
         }
+        runBlocking {
+            val newer = before.packages.load(case.packageId).getOrThrow().copy(contentVersion = "999")
+            before.content.install(PackCodec.toBytes(PackCodec.build(newer, emptyList(), PackOrigin.IMPORT)).inputStream())
+            assertEquals("999", before.packages.load(case.packageId).getOrThrow().contentVersion)
+        }
         val dir = File(LocalProfile.SAMPLE.dir(app), "sessions")
         val legacy = case.copy(attemptId = "")
         File(dir, "demo_resnet.json").writeText(SessionCodec.encode(legacy))
@@ -61,7 +66,8 @@ class LearningRecoveryTest {
             val deps = AndroidAppContainer(app)
             val activity = runBlocking {
                 val space = deps.spaces.list().single { s -> s.members.any { it.version().contentId == case.packageId } }
-                val node = deps.spaces.route(space.spaceId, "zh")!!.nodes.first { it.activity is ActivityRef.Practice && it.activity.activityId == case.levelId }
+                val node = deps.spaces.route(space.spaceId, "zh")!!.nodes.first { it.activity is ActivityRef.Practice &&
+                    it.activity.activityId == case.levelId && it.activity.contentVersion == case.contentVersion }
                 (deps.materials.resolve(node.activity) as OpenActivity.Practice).activity
             }
             val vm = PlayViewModel(deps, activity.contentId, activity.activityId, activity.frame, activity.contentVersion)
@@ -458,6 +464,274 @@ class LearningRecoveryTest {
         } finally { http.stop(0) }
     }
     private fun errorResponse(status: Int, code: String) = status to json.encodeToString(ErrorBody(ApiError(code, code, false)))
+
+    @Test fun `confirmed PDF languages survive a stopped selection and reach tutor creation after restart`() = runBlocking {
+        val deps = AndroidAppContainer(app)
+        val session = deps.tutors.open(EXAMPLE_TUTOR_PACKAGE).cache.session
+        val languages = mutableListOf<String>()
+        var posts = 0
+        server({ path, _, body -> when {
+            path == "/v1/documents" -> {
+                posts++
+                201 to json.encodeToString(DocumentResponse("doc-$posts", "v1", 1, "Paper"))
+            }
+            path.endsWith("/tutor") -> {
+                val lang = json.decodeFromString<CreateTutorRequest>(body).language
+                languages += lang
+                201 to json.encodeToString(session.copy(sessionId = "tut_$posts", mode = "mock", documentId = "doc-$posts",
+                    documentVersion = "v1", language = lang))
+            }
+            else -> errorResponse(404, "NOT_FOUND")
+        } }) { transport ->
+            val root = tmp.newFolder()
+            val space = deps.spaces.create("Seminar")
+            fun queue(): PdfImportQueue {
+                val tutor = AndroidTutorRepository(app, deps.packages, deps.tutorScripts, {}, File(root, "tutors"), http = TutorHttpClient(app, transport))
+                return PdfImportQueue(File(root, "queue"), { "%PDF-sample".toByteArray() }, tutor, deps.spaces)
+            }
+            val selected = object : AppDependencies by deps { override val pdfImports = queue() }
+            for (lang in listOf("en", "zh")) {
+                val vm = com.anything2game.app.ui.space.SpaceViewModel(selected, lang, space.spaceId)
+                val request = ImportRequest.PdfFile("Paper", Uri.parse("content://qa/$lang"), null)
+                var journaled = false
+                vm.importFiles(space.spaceId, listOf(request), "batch-$lang") { journaled = true; throw CancellationException("stopped") }
+                val end = System.nanoTime() + 10_000_000_000L
+                while (!journaled && System.nanoTime() < end) { ShadowLooper.idleMainLooper(); Thread.sleep(5) }
+                assertTrue(journaled)
+                val fresh = queue()
+                val row = fresh.list().single { it.batchId == "batch-$lang" }
+                assertNotNull(fresh.process(row.id).sessionId)
+            }
+            assertEquals(listOf("en", "zh"), languages)
+        }
+    }
+
+    @Test fun `each retained PDF edition opens the bytes measured for its own page geometry`() = runBlocking {
+        val dir = tmp.newFolder()
+        val store = SourceDocumentStore(dir)
+        for (n in 1..2) store.save("document", "edition-$n", 1, DocumentLayout(listOf(PageBox(0, n * 100f, 800f))), "%PDF-edition-$n".toByteArray())
+        for (n in 1..2) {
+            val page = requireNotNull(SourceDocumentStore(dir).load("document", "edition-$n"))
+            assertEquals(n * 100f, page.layout.pages.single().width, 0f)
+            assertArrayEquals("%PDF-edition-$n".toByteArray(), page.file.readBytes())
+        }
+    }
+
+    @Test fun `interruption after PDF bytes arrive still opens the previous layout with its original bytes`() = runBlocking {
+        val dir = tmp.newFolder()
+        val store = SourceDocumentStore(dir)
+        val original = DocumentLayout(listOf(PageBox(0, 200f, 800f)))
+        store.save("document", "edition-1", 1, original, "%PDF-original".toByteArray())
+        val published = dir.walkTopDown().filter { it.extension == "json" }.associateWith { it.readBytes() }
+        assertTrue(published.isNotEmpty())
+        store.save("document", "edition-2", 1, DocumentLayout(listOf(PageBox(0, 400f, 600f))), "%PDF-later".toByteArray())
+        // Reconstruct the durable state immediately before publication of edition 2's layout.
+        dir.walkTopDown().filter { it.extension == "json" && it !in published }.forEach { check(it.delete()) }
+        published.forEach { (file, bytes) -> file.writeBytes(bytes) }
+        val reopened = SourceDocumentStore(dir)
+        assertNull(reopened.load("document", "edition-2"))
+        val page = requireNotNull(reopened.load("document", "edition-1"))
+        assertEquals(original, page.layout)
+        assertArrayEquals("%PDF-original".toByteArray(), page.file.readBytes())
+    }
+
+    @Test fun `one Spaces refresh reads the tutor inventory and learning ledger once across all cards`() {
+        val base = AndroidAppContainer(app)
+        val root = tmp.newFolder()
+        val directory = DirectoryPackSource(File(root, "content"))
+        val library = ContentLibrary(listOf(directory))
+        var inventoryReads = 0
+        var ledgerReads = 0
+        val tutors = object : TutorRepository by base.tutors {
+            override suspend fun list(): List<TutorSession> { inventoryReads++; return base.tutors.list() }
+        }
+        val catalog = MaterialCatalog(library, tutors)
+        val spaces = SpaceRepository(File(root, "spaces"), catalog::materials)
+        val progress = LearningProgress(File(root, "ledger"), "guest", beforeProjection = { ledgerReads++ })
+        val dependencies = object : AppDependencies by base {
+            override val materials = catalog
+            override val spaces = spaces
+            override val learningProgress = progress
+        }
+        runBlocking {
+            val pkg = base.packages.load(EXAMPLE_TUTOR_PACKAGE).getOrThrow()
+            library.install(PackCodec.toBytes(PackCodec.build(pkg, emptyList(), PackOrigin.IMPORT)).inputStream())
+            val material = catalog.materials().single()
+            repeat(20) { spaces.add(spaces.create("Group $it").spaceId, material.member) }
+        }
+        inventoryReads = 0
+        val vm = com.anything2game.app.ui.space.SpaceViewModel(dependencies, "en", null)
+        vm.perform()
+        val end = System.nanoTime() + 15_000_000_000L
+        while (vm.busy && System.nanoTime() < end) { ShadowLooper.idleMainLooper(); Thread.sleep(5) }
+        assertNull(vm.error)
+        assertEquals(20, vm.cards.size)
+        assertTrue(vm.cards.all { it.next != null })
+        assertEquals(1, inventoryReads)
+        assertEquals(1, ledgerReads)
+    }
+
+    @Test fun `colliding scripted and uploaded lessons open and credit only their own session in every Space`() = runBlocking {
+        val deps = AndroidAppContainer(app)
+        val pkg = deps.packages.load(EXAMPLE_TUTOR_PACKAGE).getOrThrow()
+        val script = deps.content.scriptFor(pkg.packageId)!!
+        val other = pkg.copy(packageId = "another-script", title = "Independent lesson")
+        val otherScript = script.copy(packageId = other.packageId, blueprint = script.blueprint.copy(concepts = script.blueprint.concepts.map {
+            it.copy(explanation = "An independent author's explanation.", beats = emptyList())
+        }))
+        deps.content.install(PackCodec.toBytes(PackCodec.build(other, emptyList(), PackOrigin.IMPORT, otherScript)).inputStream())
+        val owned = deps.tutors.open(pkg.packageId).cache.session.copy(sessionId = "tut_owned", mode = "mock", title = "Server lesson")
+        deps.tutors.save(TutorCache(owned))
+        val a = SpaceMember.LocalPackRef(pkg.packageId, pkg.contentVersion)
+        val b = SpaceMember.LocalPackRef(other.packageId, other.contentVersion)
+        val uploaded = SpaceMember.ServerDocumentRef(pkg.documentId, pkg.documentVersion)
+        val together = deps.spaces.create("All three")
+        for (member in listOf(a, b, uploaded)) deps.spaces.add(together.spaceId, member)
+        val also = deps.spaces.create("Read in another group")
+        deps.spaces.add(also.spaceId, b)
+        val path = deps.spaces.route(together.spaceId, "en")!!
+        val concept = owned.questions.first().conceptId
+        val nodes = path.nodes.filter { it.activity is ActivityRef.Tutor && it.activity.activityId == concept }
+        val keys = nodes.associateBy { (deps.materials.resolve(it.activity, "en") as OpenActivity.Tutor).sessionKey }
+        assertEquals(setOf(localTutorKey(pkg), localTutorKey(other), owned.sessionId), keys.keys)
+        val key = localTutorKey(other)
+        var cache = deps.tutors.open(key).cache
+        cache = cache.copy(draftAnswers = cache.session.questions.associate { it.id to UNKNOWN_ANSWER })
+        cache = cache.copy(session = deps.tutors.assess(cache, "start"))
+        val reply = deps.tutors.turn(cache, TutorIntent.START, "", "read")
+        assertTrue(reply.messages.last().text.contains("independent author"))
+        deps.tutors.save(cache.copy(session = reply))
+        val statuses = deps.materials.nodeStatuses(path, deps.learningProgress, 0)
+        for ((id, node) in keys) assertEquals(if (id == key) com.anything2game.engine.progress.NodeStatus.COMPLETE
+            else com.anything2game.engine.progress.NodeStatus.AVAILABLE, statuses[node.nodeId])
+        val repeat = deps.spaces.route(also.spaceId, "en")!!
+        assertEquals(com.anything2game.engine.progress.NodeStatus.COMPLETE, deps.materials.nodeStatuses(repeat, deps.learningProgress, 0)[keys.getValue(key).nodeId])
+        assertEquals(1, deps.learningProgress.projection().completed.size)
+    }
+
+    @Test fun `old tutor credit binds only to a saved message that proves which lesson was read`() = runBlocking {
+        val deps = AndroidAppContainer(app)
+        var cache = deps.tutors.open(EXAMPLE_TUTOR_PACKAGE).cache
+        cache = cache.copy(draftAnswers = cache.session.questions.associate { it.id to UNKNOWN_ANSWER })
+        cache = cache.copy(session = deps.tutors.assess(cache, "assess"))
+        val taught = deps.tutors.turn(cache, TutorIntent.START, "", "read")
+        deps.tutors.save(cache.copy(session = taught))
+        deps.tutors.save(TutorCache(taught.copy(sessionId = "tut_elsewhere", mode = "mock", messages = emptyList())))
+        val ledger = File(app.filesDir, "learning.json")
+        val old = com.anything2game.contract.progress.ActivityKey("guest", com.anything2game.contract.progress.ActivityKind.TUTOR,
+            taught.documentId, taught.documentVersion, TutorRules.orderedQuestions(taught).first().conceptId, 1)
+        fun receipt(id: String) = com.anything2game.contract.progress.CompletionRecord.at(id, old,
+            com.anything2game.contract.progress.ActivityOutcome.READ, 0L, "UTC")
+        val known = receipt(stableId("read", taught.sessionId, taught.messages.last().id, taught.documentId, taught.documentVersion))
+        val unknown = receipt("unattributable-old-read")
+        ledger.writeText("""{"events":[${json.encodeToString(known)},${json.encodeToString(unknown)}]}""")
+        val reopened = AndroidAppContainer(app)
+        val local = SpaceMember.LocalPackRef(EXAMPLE_TUTOR_PACKAGE, reopened.packages.load(EXAMPLE_TUTOR_PACKAGE).getOrThrow().contentVersion)
+        val remote = SpaceMember.ServerDocumentRef(taught.documentId, taught.documentVersion)
+        val both = reopened.spaces.create("Both")
+        for (member in listOf(local, remote)) reopened.spaces.add(both.spaceId, member)
+        val route = requireNotNull(reopened.spaces.route(both.spaceId, "en"))
+        val status = reopened.materials.nodeStatuses(route, reopened.learningProgress, 0)
+        val lessons = route.nodes.filter { it.activity is ActivityRef.Tutor && it.activity.activityId == old.activityId }
+        assertEquals(2, lessons.size)
+        for (node in lessons) {
+            val opened = reopened.materials.resolve(node.activity) as OpenActivity.Tutor
+            assertEquals(if (opened.sessionKey == taught.sessionId) com.anything2game.engine.progress.NodeStatus.COMPLETE
+                else com.anything2game.engine.progress.NodeStatus.AVAILABLE, status[node.nodeId])
+        }
+        assertEquals(setOf("1970-01-01"), reopened.learningProgress.projection().days)
+    }
+
+    @Test fun `an unqualified historical server node cannot borrow a matching unverified script`() = runBlocking {
+        val deps = AndroidAppContainer(app)
+        val material = deps.materials.materials().first { it.localPack?.packageId == EXAMPLE_TUTOR_PACKAGE }
+        val node = material.nodes.first { it.activity is ActivityRef.Tutor }
+        val old = ActivityRef.Tutor(material.source.contentId, material.source.contentVersion, node.activity.activityId)
+        val session = deps.tutors.open(EXAMPLE_TUTOR_PACKAGE).cache.session.copy(sessionId = "tut_actual", mode = "mock")
+        val path = LearningPath("old", "1", "s", "Server route", session.language, listOf(node.copy(activity = old)))
+        assertTrue(runCatching { deps.materials.verify(path) }.isFailure)
+        deps.tutors.save(TutorCache(session))
+        deps.materials.verify(path)
+        assertEquals("tut_actual", (deps.materials.resolve(old, session.language) as OpenActivity.Tutor).sessionKey)
+    }
+
+    @Test fun `two measured editions with identical text labels retain their respective page files alongside an upload`() = runBlocking {
+        val directory = tmp.newFolder()
+        val layouts = object : SourceLayouts {
+            override suspend fun sourceLayoutFor(packageId: String) = sourceLayoutFor(packageId, "2")
+            override suspend fun sourceLayoutFor(packageId: String, contentVersion: String): PresetSourceLayout {
+                val pdf = "%PDF-printed-$contentVersion".toByteArray()
+                return PresetSourceLayout(packageId = packageId, documentId = "paper", documentVersion = "same-text",
+                    pdfSha256 = PdfBytes.sha256(pdf), pdfBytes = pdf.size.toLong(), pageCount = 1,
+                    layout = DocumentLayout(listOf(PageBox(0, if (contentVersion == "1") 200f else 400f, 800f))))
+            }
+        }
+        val uploadedLayout = DocumentLayout(listOf(PageBox(0, 600f, 1000f)))
+        SourceDocumentStore(directory).save("paper", "same-text", 1, uploadedLayout, "%PDF-upload".toByteArray())
+        fun reopen() = PresetSources(layouts, SourceDocumentStore(directory))
+        for (version in listOf("1", "2"))
+            assertTrue(reopen().attach("pack", version) { "%PDF-printed-$version".byteInputStream() } is AttachResult.Accepted)
+        for (version in listOf("1", "2")) {
+            val page = requireNotNull(reopen().load("pack", "paper", "same-text", version))
+            assertArrayEquals("%PDF-printed-$version".toByteArray(), page.file.readBytes())
+            assertEquals(if (version == "1") 200f else 400f, page.layout.pages.single().width, 0f)
+        }
+        val imported = requireNotNull(SourceDocumentStore(directory).load("paper", "same-text"))
+        assertEquals(uploadedLayout, imported.layout)
+        assertArrayEquals("%PDF-upload".toByteArray(), imported.file.readBytes())
+    }
+
+    @Test fun `an unreadable confirmed URI keeps an actionable file failure without dispatching an upload`() = runBlocking {
+        val deps = AndroidAppContainer(app)
+        val queue = PdfImportQueue(tmp.newFolder(), { throw java.io.FileNotFoundException("expired content grant") }, deps.tutors, deps.spaces)
+        val row = queue.enqueue("space", listOf(ImportRequest.PdfFile("Paper", Uri.parse("content://expired/paper"), null))).single()
+        assertEquals("FILE_UNAVAILABLE", row.error)
+        assertNull(row.document)
+    }
+
+    @Test fun `a saved fallback route stays pinned to its chosen tutor after another language is added`() = runBlocking {
+        val deps = AndroidAppContainer(app)
+        val original = deps.tutors.open(EXAMPLE_TUTOR_PACKAGE).cache.session
+        val zh = original.copy(sessionId = "tut_chinese", mode = "mock", language = "zh")
+        val en = original.copy(sessionId = "tut_english", mode = "mock", language = "en")
+        deps.tutors.save(TutorCache(en))
+        val ref = ActivityRef.Tutor(original.documentId, original.documentVersion, original.questions.first().conceptId, sessionId = zh.sessionId)
+        val node = PathNode("first-lesson", "Quoted lesson", ref)
+        val path = LearningPath("path", "1", "space", "Seminar", "en", listOf(node))
+        assertTrue(runCatching { deps.materials.verify(path) }.isFailure)
+        deps.tutors.save(TutorCache(zh))
+        deps.materials.verify(path)
+        assertEquals(zh.sessionId, (deps.materials.resolve(node.activity, "en") as OpenActivity.Tutor).sessionKey)
+    }
+
+    @Test fun `an unidentified old read cannot unlock a prerequisite on a different tutor`() = runBlocking {
+        val deps = AndroidAppContainer(app)
+        val m = deps.materials.materials().single { it.localPack?.packageId == EXAMPLE_TUTOR_PACKAGE }
+        val source = m.nodes.first { it.activity is ActivityRef.Tutor }
+        val old = ActivityRef.Tutor(m.source.contentId, m.source.contentVersion, source.activity.activityId)
+        val next = m.nodes.first { it.activity is ActivityRef.Practice }.copy(prerequisites = listOf(source.nodeId))
+        val path = LearningPath("old", "1", "space", "Retained", "en", listOf(source.copy(activity = old), next))
+        val event = com.anything2game.contract.progress.CompletionRecord.at("unknown", old.key("guest"),
+            com.anything2game.contract.progress.ActivityOutcome.READ, 0L, "UTC")
+        val file = tmp.newFile().apply { writeText("""{"events":[${json.encodeToString(event)}]}""") }
+        val progress = LearningProgress(file, "guest")
+        val statuses = deps.materials.nodeStatuses(path, progress, 0L)
+        assertEquals(com.anything2game.engine.progress.NodeStatus.NEEDS_UPDATE, statuses[source.nodeId])
+        assertEquals(com.anything2game.engine.progress.NodeStatus.LOCKED, statuses[next.nodeId])
+    }
+
+    @Test fun `a legacy PDF layout remains readable beside a newly saved edition`() = runBlocking {
+        val directory = tmp.newFolder()
+        val base = PdfBytes.sha256("paper".toByteArray())
+        val layout = DocumentLayout(listOf(PageBox(0, 400f, 800f)))
+        File(directory, "$base.pdf").writeText("%PDF-legacy")
+        File(directory, "$base.layout.json").writeText("""{"documentId":"paper","documentVersion":"v1","pageCount":1,"layout":${json.encodeToString(layout)}}""")
+        val store = SourceDocumentStore(directory)
+        store.save("paper", "v2", 1, DocumentLayout(listOf(PageBox(0, 360f, 600f))), "%PDF-new".toByteArray())
+        val old = requireNotNull(SourceDocumentStore(directory).load("paper", "v1"))
+        assertEquals(layout, old.layout)
+        assertEquals("%PDF-legacy", old.file.readText())
+    }
 
     @Test fun `rejected job admission survives restart and retries only at refreshed revision`() = runBlocking {
         val deps = AndroidAppContainer(app)

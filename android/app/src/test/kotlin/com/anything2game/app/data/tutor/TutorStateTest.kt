@@ -29,7 +29,7 @@ class TutorStateTest {
         override suspend fun turn(cache: TutorCache, intent: TutorIntent, question: String, requestId: String, targetPosition: Int?) = cache.session.copy(revision = cache.session.revision + 1, messages = listOf(TutorMessage("late", "tutor", "Late result")))
         override suspend fun cancel(cache: TutorCache, requestId: String) = cache.session.copy(revision = cache.session.revision + 1)
         override suspend fun upload(request: ImportRequest): DocumentResponse { uploads++; return DocumentResponse("doc", "v", 1, "Title") }
-        override suspend fun create(document: DocumentResponse, requestId: String): TutorSession { creates++; return cache.session }
+        override suspend fun create(document: DocumentResponse, requestId: String, language: String): TutorSession { creates++; return cache.session }
         override suspend fun preparePractice(session: TutorSession): LearningPackage = error("Not used by tutor")
     }
     @Test fun `cancel rejects a late tutor reply while keeping existing assessment`() = runTest {
@@ -132,7 +132,7 @@ class TutorStateTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         try {
             val repo = object : Repository(initial()) {
-                override suspend fun create(document: DocumentResponse, requestId: String): TutorSession {
+                override suspend fun create(document: DocumentResponse, requestId: String, language: String): TutorSession {
                     creates++
                     if (creates == 1) throw TutorApiException("MODEL_TIMEOUT", true)
                     return cache.session
@@ -152,7 +152,7 @@ class TutorStateTest {
         try {
             val gate = CompletableDeferred<Unit>()
             val repo = object : Repository(initial()) {
-                override suspend fun create(document: DocumentResponse, requestId: String): TutorSession {
+                override suspend fun create(document: DocumentResponse, requestId: String, language: String): TutorSession {
                     withContext(NonCancellable) { gate.await() }
                     return cache.session
                 }

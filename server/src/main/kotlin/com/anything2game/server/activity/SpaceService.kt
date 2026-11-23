@@ -10,26 +10,27 @@ import io.ktor.http.HttpStatusCode
 import java.security.MessageDigest
 import java.util.UUID
 
-/** A ready path job is also the durable activation record. Even the file backend exposes the
- * artifact, the new revision and the active path together on one atomic job-file rename. */
+/** A published path job records its activation and any later revocation. A file-store job rename
+ * makes the new revision and its active pointer visible together. */
 class SpaceService(private val store: Store, private val quotas: Quotas) {
-    private fun readyPaths(owner: String) = store.listJobsByOwner(owner).filter {
-        it.state == CompileJobState.READY && it.generation?.input is GenerationInput.SpacePath
+    private fun publications(owner: String) = store.listJobsByOwner(owner).filter {
+        it.generation?.input is GenerationInput.SpacePath && (it.state == CompileJobState.READY || it.generation.publishedSources != null)
     }.groupBy { (it.generation!!.input as GenerationInput.SpacePath).spaceId }
 
     private fun effective(stored: StoredSpace, paths: List<JobRecord>): Space {
         val latest = paths.maxByOrNull { (it.generation!!.input as GenerationInput.SpacePath).expectedRevision }
-        return stored.space.copy(revision = stored.space.revision + paths.size, activePathVersion = latest?.generation?.result?.content)
+        val revocations = paths.count { it.state == CompileJobState.CANCELLED }
+        return stored.space.copy(revision = stored.space.revision + paths.size + revocations, activePathVersion = latest?.generation?.result?.content)
     }
 
     fun list(owner: String) = store.withOwnerLock(owner) {
-        val paths = readyPaths(owner)
+        val paths = publications(owner)
         store.listSpaces(owner).map { effective(it, paths[it.space.spaceId].orEmpty()) }.sortedBy { it.spaceId }
     }
 
     fun get(owner: String, id: String): Space = store.withOwnerLock(owner) {
         val stored = store.getSpace(id)?.takeIf { it.ownerId == owner } ?: throw ApiException.notFound()
-        effective(stored, readyPaths(owner)[id].orEmpty())
+        effective(stored, publications(owner)[id].orEmpty())
     }
 
     fun create(owner: String, req: CreateSpaceRequest): Space = store.withOwnerLock(owner) {
@@ -73,7 +74,7 @@ class SpaceService(private val store: Store, private val quotas: Quotas) {
         store.withOwnerLock(owner) {
             requestId(key)
             val raw = store.getSpace(id)?.takeIf { it.ownerId == owner } ?: throw ApiException.notFound()
-            val prior = effective(raw, readyPaths(owner)[id].orEmpty())
+            val prior = effective(raw, publications(owner)[id].orEmpty())
             val receiptKey = "$op:$key"
             if (store.listSpaces(owner).any { it.space.spaceId != id && receiptKey in it.receipts }) throw conflict("REQUEST_CONFLICT")
             val hash = digest(body)

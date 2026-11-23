@@ -146,6 +146,11 @@ internal fun SpaceScreen(deps: AppDependencies, language: String, route: Route.S
                         Text(node.title, style = MaterialTheme.typography.titleMedium)
                         Text(stringResource(statusLabel(status)), color = A2g.skin.inkMuted, modifier = Modifier.testTag("route_status_${node.nodeId}"))
                         val activity = node.activity
+                        val material = vm.materials.firstOrNull { m -> when (activity) {
+                            is ActivityRef.Tutor -> activity.sessionId != null && m.tutorKey == activity.sessionId
+                            is ActivityRef.Practice -> m.localPack?.version() == ContentVersion(activity.contentId, activity.contentVersion)
+                            is ActivityRef.Game -> false
+                        } }
                         Button({ vm.perform {
                             val open = vm.catalog.resolve(activity, language) ?: error("Missing activity")
                             if (nav.route.value != route || deps.profiles.active.value != profile) return@perform
@@ -165,10 +170,11 @@ internal fun SpaceScreen(deps: AppDependencies, language: String, route: Route.S
                             val id = node.nodeId + "/" + ref.evidenceId
                             TextButton({ selectedEvidence = id }) {
                                 Text(if (ref is EvidenceRef.Pdf) stringResource(R.string.spaces_source_page,
-                                    vm.materials.find { it.source == ContentVersion(ref.documentId, ref.documentVersion) }?.title ?: ref.documentId,
+                                    material?.takeIf { it.source == ContentVersion(ref.documentId, ref.documentVersion) }?.title
+                                        ?: vm.materials.find { it.source == ContentVersion(ref.documentId, ref.documentVersion) }?.title ?: ref.documentId,
                                     ref.pageLabel ?: (ref.pageIndex+1).toString()) else stringResource(R.string.source_open))
                             }
-                            if (selectedEvidence == id) ActivityEvidence(vm.catalog, ref) { selectedEvidence = null }
+                            if (selectedEvidence == id) ActivityEvidence(vm.catalog, ref, material) { selectedEvidence = null }
                         }
                     }
                 }

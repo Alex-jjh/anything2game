@@ -21,11 +21,37 @@ private data class LearningLedger(val checkpoints: List<GameCheckpoint> = emptyL
 
 /** One committed snapshot is the source of truth for checkpoints, completion, mastery and historical days. */
 class LearningProgress(file: File, val profileId: String, private val clock: Clock = Clock.SYSTEM,
-    private val zone: () -> ZoneId = ZoneId::systemDefault, private val beforeProjection: suspend () -> Unit = {}) {
+    private val zone: () -> ZoneId = ZoneId::systemDefault, private val tutorHistory: suspend () -> List<TutorSession> = { emptyList() },
+    private val beforeProjection: suspend () -> Unit = {}) {
     private val store = AtomicSnapshot(file, LearningLedger.serializer(), ::LearningLedger)
+    @Volatile private var checkedLegacyReads = false
     suspend fun projection(): com.anything2game.engine.progress.ActivityProgress {
         beforeProjection()
-        return ProgressProjection.from(profileId, store.read().events)
+        val ledger = store.read()
+        val identified = if (checkedLegacyReads) ledger else identifyLegacyReads(ledger)
+        val progress = ProgressProjection.from(profileId, identified.events)
+        // An unidentified historical read still contributes its recorded study day, but cannot satisfy a lesson prerequisite.
+        return progress.copy(completed = progress.completed.filterNot { it.activityKind == ActivityKind.TUTOR && it.tutorSessionId == null }.toSet())
+    }
+
+    private fun readId(session: TutorSession, messageId: String) =
+        stableId("read", session.sessionId, messageId, session.documentId, session.documentVersion)
+
+    /** Old receipts already hashed the exact session and message. Qualify only the receipts we can prove from the saved log. */
+    private suspend fun identifyLegacyReads(ledger: LearningLedger): LearningLedger {
+        val legacy = ledger.events.filter { it.outcome == ActivityOutcome.READ && it.activity.tutorSessionId == null }.map { it.completionId }.toSet()
+        val named = mutableMapOf<String, String>()
+        if (legacy.isNotEmpty()) for (session in tutorHistory()) {
+            for (message in session.messages.filter { it.role == "tutor" }) {
+                val id = readId(session, message.id)
+                if (id in legacy) named[id] = session.sessionId
+            }
+        }
+        val result = if (named.isEmpty()) ledger else store.update { current ->
+            current.copy(events = current.events.map { e -> named[e.completionId]?.let { e.copy(activity = e.activity.copy(tutorSessionId = it)) } ?: e })
+        }
+        checkedLegacyReads = true
+        return result
     }
     suspend fun checkpoint(version: ContentVersion) = store.read().checkpoints.singleOrNull {
         it.gameId == version.contentId && it.gameVersion == version.contentVersion
@@ -75,8 +101,9 @@ class LearningProgress(file: File, val profileId: String, private val clock: Clo
 
     suspend fun tutorRead(session: TutorSession, time: Long = clock.now(), zoneId: String = zone().id) {
         val message = session.messages.lastOrNull { it.role == "tutor" } ?: return
-        val ref = ActivityRef.Tutor(session.documentId, session.documentVersion, com.anything2game.contract.tutor.TutorRules.orderedQuestions(session)[session.conceptPosition].conceptId)
-        val id = stableId("read", session.sessionId, message.id, ref.contentId, ref.contentVersion)
+        val ref = ActivityRef.Tutor(session.documentId, session.documentVersion,
+            com.anything2game.contract.tutor.TutorRules.orderedQuestions(session)[session.conceptPosition].conceptId, sessionId = session.sessionId)
+        val id = readId(session, message.id)
         store.update { it.add(event(id, ref, ActivityOutcome.READ, time, zoneId)) }
     }
 

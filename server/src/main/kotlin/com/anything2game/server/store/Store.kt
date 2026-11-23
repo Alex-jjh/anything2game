@@ -10,6 +10,8 @@ import com.anything2game.contract.FrameOverlay
 import com.anything2game.contract.LearningPackage
 import com.anything2game.contract.SourceChunk
 import com.anything2game.contract.game.*
+import com.anything2game.contract.pack.ActivityPayload
+import com.anything2game.contract.pack.PackCodec
 import com.anything2game.contract.space.*
 import kotlinx.serialization.Serializable
 
@@ -83,7 +85,9 @@ internal val GenerationInput.operation: String get() = when (this) {
 @Serializable
 data class GenerationWork(val input: GenerationInput, val stage: GenerationStage? = null,
     val result: GeneratedContent? = null, val excludedMembers: List<SpaceMember> = emptyList(),
-    val modelId: String? = null, val fixture: Boolean = false)
+    val modelId: String? = null, val fixture: Boolean = false,
+    /** Known source IDs of a published path. Kept after revocation so its activation remains in revision history. */
+    val publishedSources: Set<String>? = null)
 
 @Serializable
 data class StoredSpace(val ownerId: String, val space: Space, val receipts: Map<String, String>)
@@ -96,6 +100,7 @@ interface ActivityRepository {
     fun listSpaces(ownerId: String): List<StoredSpace>
     fun writeArtifact(jobId: String, bytes: ByteArray)
     fun readArtifact(jobId: String): ByteArray?
+    fun deleteArtifact(jobId: String)
 }
 
 /** A package with its owner and whether the job is finished (frames are only generated for finished packages). */
@@ -206,18 +211,44 @@ interface Store : ActivityRepository, com.anything2game.server.tutor.TutorStore,
 }
 
 
-/** Called under the owner lock before removing an uploaded source, including when work has not yet been claimed. */
+internal fun LearningPath.quotedDocuments() = nodes.flatMap { it.evidence }.filterIsInstance<EvidenceRef.Pdf>()
+    .map { it.documentId }.toSet()
+
+/** Pre-index archives carry their authoritative dependencies in the quotes of the validated path. */
+private fun Store.historicalSources(jobId: String): Set<String>? {
+    val bytes = readArtifact(jobId) ?: return null
+    val manifest = PackCodec.readManifest(bytes.inputStream()).getOrNull() ?: return null
+    val archive = PackCodec.readActivity(bytes.inputStream(), manifest.dependencies,
+        validateGame = com.anything2game.engine.game.GameRuntime::validate).getOrNull() ?: return null
+    return (archive.payload as? ActivityPayload.Path)?.path?.quotedDocuments()
+}
+
+/** Called under the same owner lock as publication. The file backend removes bytes before deleting the source
+ * and can finish an interrupted purge from the durable revoked job on the next deletion attempt. */
 internal fun Store.cancelPathsUsing(owner: String, documentId: String) {
     val affected = listSpaces(owner).filter { stored ->
         stored.space.members.any { it is SpaceMember.ServerDocumentRef && it.documentId == documentId }
     }.map { it.space.spaceId }.toSet()
-    if (affected.isEmpty()) return
-    listJobsByOwner(owner).filter {
-        !it.state.isTerminal && (it.generation?.input as? GenerationInput.SpacePath)?.spaceId in affected
-    }.forEach { job ->
-        updateIfNotTerminal(job.jobId) {
-            it.copy(state = CompileJobState.CANCELLED, updatedAt = System.currentTimeMillis(),
-                error = ApiError("SOURCE_REMOVED", "A document used by this path was deleted.", false))
+    val removed = ApiError("SOURCE_REMOVED", "A document used by this path was deleted.", false)
+    for (job in listJobsByOwner(owner)) {
+        val work = job.generation ?: continue
+        val input = work.input as? GenerationInput.SpacePath ?: continue
+        if (job.state != CompileJobState.READY) {
+            if (!job.state.isTerminal && input.spaceId in affected) updateIfNotTerminal(job.jobId) {
+                it.copy(state = CompileJobState.CANCELLED, updatedAt = System.currentTimeMillis(), error = removed)
+            }
+            // Publication holds this lock. Any bytes on an unpublished or revoked job are leftovers of an interrupted write.
+            deleteArtifact(job.jobId)
+            continue
+        }
+        val sources = work.publishedSources ?: historicalSources(job.jobId)
+        if (sources == null || documentId in sources) {
+            // A damaged pre-index archive cannot establish which quotations it contains.
+            updateJob(job.jobId) { it.copy(state = CompileJobState.CANCELLED, updatedAt = System.currentTimeMillis(),
+                error = removed, generation = work.copy(result = null, publishedSources = sources.orEmpty())) }
+            deleteArtifact(job.jobId)
+        } else if (work.publishedSources == null) {
+            updateJob(job.jobId) { it.copy(generation = work.copy(publishedSources = sources)) }
         }
     }
 }

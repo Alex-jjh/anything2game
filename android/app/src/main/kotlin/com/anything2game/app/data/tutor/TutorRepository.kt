@@ -34,7 +34,7 @@ interface TutorRepository {
     suspend fun cancel(cache: TutorCache, requestId: String): TutorSession
     suspend fun upload(request: ImportRequest): DocumentResponse
     suspend fun preparePractice(session: TutorSession): LearningPackage
-    suspend fun create(document: DocumentResponse, requestId: String): TutorSession
+    suspend fun create(document: DocumentResponse, requestId: String, language: String = "zh"): TutorSession
     /** Remembers what the reader wants out of the reading (kept on this device) and orders the questions by it. */
     suspend fun setFocus(cache: TutorCache, facets: List<Facet>, note: String): TutorCache = cache.withFocus(facets, note)
     /** The reader's own PDF of this document version with its text geometry, when this phone kept one; null shows the text. */
@@ -105,6 +105,7 @@ class AndroidTutorRepository(
     }
     override suspend fun save(cache: TutorCache) = files.write(cache)
     override suspend fun list() = files.list()
+    internal suspend fun savedHistory() = files.list(includeScripted = true)
     internal suspend fun recoverPendingReads() = files.recoverPendingReads()
     override suspend fun progressFor(packageId: String): TutorProgress? {
         val pkg = packages.load(packageId).getOrNull() ?: return null
@@ -161,8 +162,8 @@ class AndroidTutorRepository(
     }
     override suspend fun sourceDocument(documentId: String, documentVersion: String): SourceDocument? =
         try { sourceFiles.load(documentId, documentVersion) } catch (e: CancellationException) { throw e } catch (e: Exception) { null }
-    override suspend fun create(document: DocumentResponse, requestId: String): TutorSession {
-        val s = decode(http.request("POST", "/v1/documents/${document.documentId}/tutor", json.encodeToString(CreateTutorRequest.serializer(), CreateTutorRequest("zh", requestId))))
+    override suspend fun create(document: DocumentResponse, requestId: String, language: String): TutorSession {
+        val s = decode(http.request("POST", "/v1/documents/${document.documentId}/tutor", json.encodeToString(CreateTutorRequest.serializer(), CreateTutorRequest(language, requestId))))
         require(s.documentId == document.documentId && s.documentVersion == document.documentVersion)
         return s
     }

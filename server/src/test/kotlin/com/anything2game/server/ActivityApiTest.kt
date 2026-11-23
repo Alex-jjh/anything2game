@@ -155,6 +155,10 @@ class ActivityApiTest {
             assertEquals(content.contentId, next.contentId)
             assertNotEquals(content.contentVersion, next.contentVersion)
             assertArrayEquals(bytes, api.send(HttpMethod.Get, "/v1/content/${content.contentId}/versions/${content.contentVersion}", token).bodyAsBytes())
+            val deleted = api.send(HttpMethod.Delete, "/v1/documents/${docs.first().first.documentId}", token)
+            assertTrue(deleted.status.isSuccess())
+            for (published in listOf(content, next)) assertEquals(HttpStatusCode.NotFound,
+                api.send(HttpMethod.Get, "/v1/content/${published.contentId}/versions/${published.contentVersion}", token).status)
         }
     }
 }

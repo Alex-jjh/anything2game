@@ -25,6 +25,7 @@ import com.anything2game.app.ui.Navigator
 import com.anything2game.app.ui.Route
 import com.anything2game.app.ui.home.*
 import com.anything2game.app.ui.library.*
+import com.anything2game.app.ui.importing.importErrorMessage
 import com.anything2game.app.ui.play.offeredFrames
 import com.anything2game.app.ui.theme.A2g
 import com.anything2game.contract.FrameId
@@ -44,7 +45,7 @@ internal fun LazyListScope.materialItems(deps: AppDependencies, vm: SpaceViewMod
             Text(when {
                 row.sessionId != null -> stringResource(R.string.spaces_imported)
                 unknown -> stringResource(R.string.spaces_unknown)
-                row.error != null -> stringResource(R.string.spaces_error, row.error)
+                row.error != null -> importErrorMessage(row.error)
                 else -> stringResource(R.string.spaces_pending)
             })
             if (row.sessionId == null) OutlinedButton({ if (unknown) confirm = true else vm.retryImport(row, false) },
@@ -134,7 +135,7 @@ private fun MaterialActivities(deps: AppDependencies, material: Material, nav: N
                 val course = requireNotNull(content.course(version))
                 val pkg = course.pkg
                 val manifest = course.manifest
-                val frames = offeredFrames(pkg, manifest.frames)
+                val frames = offeredFrames(pkg, content.available(version))
                 val summary = PackageSummary(pkg.packageId, pkg.title, pkg.language, pkg.levels.size, manifest.origin == PackOrigin.PRESET)
                 entry = libraryEntry(summary, pkg, deps.sessions.load(local.packageId, local.contentVersion),
                     deps.mastery.all(local.packageId, local.contentVersion), deps.clock.now()).copy(

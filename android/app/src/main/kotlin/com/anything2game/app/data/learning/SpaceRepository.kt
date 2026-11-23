@@ -67,8 +67,9 @@ class SpaceRepository(file: File, private val materials: suspend () -> List<Mate
             add.map { SpaceEdit(EditKind.ADD, id(), member = it, verificationFor = it) })
     }
 
-    suspend fun list(): List<Space> {
-        val catalog = materials()
+    suspend fun list(): List<Space> = list(materials())
+
+    internal suspend fun list(catalog: List<Material>): List<Space> {
         val aliases = catalog.verifiedAliases()
         return disk.update { prior ->
             val entries = prior.entries.mapValues { it.value.reconcile(aliases) }.toMutableMap()
@@ -241,19 +242,24 @@ class SpaceRepository(file: File, private val materials: suspend () -> List<Mate
     }
 
     suspend fun route(id: String, language: String): LearningPath? {
-        val space = list().single { it.spaceId == id }
         val catalog = materials()
+        return route(list(catalog).single { it.spaceId == id }, language, catalog)
+    }
+
+    internal suspend fun route(space: Space, language: String, catalog: List<Material>): LearningPath? {
+        val id = space.spaceId
         val members = catalog.filter { it.member in space.members || it.localPack?.let(space.members::contains) == true }
         val generated = space.activePathVersion?.let { loadPath(it) }
         val includedDocs = members.map { it.source }.toSet() + space.members.filterIsInstance<SpaceMember.ServerDocumentRef>().map { it.version() }
         val generatedNodes = generated?.nodes.orEmpty().filterNot { n -> n.evidence.filterIsInstance<EvidenceRef.Pdf>()
             .any { ContentVersion(it.documentId, it.documentVersion) !in includedDocs } }
         val kept = generatedNodes.map { it.nodeId }.toSet()
-        val nodes = generatedNodes.map { it.copy(prerequisites = it.prerequisites.filter(kept::contains)) }.toMutableList()
+        val pathLanguage = generated?.language ?: language
+        val nodes = generatedNodes.map { it.bindTutor(members, pathLanguage).copy(prerequisites = it.prerequisites.filter(kept::contains)) }.toMutableList()
         val used = nodes.map { it.activity.key("") }.toMutableSet()
         for (node in members.flatMap { it.nodes }) if (used.add(node.activity.key(""))) nodes += node
         if (nodes.isEmpty()) return null
         return LearningPath(generated?.pathId ?: "local-$id", generated?.pathVersion ?: "local", id, space.title,
-            generated?.language ?: language, nodes, generated?.excludedMembers.orEmpty().filter { it in space.members })
+            pathLanguage, nodes, generated?.excludedMembers.orEmpty().filter { it in space.members })
     }
 }

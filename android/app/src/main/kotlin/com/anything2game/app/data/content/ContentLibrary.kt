@@ -26,6 +26,7 @@ import kotlinx.coroutines.sync.withLock
  * (sources are given preset-first, so an installed copy replaces the bundled one).
  */
 class ContentLibrary(private val sources: List<PackSource>) : PackageRepository, FrameRepository, TutorScripts, SourceLayouts {
+    data class DeviceGame(val manifest: PackManifest, val spec: GameSpec, val origin: PackOrigin)
     private val mutex = Mutex()
     private var index: Map<ContentVersion, PackRef>? = null
     private val opened = HashMap<ContentVersion, ContentPack>()
@@ -44,18 +45,19 @@ class ContentLibrary(private val sources: List<PackSource>) : PackageRepository,
     suspend fun manifests() = refs().values.map { it.manifest }
 
     suspend fun install(input: InputStream, availableDocuments: Set<ContentVersion> = emptySet(), expected: ContentVersion? = null,
-        beforeCoursePublish: suspend (ContentPack) -> Unit = {}, verifyActivity: suspend (ActivityPack) -> Unit = {}): PackManifest {
+        beforeCoursePublish: suspend (ContentPack) -> Unit = {}, authenticatedGame: Boolean = false,
+        verifyActivity: suspend (ActivityPack) -> Unit = {}): PackManifest {
         val disk = sources.filterIsInstance<DirectoryPackSource>().last()
         val bundled = sources.filter { it !== disk }.flatMap { it.list() }
-        val manifest = disk.install(input, availableVersions() + availableDocuments, expected, bundled, beforeCoursePublish, verifyActivity).getOrThrow()
+        val manifest = disk.install(input, availableVersions() + availableDocuments, expected, bundled, beforeCoursePublish, authenticatedGame, verifyActivity).getOrThrow()
         refresh()
         return manifest
     }
 
     /** Only verified playable games are offered, together with their offline provenance. */
-    suspend fun games(language: String? = null): List<Pair<PackManifest, GameSpec>> =
+    suspend fun games(language: String? = null): List<DeviceGame> =
         refs().values.filter { it.manifest.packageSchema == GAME_SCHEMA && (language == null || it.manifest.language == language) }
-            .mapNotNull { ref -> game(ref.version)?.let { ref.manifest to it } }
+            .mapNotNull { ref -> game(ref.version)?.let { DeviceGame(ref.manifest, it, ref.installedOrigin) } }
 
     suspend fun availableVersions(): Set<ContentVersion> = refs().values.mapNotNull { ref ->
         when {
@@ -102,8 +104,12 @@ class ContentLibrary(private val sources: List<PackSource>) : PackageRepository,
 
     override suspend fun load(packageId: String, version: String, frameId: FrameId) = course(ContentVersion(packageId, version))?.frames?.get(frameId)
 
-    override suspend fun available(packageId: String): List<FrameId> {
-        val present = pack(packageId)?.frames?.keys.orEmpty()
+    override suspend fun available(packageId: String) = availableFrames(pack(packageId))
+
+    suspend fun available(version: ContentVersion) = availableFrames(course(version))
+
+    private fun availableFrames(course: ContentPack?): List<FrameId> {
+        val present = course?.frames?.keys.orEmpty()
         return FrameId.entries.filter { !FrameSpec.of(it).needsOverlay || it in present }
     }
 

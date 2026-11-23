@@ -179,7 +179,7 @@ class LearningIntegrationTest {
                 require(staged.readText() == "%PDF-approved-fixture")
                 return DocumentResponse("imported", "sha256:one", 1, request.title)
             }
-            override suspend fun create(document: DocumentResponse, requestId: String) =
+            override suspend fun create(document: DocumentResponse, requestId: String, language: String) =
                 seed.copy(sessionId = "tut_" + requestId, mode = "mock", documentId = document.documentId, documentVersion = document.documentVersion)
         }
         val dir = tmp.newFolder()

@@ -42,7 +42,8 @@ internal class SpaceViewModel(deps: AppDependencies, private val language: Strin
     var stale by mutableStateOf(false); private set
 
     private suspend fun load() {
-        val all = spaces.list()
+        val inventory = catalog.snapshot()
+        val all = spaces.list(inventory.materials)
         if (detail != null && all.none { it.spaceId == detail }) {
             cards = emptyList()
             unavailable = true
@@ -52,10 +53,11 @@ internal class SpaceViewModel(deps: AppDependencies, private val language: Strin
         val today = LocalDate.now()
         val monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).toString()
         weekDays = projection.days.count { it >= monday && it <= today.toString() }
-        materials = catalog.materials()
+        materials = inventory.materials
+        val now = clock.now()
         cards = all.filter { detail == null || it.spaceId == detail }.map { space ->
-            val path = spaces.route(space.spaceId, language)
-            SpaceCard(space, path, path?.let { catalog.nodeStatuses(it, progress, clock.now()) }.orEmpty())
+            val path = spaces.route(space, language, inventory.materials)
+            SpaceCard(space, path, path?.let { inventory.statuses(it, progress.profileId, projection, now) }.orEmpty())
         }
         if (detail != null) {
             remote = spaces.serverState(detail)
@@ -81,7 +83,7 @@ internal class SpaceViewModel(deps: AppDependencies, private val language: Strin
         try { rejected = spaces.rejectedEdits(id) } catch (e: CancellationException) { throw e } catch (_: Exception) { /* Keep the original failure and the last readable snapshot. */ }
     }
     fun importFiles(id: String, files: List<ImportRequest.PdfFile>, batchId: String, onJournaled: () -> Unit) = perform {
-        val rows = queue.enqueue(id, files, batchId, onJournaled)
+        val rows = queue.enqueue(id, files, batchId, language, onJournaled)
         imports = queue.list().filter { it.spaceId == id }
         for (row in rows.filter { it.error == null }) {
             queue.process(row.id)

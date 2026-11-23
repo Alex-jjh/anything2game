@@ -53,7 +53,7 @@ class PresetSources(
         val documentId = l.documentId
         val documentVersion = l.documentVersion
         // A damaged record is "not attached", never a crash on opening a course.
-        val kept = try { store.load(documentId, documentVersion) } catch (e: CancellationException) { throw e } catch (e: Exception) { null } ?: return null
+        val kept = try { store.load(documentId, documentVersion, l.pdfSha256) } catch (e: CancellationException) { throw e } catch (e: Exception) { null } ?: return null
         // The pack's geometry, not the record's copy: a newer measurement of the same bytes wins; other bytes never match.
         return if (kept.pdfSha256 == l.pdfSha256) SourceDocument(l.documentId, l.documentVersion, l.pageCount, kept.file, l.layout, l.pdfSha256) else null
     }

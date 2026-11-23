@@ -17,7 +17,8 @@ import java.util.UUID
 
 @Serializable
 data class PdfImportItem(val id: String, val spaceId: String, val title: String, val uri: String, val sizeBytes: Long?,
-    val staged: Boolean = false, val document: DocumentResponse? = null, val sessionId: String? = null, val error: String? = null, val batchId: String? = null)
+    val staged: Boolean = false, val document: DocumentResponse? = null, val sessionId: String? = null, val error: String? = null,
+    val batchId: String? = null, val language: String = "zh")
 
 /** Stage the authorized selection while its temporary grant is alive. Each PDF has its own retry boundary. */
 class PdfImportQueue(private val dir: File, private val read: suspend (ImportRequest.PdfFile) -> ByteArray,
@@ -33,7 +34,9 @@ class PdfImportQueue(private val dir: File, private val read: suspend (ImportReq
     private suspend fun stage(row: PdfImportItem): PdfImportItem {
         val file = bytes(row)
         if (!file.exists()) {
-            val data = read(ImportRequest.PdfFile(row.title, Uri.parse(row.uri), row.sizeBytes))
+            val data = com.anything2game.app.data.api.beforeApiDispatch("FILE_UNAVAILABLE") {
+                read(ImportRequest.PdfFile(row.title, Uri.parse(row.uri), row.sizeBytes))
+            }
             if (!PdfBytes.looksLikePdf(data)) throw TutorApiException("INVALID_PDF", false)
             withContext(Dispatchers.IO) {
                 val temp = File.createTempFile("selected", ".part", dir)
@@ -46,10 +49,10 @@ class PdfImportQueue(private val dir: File, private val read: suspend (ImportReq
     /** Publish the whole confirmed selection atomically before reading any URI. A restored confirmation
      * reuses its batch ID and the original row IDs, including any siblings which have already completed. */
     suspend fun enqueue(spaceId: String, requests: List<ImportRequest.PdfFile>, batchId: String = UUID.randomUUID().toString(),
-        onJournaled: () -> Unit = {}): List<PdfImportItem> {
+        language: String = "zh", onJournaled: () -> Unit = {}): List<PdfImportItem> {
         require(batchId.isNotBlank() && requests.isNotEmpty())
         val selection = requests.map { request ->
-            PdfImportItem(UUID.randomUUID().toString(), spaceId, request.title, request.uri.toString(), request.sizeBytes, batchId = batchId)
+            PdfImportItem(UUID.randomUUID().toString(), spaceId, request.title, request.uri.toString(), request.sizeBytes, batchId = batchId, language = language)
         }
         val batch = rows.update { all ->
             val existing = all.filter { it.batchId == batchId }
@@ -99,7 +102,7 @@ class PdfImportQueue(private val dir: File, private val read: suspend (ImportReq
             }
             val member = SpaceMember.ServerDocumentRef(document.documentId, document.documentVersion)
             spaces.add(row.spaceId, member)
-            val session = tutors.create(document, row.id)
+            val session = tutors.create(document, row.id, row.language)
             tutors.save(TutorCache(session))
             val complete = save(row.copy(sessionId = session.sessionId, error = null))
             withContext(Dispatchers.IO) { bytes(row).delete() }

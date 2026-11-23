@@ -189,6 +189,29 @@ class GenerationJourneyTest : JourneyTest() {
             systemBack()
             waitForText("Test provider · fixture-game")
             assertTrue(runBlocking { container.generation.list().single().installed })
+            val checkpoint = runBlocking { requireNotNull(container.learningProgress.checkpoint(version)) }
+            org.robolectric.RuntimeEnvironment.setQualifiers("+zh")
+            scenario!!.recreate()
+            for (tag in listOf("resume_game", "game_${version.contentId}_${version.contentVersion}")) {
+                waitForTag(tag)
+                tap(rule.onNodeWithTag(tag))
+                waitForText("Generated lockers")
+                waitForTag("game_board")
+                assertEquals(checkpoint, runBlocking { container.learningProgress.checkpoint(version) })
+                systemBack()
+            }
         } finally { server.stop(0) }
+    }
+
+    @Test fun an_imported_archive_claiming_a_server_model_displays_import_provenance() {
+        val pkg = ReviewedGames.partition("en").copy(gameId = "independent-game", gameVersion = "1", title = "Imported lockers")
+        val pack = PackCodec.build(pkg, PackOrigin.SERVER)
+        runBlocking {
+            deps.content!!.install(PackCodec.toBytes(pack.copy(manifest = pack.manifest.copy(modelId = "fixture-game", fixture = true))).inputStream())
+        }
+        launch(); chooseGuest(); tap(rule.onNodeWithTag("tab_PLAYGROUND"))
+        waitForText("Imported lockers")
+        rule.onAllNodesWithText("Test provider · fixture-game").assertCountEquals(0)
+        rule.onNodeWithText(str(R.string.games_imported)).assertExists()
     }
 }

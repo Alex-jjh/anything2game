@@ -13,6 +13,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.anything2game.app.AppDependencies
@@ -24,7 +25,7 @@ import com.anything2game.contract.pack.*
 import com.anything2game.engine.game.GameRuntime
 import kotlinx.coroutines.CancellationException
 
-private data class InstalledGame(val manifest: PackManifest, val spec: GameSpec, val resume: Boolean)
+private data class InstalledGame(val manifest: PackManifest, val spec: GameSpec, val origin: PackOrigin, val resume: Boolean)
 @Composable
 internal fun Playground(deps: AppDependencies, language: String, padding: PaddingValues, onOpen: (ContentVersion) -> Unit) {
     var games by remember { mutableStateOf<List<InstalledGame>?>(null) }
@@ -33,10 +34,11 @@ internal fun Playground(deps: AppDependencies, language: String, padding: Paddin
     var topic by rememberSaveable { mutableStateOf("") }
     LaunchedEffect(language, reload) {
         try {
-            games = requireNotNull(deps.content).games(language).map { (manifest, spec) ->
+            games = requireNotNull(deps.content).games().map { (manifest, spec, origin) ->
                 val ck = deps.learningProgress?.checkpoint(ContentVersion(spec.gameId, spec.gameVersion))
-                InstalledGame(manifest, spec, ck != null && !GameRuntime.replay(spec, ck).completed)
-            }.sortedWith(compareByDescending<InstalledGame> { it.resume }.thenByDescending {
+                InstalledGame(manifest, spec, origin, ck != null && !GameRuntime.replay(spec, ck).completed)
+            }.filter { it.origin != PackOrigin.PRESET || it.spec.language == language || it.resume }
+                .sortedWith(compareByDescending<InstalledGame> { it.resume }.thenByDescending {
                 ContentVersion(it.spec.gameId, it.spec.gameVersion) == deps.homePreferences.lastGame
             }.thenBy { it.spec.title })
             failure = null
@@ -75,17 +77,19 @@ internal fun Playground(deps: AppDependencies, language: String, padding: Paddin
                     }
                     Column(Modifier.weight(1f)) {
                         Text(spec.title, style = MaterialTheme.typography.titleLarge)
-                        Text(when (card.manifest.origin) {
+                        Text(when (card.origin) {
                             PackOrigin.PRESET -> stringResource(R.string.badge_pre_generated)
                             PackOrigin.IMPORT -> stringResource(R.string.games_imported)
                             PackOrigin.SERVER -> if (card.manifest.fixture) stringResource(R.string.games_fixture, card.manifest.modelId.orEmpty())
                                 else card.manifest.modelId?.let { stringResource(R.string.games_generated, it) } ?: stringResource(R.string.games_provider_unknown)
                         },
                             color = A2g.skin.inkMuted, style = MaterialTheme.typography.labelMedium)
+                        if (spec.language != language) Text(java.util.Locale.forLanguageTag(spec.language)
+                            .getDisplayLanguage(LocalConfiguration.current.locales[0]), style = MaterialTheme.typography.labelMedium)
                     }
                 }
                 Text(spec.stages.first().goal)
-                val tag = if (card.manifest.origin != PackOrigin.PRESET) "game_${spec.gameId}_${spec.gameVersion}"
+                val tag = if (card.origin != PackOrigin.PRESET || spec.language != language) "game_${spec.gameId}_${spec.gameVersion}"
                     else if (partition) "game_partition" else "game_allocation"
                 OutlinedButton({ onOpen(ContentVersion(spec.gameId, spec.gameVersion)) },
                     Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag(tag)) { Text(stringResource(if (card.resume) R.string.games_continue else R.string.games_ready)) }

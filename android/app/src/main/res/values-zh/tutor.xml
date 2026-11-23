@@ -90,4 +90,9 @@
     <string name="source_attach_unplaced">PDF 已附上。这段原文在页面上没有位置信息，因此在这里显示文字。</string>
     <string name="source_attach_retry">换一个文件</string>
     <string name="source_attach_download">打开下载页面</string>
+    <string name="import_invalid_pdf">无法打开这个 PDF。请选择有效的 PDF 文件。</string>
+    <string name="import_oversized_pdf">请选择不超过 20 MB 的 PDF，或将文档拆分为较小的文件。</string>
+    <string name="import_encrypted_pdf">请先移除密码或加密保护，再选择解锁后的 PDF。</string>
+    <string name="import_scanned_pdf">这个 PDF 没有可读取的文字。请选择可搜索的 PDF，或先用文字识别工具添加文本层。</string>
+    <string name="import_unreadable_pdf">无法读取文件。请先将文件下载到此设备，再重新选择。</string>
 </resources>

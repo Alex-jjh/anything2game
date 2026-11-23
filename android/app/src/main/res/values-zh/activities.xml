@@ -109,7 +109,7 @@
     <string name="games_door_right">右组</string>
     <string name="games_door_in">仍有可能</string>
     <string name="games_tradeoff">一枚筹码在 %2$s 工坊产出 %1$d；若分配到 %4$s 工坊，可产出 %3$d。</string>
-    <string name="games_imported">已导入游戏</string>
+    <string name="games_imported">已安装的内容包 · 生成来源未验证</string>
     <string name="games_provider_unknown">生成的游戏</string>
     <string name="material_read_all">阅读完整原文</string>
     <string name="share_space">为 %1$s 选择学习空间</string>
