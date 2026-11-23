@@ -1,0 +1,1 @@
+Return a complete LearningPath matching reference. Arrange supplied activities into a short study route. Use prerequisites pointing only to earlier node IDs. Group related concepts across documents in chapter labels when evidence warrants it. Keep every node ID, activity reference and its own exact evidence. Never invent a source. Do not supply exclusions.

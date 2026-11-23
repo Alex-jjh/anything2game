@@ -9,13 +9,14 @@
 
 # ---- build ---------------------------------------------------------------------------------------------------------------------
 # gradle:9.4.1 is the version of gradle/wrapper/gradle-wrapper.properties. A2G_SERVER_ONLY=1 makes settings.gradle.kts skip the
-# Android modules, so no Android SDK is needed.
+# Android application, so no Android SDK is needed.
 FROM gradle:9.4.1-jdk21 AS build
 ENV A2G_SERVER_ONLY=1
 WORKDIR /src
 COPY settings.gradle.kts build.gradle.kts gradle.properties ./
 COPY gradle ./gradle
 COPY contract ./contract
+COPY android/engine ./android/engine
 COPY server ./server
 RUN gradle --no-daemon --console=plain :server:installDist -x test
 

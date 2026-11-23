@@ -29,6 +29,12 @@ object PromptTemplates {
         stream.use { it.readBytes().toString(Charsets.UTF_8) }
     }
 
+    /** Stage-specific activity instructions share the same registry, source and mobile constraints. */
+    fun activity(stage: String, input: kotlinx.serialization.json.JsonObject): RenderedPrompt = render(
+        "activity.v1", mapOf("task" to raw("$stage.v1").trim(), "input" to input.toString(),
+            "registry" to com.anything2game.contract.game.MechanicRegistry.describe())
+    )
+
     fun placeholders(name: String): Set<String> = placeholder.findAll(raw(name)).map { it.groupValues[1] }.toSet()
 
     fun render(name: String, vars: Map<String, String>): RenderedPrompt {

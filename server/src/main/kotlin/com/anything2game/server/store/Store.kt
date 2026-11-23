@@ -9,6 +9,8 @@ import com.anything2game.contract.FrameId
 import com.anything2game.contract.FrameOverlay
 import com.anything2game.contract.LearningPackage
 import com.anything2game.contract.SourceChunk
+import com.anything2game.contract.game.*
+import com.anything2game.contract.space.*
 import kotlinx.serialization.Serializable
 
 /** An anonymous install. Only a hash of the token is stored; the token itself is shown once, at creation. */
@@ -36,9 +38,9 @@ data class StoredDocument(
 data class JobRecord(
     val jobId: String,
     val ownerId: String,
-    val documentId: String,
-    val documentVersion: String,
-    val options: CompileOptions,
+    val documentId: String?,
+    val documentVersion: String?,
+    val options: CompileOptions?,
     val clientRequestId: String,
     val packageId: String,
     val state: CompileJobState = CompileJobState.QUEUED,
@@ -53,13 +55,47 @@ data class JobRecord(
     val leaseUntil: Long? = null,
     /** How many times a worker has claimed this job (a job that keeps killing its worker is failed instead of retried forever). */
     val attempts: Int = 0,
+    val generation: GenerationWork? = null,
 ) {
+    fun holdsLease(workerId: String, now: Long) = claimedBy == workerId && leaseUntil != null && leaseUntil >= now
+
+    val compileOptions get() = requireNotNull(options)
+    val operation: String get() = generation?.input?.operation ?: "compile"
+
+    fun generationStatus(): GenerationStatus {
+        val work = requireNotNull(generation)
+        return GenerationStatus(jobId, state, work.stage, work.result, error, work.excludedMembers, work.modelId, work.fixture)
+    }
+
     /** The package id is only announced once there is something to fetch. */
     fun toStatus() = CompileJobStatus(
-        jobId = jobId, documentId = documentId, state = state,
+        jobId = jobId, documentId = requireNotNull(documentId), state = state,
         levelsReady = levelsReady, levelsPlanned = levelsPlanned,
         packageId = packageId.takeIf { levelsReady > 0 }, error = error,
     )
+}
+
+internal val GenerationInput.operation: String get() = when (this) {
+    is GenerationInput.ConceptGame -> "concept-game"
+    is GenerationInput.SpacePath -> "space-path"
+}
+
+@Serializable
+data class GenerationWork(val input: GenerationInput, val stage: GenerationStage? = null,
+    val result: GeneratedContent? = null, val excludedMembers: List<SpaceMember> = emptyList(),
+    val modelId: String? = null, val fixture: Boolean = false)
+
+@Serializable
+data class StoredSpace(val ownerId: String, val space: Space, val receipts: Map<String, String>)
+
+/** Owner transactions order idempotent submissions, revisions and publication against document removal. */
+interface ActivityRepository {
+    fun <T> withOwnerLock(ownerId: String, block: () -> T): T
+    fun saveSpace(space: StoredSpace)
+    fun getSpace(id: String): StoredSpace?
+    fun listSpaces(ownerId: String): List<StoredSpace>
+    fun writeArtifact(jobId: String, bytes: ByteArray)
+    fun readArtifact(jobId: String): ByteArray?
 }
 
 /** A package with its owner and whether the job is finished (frames are only generated for finished packages). */
@@ -107,7 +143,7 @@ interface JobRepository {
     /** Insert or replace. */
     fun saveJob(job: JobRecord)
 
-    /** Inserts the job unless the owner already has one with the same `clientRequestId`; returns the stored job either way. */
+    /** Inserts the job unless the owner already has the same operation and `clientRequestId`; returns the stored job either way. */
     fun createJob(job: JobRecord): JobRecord
 
     fun getJob(jobId: String): JobRecord?
@@ -130,9 +166,9 @@ interface JobRepository {
     /**
      * Gives the oldest claimable job to [workerId] for [leaseMillis] and returns it with the claim recorded (`claimedBy`, `leaseUntil`,
      * `attempts + 1`) and its state untouched: a state other than `queued` means a previous worker died or lost its lease. Claimable = not terminal and no lease or an expired
-     * lease. Several callers, even on different server instances, never receive the same job (`FOR UPDATE SKIP LOCKED`).
+     * lease. Jobs in [runningHere] still occupy a slot on this instance and must not be claimed twice by it. Several callers, even on different server instances, never receive the same job (`FOR UPDATE SKIP LOCKED`).
      */
-    fun claimNext(workerId: String, leaseMillis: Long, now: Long): JobRecord?
+    fun claimNext(workerId: String, leaseMillis: Long, now: Long, runningHere: Set<String> = emptySet()): JobRecord?
 
     /** Extends the lease. False if the job is gone, terminal or leased to someone else: the caller must stop working on it. */
     fun renewLease(jobId: String, workerId: String, leaseMillis: Long, now: Long): Boolean
@@ -155,9 +191,26 @@ interface PackageRepository {
  * Everything the server persists, as one object to wire up. Callers should depend on the narrow repository they use,
  * not on this interface. Implementations: [FileStore] (local development and tests) and [PostgresStore] (cloud).
  */
-interface Store : com.anything2game.server.tutor.TutorStore, InstallRepository, DocumentRepository, JobRepository, PackageRepository, AutoCloseable {
+interface Store : ActivityRepository, com.anything2game.server.tutor.TutorStore, InstallRepository, DocumentRepository, JobRepository, PackageRepository, AutoCloseable {
     /** Throws if the backend cannot be reached (readiness probe). */
     fun ping()
 
     override fun close() {}
+}
+
+
+/** Called under the owner lock before removing an uploaded source, including when work has not yet been claimed. */
+internal fun Store.cancelPathsUsing(owner: String, documentId: String) {
+    val affected = listSpaces(owner).filter { stored ->
+        stored.space.members.any { it is SpaceMember.ServerDocumentRef && it.documentId == documentId }
+    }.map { it.space.spaceId }.toSet()
+    if (affected.isEmpty()) return
+    listJobsByOwner(owner).filter {
+        !it.state.isTerminal && (it.generation?.input as? GenerationInput.SpacePath)?.spaceId in affected
+    }.forEach { job ->
+        updateIfNotTerminal(job.jobId) {
+            it.copy(state = CompileJobState.CANCELLED, updatedAt = System.currentTimeMillis(),
+                error = ApiError("SOURCE_REMOVED", "A document used by this path was deleted.", false))
+        }
+    }
 }

@@ -1,0 +1,1 @@
+Return a complete GameSpec following reference's exact field shapes. Design practice and transfer around the experience. Keep content identity, language, mechanic and reviewed cards exact. Change the teaching scenario and bounded stage parameters when pedagogically appropriate.

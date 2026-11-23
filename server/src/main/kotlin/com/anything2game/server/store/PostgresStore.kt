@@ -78,6 +78,31 @@ class PostgresStore private constructor(private val ds: DataSource, private val 
     private fun <T> encode(serializer: KSerializer<T>, value: T): String = jsonbSafe(json.encodeToString(serializer, value))
     private fun <T> decode(serializer: KSerializer<T>, text: String): T = json.decodeFromString(serializer, text)
 
+    override fun <T> withOwnerLock(ownerId: String, block: () -> T): T = transaction { c ->
+        c.query("SELECT pg_advisory_xact_lock(hashtextextended(?, 712))", { setString(1, ownerId) }) { Unit }
+        block()
+    }
+    override fun saveSpace(space: StoredSpace) {
+        withConnection { c -> c.update("""INSERT INTO spaces VALUES (?, ?, ?::jsonb)
+            ON CONFLICT(space_id) DO UPDATE SET body = EXCLUDED.body""") {
+            setString(1, space.space.spaceId); setString(2, space.ownerId); setString(3, encode(StoredSpace.serializer(), space))
+        } }
+    }
+    override fun getSpace(id: String) = withConnection { c ->
+        c.query("SELECT body FROM spaces WHERE space_id = ?", { setString(1, id) }) { decode(StoredSpace.serializer(), it.getString(1)) }.firstOrNull()
+    }
+    override fun listSpaces(ownerId: String) = withConnection { c ->
+        c.query("SELECT body FROM spaces WHERE owner_id = ?", { setString(1, ownerId) }) { decode(StoredSpace.serializer(), it.getString(1)) }
+    }
+    override fun writeArtifact(jobId: String, bytes: ByteArray) {
+        withConnection { c -> c.update("INSERT INTO activity_artifacts(job_id, archive) VALUES (?, ?)") {
+            setString(1, jobId); setBytes(2, bytes)
+        } }
+    }
+    override fun readArtifact(jobId: String) = withConnection { c ->
+        c.query("SELECT archive FROM activity_artifacts WHERE job_id = ?", { setString(1, jobId) }) { it.getBytes(1) }.firstOrNull()
+    }
+
     override fun getTutor(id: String): TutorRecord? = withConnection { c ->
         c.query("SELECT body FROM tutors WHERE session_id = ?", { setString(1, id) }) {
             decode(TutorRecord.serializer(), it.getString(1))
@@ -168,49 +193,54 @@ class PostgresStore private constructor(private val ds: DataSource, private val 
 
     /** Jobs, packages and (through the package) frames go with the document: `ON DELETE CASCADE`. */
     override fun deleteDocument(documentId: String) {
-        withConnection { c -> c.update("DELETE FROM documents WHERE document_id = ?") { setString(1, documentId) } }
+        val owner = getDocument(documentId)?.ownerId ?: return
+        withOwnerLock(owner) {
+            cancelPathsUsing(owner, documentId)
+            withConnection { c -> c.update("DELETE FROM documents WHERE document_id = ?") { setString(1, documentId) } }
+        }
     }
 
     // ---- jobs -----------------------------------------------------------------------------------------------
 
     private val jobColumns = "job_id, owner_id, document_id, document_version, options, client_request_id, package_id, state, " +
-        "levels_ready, levels_planned, error, created_at, updated_at, claimed_by, lease_until, attempts"
+        "levels_ready, levels_planned, error, created_at, updated_at, claimed_by, lease_until, attempts, operation, generation"
 
     private fun readJob(rs: ResultSet) = JobRecord(
         jobId = rs.getString(1), ownerId = rs.getString(2), documentId = rs.getString(3), documentVersion = rs.getString(4),
-        options = decode(CompileOptions.serializer(), rs.getString(5)), clientRequestId = rs.getString(6), packageId = rs.getString(7),
+        options = rs.getString(5)?.let { decode(CompileOptions.serializer(), it) }, clientRequestId = rs.getString(6), packageId = rs.getString(7),
         state = CompileJobState.valueOf(rs.getString(8).uppercase()), levelsReady = rs.getInt(9), levelsPlanned = rs.getInt(10),
         error = rs.getString(11)?.let { decode(ApiError.serializer(), it) }, createdAt = rs.getLong(12), updatedAt = rs.getLong(13),
         claimedBy = rs.getString(14), leaseUntil = rs.getLong(15).takeUnless { rs.wasNull() }, attempts = rs.getInt(16),
+        generation = rs.getString(18)?.let { decode(GenerationWork.serializer(), it) },
     )
 
     private fun PreparedStatement.bindJob(job: JobRecord) {
         setString(1, job.jobId); setString(2, job.ownerId); setString(3, job.documentId); setString(4, job.documentVersion)
-        setString(5, encode(CompileOptions.serializer(), job.options)); setString(6, job.clientRequestId); setString(7, job.packageId)
+        setString(5, job.options?.let { encode(CompileOptions.serializer(), it) }); setString(6, job.clientRequestId); setString(7, job.packageId)
         setString(8, job.state.name.lowercase()); setInt(9, job.levelsReady); setInt(10, job.levelsPlanned)
         setString(11, job.error?.let { encode(ApiError.serializer(), it) })
         setLong(12, job.createdAt); setLong(13, job.updatedAt); setString(14, job.claimedBy)
         if (job.leaseUntil == null) setNull(15, java.sql.Types.BIGINT) else setLong(15, job.leaseUntil)
-        setInt(16, job.attempts)
+        setInt(16, job.attempts); setString(17, job.operation); setString(18, job.generation?.let { encode(GenerationWork.serializer(), it) })
     }
 
-    private val insertJob = "INSERT INTO jobs ($jobColumns) VALUES (?, ?, ?, ?, ?::jsonb, ?, ?, ?, ?, ?, ?::jsonb, ?, ?, ?, ?, ?)"
+    private val insertJob = "INSERT INTO jobs ($jobColumns) VALUES (?, ?, ?, ?, ?::jsonb, ?, ?, ?, ?, ?, ?::jsonb, ?, ?, ?, ?, ?, ?, ?::jsonb)"
 
     override fun saveJob(job: JobRecord) {
         withConnection { c ->
             c.update(
                 "$insertJob ON CONFLICT (job_id) DO UPDATE SET state = EXCLUDED.state, levels_ready = EXCLUDED.levels_ready, " +
                     "levels_planned = EXCLUDED.levels_planned, error = EXCLUDED.error, updated_at = EXCLUDED.updated_at, " +
-                    "claimed_by = EXCLUDED.claimed_by, lease_until = EXCLUDED.lease_until, attempts = EXCLUDED.attempts",
+                    "claimed_by = EXCLUDED.claimed_by, lease_until = EXCLUDED.lease_until, attempts = EXCLUDED.attempts, generation = EXCLUDED.generation",
             ) { bindJob(job) }
         }
     }
 
     override fun createJob(job: JobRecord): JobRecord = withConnection { c ->
-        val inserted = c.update("$insertJob ON CONFLICT (owner_id, client_request_id) DO NOTHING") { bindJob(job) }
+        val inserted = c.update("$insertJob ON CONFLICT (owner_id, operation, client_request_id) DO NOTHING") { bindJob(job) }
         if (inserted == 1) job
-        else c.query("SELECT $jobColumns FROM jobs WHERE owner_id = ? AND client_request_id = ?", {
-            setString(1, job.ownerId); setString(2, job.clientRequestId)
+        else c.query("SELECT $jobColumns FROM jobs WHERE owner_id = ? AND client_request_id = ? AND operation = ?", {
+            setString(1, job.ownerId); setString(2, job.clientRequestId); setString(3, job.operation)
         }, ::readJob).first()
     }
 
@@ -238,28 +268,28 @@ class PostgresStore private constructor(private val ds: DataSource, private val 
         if (next != current) {
             c.update(
                 """UPDATE jobs SET state = ?, levels_ready = ?, levels_planned = ?, error = ?::jsonb, updated_at = ?,
-                     claimed_by = ?, lease_until = ?, attempts = ? WHERE job_id = ?""",
+                     claimed_by = ?, lease_until = ?, attempts = ?, generation = ?::jsonb WHERE job_id = ?""",
             ) {
                 setString(1, next.state.name.lowercase()); setInt(2, next.levelsReady); setInt(3, next.levelsPlanned)
                 setString(4, next.error?.let { encode(ApiError.serializer(), it) }); setLong(5, next.updatedAt); setString(6, next.claimedBy)
                 if (next.leaseUntil == null) setNull(7, java.sql.Types.BIGINT) else setLong(7, next.leaseUntil)
-                setInt(8, next.attempts); setString(9, jobId)
+                setInt(8, next.attempts); setString(9, next.generation?.let { encode(GenerationWork.serializer(), it) }); setString(10, jobId)
             }
         }
         next
     }
 
-    override fun claimNext(workerId: String, leaseMillis: Long, now: Long): JobRecord? = withConnection { c ->
+    override fun claimNext(workerId: String, leaseMillis: Long, now: Long, runningHere: Set<String>): JobRecord? = withConnection { c ->
         c.query(
             """UPDATE jobs SET claimed_by = ?, lease_until = ?, attempts = attempts + 1
                WHERE job_id = (
                  SELECT job_id FROM jobs
-                 WHERE state IN ('queued', 'planning', 'generating') AND (lease_until IS NULL OR lease_until < ?)
+                 WHERE state IN ('queued', 'planning', 'generating') AND (lease_until IS NULL OR lease_until < ?) AND job_id <> ALL (?)
                  ORDER BY created_at, job_id
                  LIMIT 1
                  FOR UPDATE SKIP LOCKED)
                RETURNING $jobColumns""",
-            { setString(1, workerId); setLong(2, now + leaseMillis); setLong(3, now) },
+            { setString(1, workerId); setLong(2, now + leaseMillis); setLong(3, now); setArray(4, c.createArrayOf("text", runningHere.toTypedArray())) },
             ::readJob,
         ).firstOrNull()
     }
@@ -267,8 +297,8 @@ class PostgresStore private constructor(private val ds: DataSource, private val 
     override fun renewLease(jobId: String, workerId: String, leaseMillis: Long, now: Long): Boolean = withConnection { c ->
         c.update(
             """UPDATE jobs SET lease_until = ?
-               WHERE job_id = ? AND claimed_by = ? AND state IN ('queued', 'planning', 'generating')""",
-        ) { setLong(1, now + leaseMillis); setString(2, jobId); setString(3, workerId) } == 1
+               WHERE job_id = ? AND claimed_by = ? AND lease_until >= ? AND state IN ('queued', 'planning', 'generating')""",
+        ) { setLong(1, now + leaseMillis); setString(2, jobId); setString(3, workerId); setLong(4, now) } == 1
     }
 
     override fun releaseLease(jobId: String, workerId: String) {

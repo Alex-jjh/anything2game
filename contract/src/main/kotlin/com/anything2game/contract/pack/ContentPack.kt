@@ -68,6 +68,9 @@ data class PackManifest(
     val entries: List<PackEntry>,
     @EncodeDefault(EncodeDefault.Mode.NEVER) val dependencies: Set<ContentVersion> = emptySet(),
     @EncodeDefault(EncodeDefault.Mode.NEVER) val requiredCapabilities: Set<String> = emptySet(),
+    /** Present on server-generated activities so offline installs retain their production or fixture origin. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val modelId: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val fixture: Boolean = false,
 )
 
 /**
@@ -230,7 +233,11 @@ object PackCodec {
             else -> error("Unsupported activity schema")
         }
         // Checksums refer to the incoming representation, including its legal whitespace and property order.
-        require(pack.manifest.copy(entries = manifest.entries) == manifest) { "Manifest does not describe activity or dependencies" }
+        // Like origin, generator provenance describes how the archive was produced; it is not derived from game rules.
+        require(manifest.modelId == null || (manifest.modelId.isNotBlank() && manifest.modelId.length <= 256 &&
+            manifest.modelId.none(Char::isISOControl))) { "Invalid generator identifier" }
+        require(!manifest.fixture || manifest.modelId != null) { "Missing fixture generator" }
+        require(pack.manifest.copy(entries = manifest.entries, modelId = manifest.modelId, fixture = manifest.fixture) == manifest) { "Manifest does not describe activity or dependencies" }
         ActivityPack(manifest, pack.payload)
     }
 

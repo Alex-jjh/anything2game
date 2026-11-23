@@ -21,4 +21,5 @@ sealed interface GenerationInput {
 
 @Serializable data class GeneratedContent(val content: ContentVersion, val kind: ContentKind)
 @Serializable data class GenerationStatus(val jobId: String, val state: CompileJobState, val stage: GenerationStage? = null,
-    val result: GeneratedContent? = null, val error: ApiError? = null, val excludedMembers: List<SpaceMember> = emptyList())
+    val result: GeneratedContent? = null, val error: ApiError? = null, val excludedMembers: List<SpaceMember> = emptyList(),
+    val modelId: String? = null, val fixture: Boolean = false)

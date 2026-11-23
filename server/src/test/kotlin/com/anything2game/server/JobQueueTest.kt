@@ -145,7 +145,7 @@ abstract class JobQueueTest : StoreBackendTest() {
     // ---- cancel and publish race -------------------------------------------------------------------------------
 
     private fun levelOne() = Examples.retrieval.levels.first()
-    private fun shellFor(job: JobRecord) = Examples.retrieval.copy(packageId = job.packageId, documentId = job.documentId, levels = emptyList())
+    private fun shellFor(job: JobRecord) = Examples.retrieval.copy(packageId = job.packageId, documentId = requireNotNull(job.documentId), levels = emptyList())
 
     @Test fun `a result that arrives after cancel is discarded by the store`() {
         val doc = newDocument()
@@ -157,6 +157,16 @@ abstract class JobQueueTest : StoreBackendTest() {
         assertFalse(published)
         assertNull(store.getPackage(job.packageId))
         assertEquals(CompileJobState.CANCELLED, store.getJob(job.jobId)!!.state)
+    }
+
+    @Test fun `a compile lease that expired before takeover cannot publish levels`() {
+        val doc = newDocument()
+        val job = store.createJob(newJob(doc))
+        store.claimNext("expired", 10, 100)
+        val published = runBlocking { PublishNode(store, store, "expired", clock = { 111 }).run(
+            PublishInput(job.jobId, doc.ownerId, levelOne(), shellFor(job))) }
+        assertFalse(published)
+        assertNull(store.getPackage(job.packageId))
     }
 
     @Test fun `a worker that lost its lease cannot publish`() {

@@ -2,6 +2,8 @@ package com.anything2game.server.compile
 
 import com.anything2game.contract.ApiError
 import com.anything2game.contract.CompileJobState
+import com.anything2game.contract.game.GenerationStage
+import com.anything2game.server.activity.ActivityGeneration
 import com.anything2game.contract.ErrorCodes
 import com.anything2game.contract.FrameId
 import com.anything2game.contract.Generation
@@ -74,6 +76,7 @@ class CompileJobRunner(
     private val classicGate: ClassicGate? = null,
     /** Whether the support gate is on in either pipeline (recorded in the stats line and the package's `promptVersion`). */
     private val gateEnabled: Boolean = false,
+    private val activities: ActivityGeneration,
 ) {
     private val log = LoggerFactory.getLogger(CompileJobRunner::class.java)
     private val levelPermits = Semaphore(maxParallelLevels)
@@ -99,7 +102,7 @@ class CompileJobRunner(
             markPackageComplete(job)
             job.copy(state = CompileJobState.CANCELLED, updatedAt = clock())
         }
-        if (cancelled) running.remove(jobId)?.cancel()
+        if (cancelled) running[jobId]?.cancel()
         return result
     }
 
@@ -115,7 +118,7 @@ class CompileJobRunner(
         while (coroutineContext.isActive) {
             try {
                 while (running.size < maxParallelJobs) {
-                    val claimed = jobs.claimNext(workerId, leaseMillis, clock()) ?: break
+                    val claimed = jobs.claimNext(workerId, leaseMillis, clock(), running.keys.toSet()) ?: break
                     launchJob(claimed)
                 }
             } catch (e: CancellationException) {
@@ -141,12 +144,14 @@ class CompileJobRunner(
                 throw e
             } catch (e: Exception) {
                 log.error("job {} crashed outside the pipeline: {}", jobId, e.javaClass.name)
-            } finally {
-                running.remove(jobId)
-                wake() // a slot is free
             }
         }
         running[jobId] = handle
+        // Completion also runs if a lazy worker was cancelled before its coroutine body started.
+        handle.invokeOnCompletion {
+            running.remove(jobId, handle)
+            wake()
+        }
         handle.start()
     }
 
@@ -178,13 +183,20 @@ class CompileJobRunner(
             finish(jobId, CompileJobState.FAILED, ApiError(ErrorCodes.GENERATION_FAILED, "Generation failed repeatedly.", retryable = true))
             return false
         }
-        val doc = documents.getDocument(claimed.documentId)
-        if (doc == null) {
-            finish(jobId, CompileJobState.FAILED, ApiError(ErrorCodes.NOT_FOUND, "The document no longer exists.", retryable = false))
-            return false
-        }
         val job = claimed
         try {
+            if (job.generation != null) {
+                activities.generate(job, stage = { stage, excluded ->
+                    val state = if (stage == GenerationStage.KNOWLEDGE) CompileJobState.PLANNING else CompileJobState.GENERATING
+                    transition(jobId, state) { it.copy(generation = it.generation!!.copy(stage = stage, excludedMembers = excluded)) }
+                }, publish = { change -> mutate(jobId) { change(it).copy(updatedAt = clock()) } })
+                return false
+            }
+            val doc = documents.getDocument(requireNotNull(job.documentId))
+            if (doc == null) {
+                finish(jobId, CompileJobState.FAILED, ApiError(ErrorCodes.NOT_FOUND, "The document no longer exists.", retryable = false))
+                return false
+            }
             if (job.state != CompileJobState.QUEUED) {
                 // a previous worker died half-way: start again from a clean package
                 packages.deletePackage(job.packageId)
@@ -193,7 +205,7 @@ class CompileJobRunner(
             }
             if (!transition(jobId, CompileJobState.PLANNING) { it }) return false
             if (layered != null) return runLayered(layered, job, doc)
-            val plan = planNode.run(PlanInput(doc, job.options))
+            val plan = planNode.run(PlanInput(doc, job.compileOptions))
             if (!transition(jobId, CompileJobState.GENERATING) { it.copy(levelsPlanned = plan.levels.size) }) return false
 
             val shell = shell(job, doc, "plan.v1+${levelNode.promptName}" + gateSuffix())
@@ -205,7 +217,7 @@ class CompileJobRunner(
                         async(start = CoroutineStart.UNDISPATCHED) {
                             levelPermits.withPermit {
                                 try {
-                                    val draft = levelNode.run(LevelInput(planned, doc.chunks, job.options))
+                                    val draft = levelNode.run(LevelInput(planned, doc.chunks, job.compileOptions))
                                     var valid = validateNode.run(ValidateInput(draft, shell))
                                     if (valid.droppedUnits.isNotEmpty() || valid.repaired) {
                                         log.info("job {} level {}: repaired={} droppedUnits={}", jobId, planned.levelId, valid.repaired, valid.droppedUnits.size)
@@ -248,7 +260,7 @@ class CompileJobRunner(
 
     private fun shell(job: JobRecord, doc: StoredDocument, promptVersion: String) = LearningPackage(
         schema = PACKAGE_SCHEMA_V1, packageId = job.packageId, contentVersion = "1",
-        documentId = doc.documentId, documentVersion = doc.documentVersion, title = doc.title, language = job.options.language,
+        documentId = doc.documentId, documentVersion = doc.documentVersion, title = doc.title, language = job.compileOptions.language,
         generation = Generation(GenerationMode.LIVE, compileModelId, promptVersion, ReviewStatus.AUTO_VALIDATED),
         sources = doc.chunks, levels = emptyList(),
     )
@@ -274,11 +286,11 @@ class CompileJobRunner(
         val stats = GenerationStats(jobId, "layered", gateEnabled)
         val planned: Int
         val results = try {
-            val prepared = pipeline.prepare(doc, job.options, stats)
+            val prepared = pipeline.prepare(doc, job.compileOptions, stats)
             planned = prepared.plan.levels.size
             if (!transition(jobId, CompileJobState.GENERATING) { it.copy(levelsPlanned = planned) }) return false
             val shell = shell(job, doc, "claims.v1+plan-claims.v1+unit.v1" + gateSuffix())
-            pipeline.generate(prepared, doc, job.options, shell, stats) { level ->
+            pipeline.generate(prepared, doc, job.compileOptions, shell, stats) { level ->
                 val published = publishNode.run(PublishInput(jobId, job.ownerId, level, shell))
                 if (!published) log.info("job {} level {} was not stored (job no longer running)", jobId, level.levelId)
                 published
@@ -296,7 +308,7 @@ class CompileJobRunner(
     private fun mutate(jobId: String, change: (JobRecord) -> JobRecord): Boolean {
         var applied = false
         jobs.updateIfNotTerminal(jobId) { job ->
-            if (job.claimedBy != workerId) job else { applied = true; change(job) }
+            if (!job.holdsLease(workerId, clock())) job else { applied = true; change(job) }
         }
         return applied
     }
@@ -313,6 +325,7 @@ class CompileJobRunner(
 
     /** Runs inside the job's locked update, so the package is complete exactly when the job is terminal. */
     private fun markPackageComplete(job: JobRecord) {
+        if (job.generation != null) return
         val stored = packages.getPackage(job.packageId) ?: return
         if (!stored.complete) packages.savePackage(stored.copy(complete = true))
     }

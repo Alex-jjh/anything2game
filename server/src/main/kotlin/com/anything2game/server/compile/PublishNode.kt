@@ -30,7 +30,7 @@ class PublishNode(
     override suspend fun run(input: PublishInput): Boolean {
         var published = false
         val after = jobs.updateIfNotTerminal(input.jobId) { job ->
-            if (job.claimedBy != workerId) return@updateIfNotTerminal job // lease lost: another worker owns the job now
+            if (!job.holdsLease(workerId, clock())) return@updateIfNotTerminal job // lease lost: another worker owns the job now
             val existing = packages.getPackage(input.shell.packageId)?.pkg?.levels.orEmpty()
             val levels = (existing.filter { it.levelId != input.level.levelId } + input.level).sortedBy { levelNumber(it.levelId) }
             val pkg = input.shell.copy(levels = levels)

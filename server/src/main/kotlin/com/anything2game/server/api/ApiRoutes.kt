@@ -57,7 +57,7 @@ private val random = SecureRandom()
 private fun newId(prefix: String) = prefix + Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(12).also(random::nextBytes))
 private val idShape = Regex("^[A-Za-z0-9_-]{1,80}$")
 
-private fun ApplicationCall.pathId(name: String): String =
+internal fun ApplicationCall.pathId(name: String): String =
     parameters[name]?.takeIf { idShape.matches(it) } ?: throw ApiException.notFound()
 
 private fun parseFrame(raw: String?): FrameId =
@@ -72,7 +72,7 @@ fun Route.apiRoutes(ctx: AppContext) {
     fun ownedDocument(call: ApplicationCall): StoredDocument =
         store.getDocument(call.pathId("documentId"))?.takeIf { it.ownerId == call.principal.ownerId } ?: throw ApiException.notFound()
     fun ownedJob(call: ApplicationCall): JobRecord =
-        store.getJob(call.pathId("jobId"))?.takeIf { it.ownerId == call.principal.ownerId } ?: throw ApiException.notFound()
+        store.getJob(call.pathId("jobId"))?.takeIf { it.ownerId == call.principal.ownerId && it.generation == null } ?: throw ApiException.notFound()
     fun ownedPackage(call: ApplicationCall) =
         store.getPackage(call.pathId("packageId"))?.takeIf { it.ownerId == call.principal.ownerId } ?: throw ApiException.notFound()
 
@@ -103,6 +103,8 @@ fun Route.apiRoutes(ctx: AppContext) {
             val issued = ctx.installTokens.issue()
             call.respond(HttpStatusCode.Created, InstallResponse(issued.record.installId, issued.token))
         }
+
+        activityRoutes(ctx)
 
         run {
             // ---- documents ---------------------------------------------------------------------------------------
@@ -157,7 +159,7 @@ fun Route.apiRoutes(ctx: AppContext) {
                 if (!idShape.matches(req.documentId)) throw ApiException.notFound()
                 val doc = store.getDocument(req.documentId)?.takeIf { it.ownerId == owner } ?: throw ApiException.notFound()
 
-                val mine = store.listJobsByOwner(owner)
+                val mine = store.listJobsByOwner(owner).filter { it.generation == null }
                 // idempotent on clientRequestId
                 mine.firstOrNull { it.clientRequestId == req.clientRequestId }?.let { existing ->
                     if (existing.documentId != req.documentId || existing.options != req.options) {

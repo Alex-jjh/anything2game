@@ -56,6 +56,7 @@ class AppContext(
     val tutor = com.anything2game.server.tutor.TutorService(store, router.client(Tier.COMPILE), router.client(Tier.FLASH),
         config.compileProvider == com.anything2game.server.config.Provider.FAKE || config.flashProvider == com.anything2game.server.config.Provider.FAKE,
         minOf(config.llmTimeoutSeconds * 1000L, 60_000L))
+    val spaces = com.anything2game.server.activity.SpaceService(store)
     val runner: CompileJobRunner
 
     init {
@@ -72,6 +73,8 @@ class AppContext(
             publishNode = PublishNode(store, store, workerId), frames = frames, defaultFrames = config.defaultFrames,
             compileModelId = compile.modelId, scope = scope, workerId = workerId,
             leaseMillis = config.workerLeaseMillis, pollMillis = config.workerPollMillis, maxParallelJobs = config.workerConcurrency,
+            activities = com.anything2game.server.activity.ActivityGeneration(compile,store,spaces,tutor,
+                config.compileProvider == com.anything2game.server.config.Provider.FAKE),
             layered = layered, classicGate = classicGate, gateEnabled = gate != null,
         )
     }

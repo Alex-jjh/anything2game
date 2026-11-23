@@ -36,9 +36,11 @@ class TutorService(
         requestId(req.clientRequestId)
         if (req.language !in setOf("zh", "en")) throw ApiException.badRequest("language must be zh or en")
         // One assessment per immutable document version and language. Repeated creation never bills again after success.
-        val id = "tut_" + hash("${doc.documentId}:${doc.documentVersion}:${req.language}").take(40)
+        val id = sessionId(doc,req.language)
         return creationLocks[(id.hashCode() ushr 1) % creationLocks.size].withLock { createOnce(doc, req, consume, id) }
     }
+
+    fun sessionId(doc: StoredDocument, language: String) = "tut_" + hash("${doc.documentId}:${doc.documentVersion}:$language").take(40)
 
     private suspend fun createOnce(doc: StoredDocument, req: CreateTutorRequest, consume: () -> Unit, id: String): TutorSession {
         store.getTutor(id)?.let { return owned(id, doc.ownerId).session }

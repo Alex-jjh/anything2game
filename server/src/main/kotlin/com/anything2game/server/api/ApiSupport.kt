@@ -36,10 +36,10 @@ suspend fun ApplicationCall.readLimitedBody(max: Int): ByteArray {
     return bytes
 }
 
-suspend fun <T> ApplicationCall.receiveJson(serializer: KSerializer<T>, max: Int): T {
+suspend fun <T> ApplicationCall.receiveJson(serializer: KSerializer<T>, max: Int, strict: Boolean = false): T {
     val text = readLimitedBody(max).toString(Charsets.UTF_8)
     return try {
-        ContractJson.json.decodeFromString(serializer, text.ifBlank { "{}" })
+        (if (strict) ContractJson.activityJson else ContractJson.json).decodeFromString(serializer, text.ifBlank { "{}" })
     } catch (e: SerializationException) {
         throw ApiException.badRequest("The request body is not valid for this endpoint.")
     } catch (e: IllegalArgumentException) {

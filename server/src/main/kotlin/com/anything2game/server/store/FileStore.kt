@@ -34,6 +34,8 @@ class FileStore(private val root: Path) : Store {
     private val packagesDir = dir("packages")
     private val framesDir = dir("frames")
     private val jobsDir = dir("jobs")
+    private val spacesDir = dir("spaces")
+    private val artifactsDir = dir("artifacts")
     private val tutorsDir = dir("tutors")
 
     private val countersFile = root.resolve("counters.json")
@@ -61,6 +63,19 @@ class FileStore(private val root: Path) : Store {
     }
 
     private fun dir(name: String): Path = Files.createDirectories(root.resolve(name))
+
+    override fun <T> withOwnerLock(ownerId: String, block: () -> T): T = lock.withLock(block)
+    override fun saveSpace(space: StoredSpace) = lock.withLock { write(file(spacesDir, space.space.spaceId), StoredSpace.serializer(), space) }
+    override fun getSpace(id: String) = read(file(spacesDir, id), StoredSpace.serializer())
+    override fun listSpaces(ownerId: String) = listPaths(spacesDir).mapNotNull { read(it, StoredSpace.serializer()) }.filter { it.ownerId == ownerId }
+    override fun writeArtifact(jobId: String, bytes: ByteArray) = lock.withLock {
+        requireSafeId(jobId)
+        atomicWrite(artifactsDir.resolve("$jobId.a2gpack")) { Files.write(it, bytes) }
+    }
+    override fun readArtifact(jobId: String): ByteArray? {
+        requireSafeId(jobId)
+        return artifactsDir.resolve("$jobId.a2gpack").takeIf { it.exists() }?.let(Files::readAllBytes)
+    }
 
     override fun getTutor(id: String): TutorRecord? = read(file(tutorsDir, id), TutorRecord.serializer())
 
@@ -113,6 +128,7 @@ class FileStore(private val root: Path) : Store {
     override fun getDocument(documentId: String): StoredDocument? = read(file(documentsDir, documentId), StoredDocument.serializer())
 
     override fun deleteDocument(documentId: String) = lock.withLock {
+        getDocument(documentId)?.let { cancelPathsUsing(it.ownerId, documentId) }
         for (job in listJobsByDocument(documentId)) {
             Files.deleteIfExists(file(jobsDir, job.jobId))
             activeJobs.remove(job.jobId)
@@ -133,7 +149,7 @@ class FileStore(private val root: Path) : Store {
     override fun saveJob(job: JobRecord) = lock.withLock { writeJob(job) }
 
     override fun createJob(job: JobRecord): JobRecord = lock.withLock {
-        listJobsByOwner(job.ownerId).firstOrNull { it.clientRequestId == job.clientRequestId }?.let { return@withLock it }
+        listJobsByOwner(job.ownerId).firstOrNull { it.operation == job.operation && it.clientRequestId == job.clientRequestId }?.let { return@withLock it }
         writeJob(job)
         job
     }
@@ -154,8 +170,8 @@ class FileStore(private val root: Path) : Store {
     override fun updateIfNotTerminal(jobId: String, transform: (JobRecord) -> JobRecord): JobRecord? =
         updateJob(jobId) { if (it.state.isTerminal) it else transform(it) }
 
-    override fun claimNext(workerId: String, leaseMillis: Long, now: Long): JobRecord? = lock.withLock {
-        val candidate = activeJobs.mapNotNull { getJob(it) }
+    override fun claimNext(workerId: String, leaseMillis: Long, now: Long, runningHere: Set<String>): JobRecord? = lock.withLock {
+        val candidate = activeJobs.asSequence().filterNot { it in runningHere }.mapNotNull { getJob(it) }
             .filter { !it.state.isTerminal && (it.leaseUntil == null || it.leaseUntil < now) }
             .minWithOrNull(compareBy({ it.createdAt }, { it.jobId })) ?: return null
         val claimed = candidate.copy(claimedBy = workerId, leaseUntil = now + leaseMillis, attempts = candidate.attempts + 1)
@@ -165,7 +181,7 @@ class FileStore(private val root: Path) : Store {
 
     override fun renewLease(jobId: String, workerId: String, leaseMillis: Long, now: Long): Boolean = lock.withLock {
         val job = getJob(jobId) ?: return false
-        if (job.state.isTerminal || job.claimedBy != workerId) return false
+        if (job.state.isTerminal || !job.holdsLease(workerId, now)) return false
         writeJob(job.copy(leaseUntil = now + leaseMillis))
         true
     }
@@ -238,9 +254,13 @@ class FileStore(private val root: Path) : Store {
     }
 
     private fun <T> write(path: Path, serializer: KSerializer<T>, value: T) {
+        atomicWrite(path) { Files.writeString(it, json.encodeToString(serializer, value), StandardCharsets.UTF_8) }
+    }
+
+    private fun atomicWrite(path: Path, writeTemp: (Path) -> Unit) {
         val tmp = Files.createTempFile(path.parent, ".tmp-", ".part")
         try {
-            Files.writeString(tmp, json.encodeToString(serializer, value), StandardCharsets.UTF_8)
+            writeTemp(tmp)
             try {
                 Files.move(tmp, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
             } catch (e: AtomicMoveNotSupportedException) {

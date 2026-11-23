@@ -16,6 +16,7 @@ application {
 
 dependencies {
     implementation(project(":contract"))
+    implementation(project(":android:engine"))
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.ktor.server.core)
@@ -55,6 +56,7 @@ tasks.register<JavaExec>("presetLayout") {
 }
 
 tasks.test {
+    inputs.property("localTestPostgres", providers.environmentVariable("A2G_TEST_PG_ADMIN_URL").orElse("container"))
     // Canonical contract examples are test fixtures; test data lives under build/ and is deleted by the tests.
     systemProperty("contract.examples", rootProject.layout.projectDirectory.dir("contract/examples").asFile.absolutePath)
     systemProperty("server.test.tmp", layout.buildDirectory.dir("test-data").get().asFile.absolutePath)

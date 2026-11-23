@@ -59,6 +59,7 @@ class FakeLlmClient(override val modelId: String = "fake-llm") : LlmClient {
             prompt = PromptFormat.tagContent(request.user, "original_task") ?: request.user
         }
         return when (label.substringBefore(':')) {
+            "activity-experience", "game-spec", "space-path" -> activityFixture(label,prompt)
             "plan" -> planJson(prompt)
             "level" -> levelJson(prompt)
             "frame" -> frameJson(label.substringAfter(':'), prompt)
@@ -69,6 +70,27 @@ class FakeLlmClient(override val modelId: String = "fake-llm") : LlmClient {
             "unit" -> FakeLayered.unit(prompt)
             "support" -> FakeLayered.support(prompt)
             else -> throw LlmException(LlmException.Kind.BAD_RESPONSE, "fake model: unknown step '${request.label}'")
+        }
+    }
+
+    private fun activityFixture(label: String, prompt: String): String {
+        val input = json.parseToJsonElement(prompt) as kotlinx.serialization.json.JsonObject
+        val reference = input.getValue("reference")
+        return when (label) {
+            "activity-experience" -> buildJsonObject {
+                val zh = input["language"] == JsonPrimitive("zh")
+                put("objective", if (zh) "依据知识卡完成挑战。" else "Apply the cited concept to the challenge.")
+                put("action", if (zh) "尝试、观察并调整。" else "Try an action, observe, and adjust.")
+                put("feedback", if (zh) "查看每步的结果。" else "Read the result after each step.")
+                put("evidenceIds",input.getValue("evidenceIds"))
+            }.toString()
+            "space-path" -> {
+                val path = json.decodeFromString<com.anything2game.contract.space.LearningPath>(reference.toString())
+                json.encodeToString(path.copy(nodes = path.nodes.mapIndexed { i,node ->
+                    node.copy(prerequisites = path.nodes.getOrNull(i-1)?.let { listOf(it.nodeId) }.orEmpty())
+                }))
+            }
+            else -> reference.toString()
         }
     }
 

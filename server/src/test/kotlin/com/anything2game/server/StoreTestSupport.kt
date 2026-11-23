@@ -24,7 +24,7 @@ import java.util.UUID
 
 /**
  * One PostgreSQL container for the whole test run (Testcontainers; the Ryuk sidecar removes it even if the JVM is killed).
- * When Docker is not available every Postgres test is skipped through JUnit's Assume, not failed.
+ * Without an explicit local admin URL or Docker, Postgres tests are skipped through JUnit's Assume.
  */
 object PostgresContainer {
     private val container: PostgreSQLContainer<*>? by lazy {
@@ -46,21 +46,36 @@ object PostgresContainer {
         return c!!
     }
 
-    /** A fresh, empty database in the shared container. */
+    /** An explicit local admin connection is an alternative to the disposable Docker container.
+     * Only the generated t_<uuid> database is migrated, tested and dropped. */
     fun newDatabase(): TestDatabase {
-        val c = requireDocker()
-        val name = "t_" + UUID.randomUUID().toString().replace("-", "")
-        admin(c).use { it.createStatement().use { s -> s.execute("CREATE DATABASE $name") } }
-        return TestDatabase(c, name)
+        val configured = System.getenv("A2G_TEST_PG_ADMIN_URL")
+        val admin = if (configured != null) {
+            require(configured.matches(Regex("""jdbc:postgresql://(?:127\.0\.0\.1|localhost):[0-9]+/postgres""")))
+            Admin(configured, requireNotNull(System.getenv("A2G_TEST_PG_USER")), System.getenv("A2G_TEST_PG_PASSWORD").orEmpty())
+        } else {
+            val c = requireDocker()
+            Admin("jdbc:postgresql://${c.host}:${c.getMappedPort(5432)}/postgres", c.username, c.password)
+        }
+        return TestDatabase.create(admin)
     }
 
-    private fun admin(c: PostgreSQLContainer<*>) = DriverManager.getConnection("jdbc:postgresql://${c.host}:${c.getMappedPort(5432)}/postgres", c.username, c.password)
+    class Admin(val url: String, val user: String, val password: String) {
+        fun connect() = DriverManager.getConnection(url, user, password)
+    }
 
-    class TestDatabase(private val c: PostgreSQLContainer<*>, val name: String) : AutoCloseable {
-        val url = "jdbc:postgresql://${c.host}:${c.getMappedPort(5432)}/$name"
-        fun config(poolSize: Int = 6) = DbConfig(url, c.username, Secret(c.password), poolSize)
+    class TestDatabase private constructor(private val admin: Admin, val name: String) : AutoCloseable {
+        val url = admin.url.substringBeforeLast('/') + "/" + name
+        fun config(poolSize: Int = 6) = DbConfig(url, admin.user, Secret(admin.password), poolSize)
         override fun close() {
-            runCatching { admin(c).use { it.createStatement().use { s -> s.execute("DROP DATABASE IF EXISTS $name WITH (FORCE)") } } }
+            admin.connect().use { it.createStatement().use { s -> s.execute("DROP DATABASE IF EXISTS $name WITH (FORCE)") } }
+        }
+        companion object {
+            fun create(admin: Admin): TestDatabase {
+                val name = "t_" + UUID.randomUUID().toString().replace("-", "")
+                admin.connect().use { it.createStatement().use { s -> s.execute("CREATE DATABASE $name") } }
+                return TestDatabase(admin, name)
+            }
         }
     }
 }
