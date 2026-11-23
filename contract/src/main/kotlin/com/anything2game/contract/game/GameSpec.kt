@@ -42,8 +42,8 @@ sealed interface EvidenceRef {
         requireContentId(evidenceId)
         when (this) {
             is Pdf -> {
-                ContentVersion(documentId, documentVersion).validate()
-                requireContentId(chunkId)
+                // v1 document versions may be tagged digests and chunk IDs are opaque lookup keys.
+                require(documentId.isNotBlank() && documentVersion.isNotBlank())
                 require(pageIndex >= 0 && quote.isNotBlank() && quote.length <= 3000)
             }
             is Reviewed -> {

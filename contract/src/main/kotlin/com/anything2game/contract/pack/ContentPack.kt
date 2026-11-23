@@ -220,12 +220,12 @@ object PackCodec {
         val pack = when (manifest.packageSchema) {
             GAME_SCHEMA -> {
                 require(files.keys == setOf(MANIFEST, GAME)) { "Invalid game entries" }
-                val game = ContractJson.json.decodeFromString(GameSpec.serializer(), files.getValue(GAME).decodeToString())
+                val game = ContractJson.activityJson.decodeFromString(GameSpec.serializer(), files.getValue(GAME).decodeToString())
                 build(game, manifest.origin).also { validateGame(game) }
             }
             PATH_SCHEMA -> {
                 require(files.keys == setOf(MANIFEST, PATH)) { "Invalid path entries" }
-                build(ContractJson.json.decodeFromString(LearningPath.serializer(), files.getValue(PATH).decodeToString()), manifest.origin)
+                build(ContractJson.activityJson.decodeFromString(LearningPath.serializer(), files.getValue(PATH).decodeToString()), manifest.origin)
             }
             else -> error("Unsupported activity schema")
         }

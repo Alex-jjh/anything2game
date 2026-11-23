@@ -11,6 +11,28 @@ class ProgressProjectionTest {
     private fun event(id: String, result: ActivityOutcome, hour: Long = 0) =
         CompletionRecord.at(id, a, result, hour * 3_600_000L, "America/Los_Angeles")
 
+    @Test fun `reading completes a tutor but cannot unlock a game or practice prerequisite`() {
+        val tutor = ActivityRef.Tutor("pdf", "1", "lesson")
+        val practice = ActivityRef.Practice("pdf", "1", "level")
+        val path = LearningPath("route", "1", "space", "Study", "en", listOf(
+            PathNode("game", "Transfer", ActivityRef.Game("doors", "1", "transfer")),
+            PathNode("practice", "Challenge", practice),
+            PathNode("lesson", "Read", tutor),
+            PathNode("after", "Continue", ActivityRef.Tutor("pdf", "1", "next"), listOf("game")),
+        ))
+        val reading = event("read-game", ActivityOutcome.READ)
+        val invalid = ProgressProjection.from("p", listOf(reading, reading.copy(completionId = "read-practice", activity = practice.key("p"))))
+        assertTrue(invalid.completed.isEmpty())
+        assertTrue(invalid.mastery.isEmpty())
+        assertTrue(invalid.days.isEmpty())
+        assertEquals(NodeStatus.LOCKED, invalid.nodes("p", path, path.dependencies, 0)["after"])
+        val valid = ProgressProjection.from("p", listOf(reading.copy(activity = tutor.key("p"))))
+        assertEquals(setOf(tutor.key("p")), valid.completed)
+        assertEquals(NodeStatus.COMPLETE, valid.nodes("p", path, path.dependencies, 0)["lesson"])
+        assertEquals(setOf("1969-12-31"), valid.days)
+        assertTrue(valid.mastery.isEmpty())
+    }
+
     @Test fun `one completion unlocks repeated references while due review keeps completion and missing versions need update`() {
         val ref = ActivityRef.Game("doors", "1", "transfer")
         val path = LearningPath("route", "1", "space", "Route", "en", listOf(

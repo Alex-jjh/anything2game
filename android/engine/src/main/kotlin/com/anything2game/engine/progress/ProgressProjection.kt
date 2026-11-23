@@ -40,6 +40,7 @@ object ProgressProjection {
             val key = event.activity
             played += key
             if (event.outcome == ActivityOutcome.PLAYED) continue
+            if (event.outcome == ActivityOutcome.READ && key.activityKind != ActivityKind.TUTOR) continue
             if (event.outcome != ActivityOutcome.WRONG) {
                 completed += key
                 days += event.localDate

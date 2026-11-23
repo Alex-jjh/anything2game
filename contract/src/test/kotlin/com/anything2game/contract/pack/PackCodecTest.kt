@@ -6,6 +6,7 @@ import com.anything2game.contract.tutor.TutorScript
 import java.security.MessageDigest
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -136,6 +137,22 @@ class PackCodecTest {
             rewrite(src) { n, b -> if (n == PackCodec.MANIFEST) b.decodeToString().replace(PACK_SCHEMA_V2, "future").toByteArray() else b },
         ).forEach { assertTrue(PackCodec.readActivity(it.inputStream(), emptySet()) { }.isFailure) }
         assertTrue(PackCodec.readActivity(src.inputStream(), emptySet(), PackCodec.Limits(maxEntryBytes = 128)) { }.isFailure)
+    }
+
+    @Test fun `v2 rejects undeclared rule fields even with a valid checksum`() {
+        val game = com.anything2game.contract.game.ReviewedGames.partition("en")
+        val pack = PackCodec.build(game, PackOrigin.PRESET)
+        val valid = ContractJson.json.encodeToString(com.anything2game.contract.game.GameSpec.serializer(), game)
+        val altered = valid.replaceFirst("\"queryBudget\":4", "\"queryBudget\":4,\"expression\":\"double-budget\"")
+        assertNotEquals(valid, altered)
+        val bytes = altered.toByteArray()
+        val hash = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+        val manifest = pack.manifest.copy(entries = listOf(PackEntry(PackCodec.GAME, hash, bytes.size.toLong())))
+        val archive = rewrite(PackCodec.toBytes(pack)) { name, _ ->
+            if (name == PackCodec.GAME) bytes else ContractJson.json.encodeToString(PackManifest.serializer(), manifest).toByteArray()
+        }
+        val error = PackCodec.readActivity(archive.inputStream(), emptySet()) { }.exceptionOrNull()
+        assertTrue(error?.message.orEmpty().contains("expression"))
     }
 
     @Test fun `rewriting a validated noncanonical game keeps its new checksum valid`() {

@@ -13,6 +13,9 @@ object ContractJson {
         prettyPrint = false
     }
 
+    /** Executable activity configurations have a closed vocabulary. A new rule requires a supported schema. */
+    val activityJson = Json(json) { ignoreUnknownKeys = false }
+
     fun decodePackage(text: String): LearningPackage = json.decodeFromString(LearningPackage.serializer(), text)
 
     fun encodePackage(pkg: LearningPackage): String = json.encodeToString(LearningPackage.serializer(), pkg)

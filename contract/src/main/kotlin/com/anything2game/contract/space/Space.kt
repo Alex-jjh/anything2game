@@ -28,6 +28,8 @@ data class Space(val spaceId: String, val title: String, val revision: Long,
 @Serializable data class RenameSpaceRequest(val title: String, val expectedRevision: Long, val clientRequestId: String)
 @Serializable data class SpaceMemberRequest(val member: SpaceMember, val expectedRevision: Long, val clientRequestId: String)
 
+private const val TUTOR_RULES_VERSION = 1
+private const val PRACTICE_RULES_VERSION = 1
 const val PATH_SCHEMA = "a2g.path/v1"
 
 @Serializable
@@ -39,10 +41,10 @@ sealed interface ActivityRef {
 
     @Serializable @SerialName("tutor")
     data class Tutor(override val contentId: String, override val contentVersion: String, override val activityId: String,
-        override val rulesVersion: Int = 1) : ActivityRef
+        override val rulesVersion: Int = TUTOR_RULES_VERSION) : ActivityRef
     @Serializable @SerialName("practice")
     data class Practice(override val contentId: String, override val contentVersion: String, override val activityId: String,
-        val frame: FrameId = FrameId.CLASSIC, override val rulesVersion: Int = 1) : ActivityRef
+        val frame: FrameId = FrameId.CLASSIC, override val rulesVersion: Int = PRACTICE_RULES_VERSION) : ActivityRef
     @Serializable @SerialName("game-stage")
     data class Game(override val contentId: String, override val contentVersion: String, override val activityId: String,
         override val rulesVersion: Int = MechanicRegistry.VERSION) : ActivityRef
@@ -74,11 +76,21 @@ data class LearningPath(val pathId: String, val pathVersion: String, val spaceId
             requireContentId(node.nodeId)
             require(node.title.isNotBlank() && node.minutes in 1..60)
             require(node.prerequisites.all { it in seen } && seen.add(node.nodeId)) { "Invalid node dependency or duplicate node" }
-            requireContentId(node.activity.activityId)
-            require(node.activity.rulesVersion == 1) { "Unsupported activity rules" }
+            val activity = node.activity
+            val supported = when (activity) {
+                // Legacy content and in-package activity IDs are opaque keys resolved against the installed v1 pack.
+                is ActivityRef.Tutor -> TUTOR_RULES_VERSION
+                is ActivityRef.Practice -> PRACTICE_RULES_VERSION
+                is ActivityRef.Game -> {
+                    ContentVersion(activity.contentId, activity.contentVersion).validate()
+                    requireContentId(activity.activityId)
+                    MechanicRegistry.VERSION
+                }
+            }
+            require(activity.rulesVersion == supported) { "Unsupported activity rules" }
             node.evidence.forEach { it.validate() }
         }
-        dependencies.forEach { it.validate() }
-        excludedMembers.forEach { it.version().validate() }
+        // Excluded members can also name legacy documents, including tagged document digests.
+        excludedMembers.map { it.version() }.forEach { require(it.contentId.isNotBlank() && it.contentVersion.isNotBlank()) }
     }
 }
