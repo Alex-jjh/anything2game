@@ -79,6 +79,7 @@ data class SessionState(
     val pausedFor: ContextDecision.PauseReason? = null,
     /** Mistakes left before the level fails; null when the frame has no stakes. */
     val credibility: Int? = null,
+    val attemptId: String = "",
 ) {
     val currentSlot: Slot? get() = queue.getOrNull(position)
     val isPaused: Boolean get() = pausedFor != null

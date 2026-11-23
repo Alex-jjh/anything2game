@@ -53,17 +53,20 @@ class AndroidTutorRepository(
     sessionsDir: File = File(context.applicationContext.filesDir, "tutor-sessions"),
     connectionPrefs: String = "tutor_connection",
     sourceDocumentsDir: File = File(context.applicationContext.filesDir, "source-documents"),
+    private val http: TutorHttpClient = TutorHttpClient(context.applicationContext, prefsName = connectionPrefs),
+    private val onRead: suspend (TutorSession) -> Unit = {},
 ) : TutorRepository {
-    private val app = context.applicationContext
     private val files = TutorCacheStore(sessionsDir)
     private val sourceFiles = SourceDocumentStore(sourceDocumentsDir)
-    private val http = TutorHttpClient(app, prefsName = connectionPrefs)
     private val json = ContractJson.json
     override val endpoint get() = http.endpoint
     override val localServer get() = http.local
 
     /** A course with a pre-generated script, found by course id or by the key of its saved local session. */
     private suspend fun scripted(idOrKey: String): Triple<String, LearningPackage, TutorScript>? {
+        if (idOrKey.startsWith("local-")) scripts.savedScript(idOrKey)?.let { (pkg, script) ->
+            return Triple(idOrKey, pkg, script.validate(pkg))
+        }
         for (packageId in scripts.scriptedPackageIds()) {
             val script = scripts.scriptFor(packageId) ?: continue
             val pkg = packages.load(packageId).getOrNull() ?: continue
@@ -99,7 +102,10 @@ class AndroidTutorRepository(
         } catch (e: CancellationException) { throw e }
         catch (e: IOException) { cached?.let { OpenTutor(it, true) } ?: throw e }
     }
-    override suspend fun save(cache: TutorCache) = files.write(cache)
+    override suspend fun save(cache: TutorCache) {
+        files.write(cache)
+        if (cache.session.messages.lastOrNull()?.role == "tutor") onRead(cache.session)
+    }
     override suspend fun list() = files.list()
     override suspend fun progressFor(packageId: String): TutorProgress? {
         val pkg = packages.load(packageId).getOrNull() ?: return null

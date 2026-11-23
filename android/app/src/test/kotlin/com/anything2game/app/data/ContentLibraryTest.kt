@@ -52,7 +52,7 @@ class ContentLibraryTest {
 
         installed.install(ByteArrayInputStream(packBytes("0", "Stale"))).getOrThrow()
         lib.refresh()
-        assertEquals(presetVersion, lib.load("demo_attention").getOrThrow().contentVersion)
+        assertEquals("$presetVersion.1", lib.load("demo_attention").getOrThrow().contentVersion)
     }
 
     @Test fun `a broken download never replaces a good pack`() = runBlocking {
@@ -64,7 +64,7 @@ class ContentLibraryTest {
         assertTrue(installed.install(ByteArrayInputStream(truncated)).isFailure)
         val lib = ContentLibrary(listOf(installed))
         assertEquals("Good", lib.load("demo_attention").getOrThrow().title)
-        assertEquals(listOf("demo_attention.a2gpack"), dir.list()!!.sorted())
+        assertEquals(1, dir.listFiles()!!.count { it.name.endsWith(".a2gpack") })
     }
 
     @Test fun `tutor scripts come out of the real preset packs and match their courses`() = runBlocking {
@@ -79,6 +79,21 @@ class ContentLibraryTest {
         installed.install(ByteArrayInputStream(packBytes("1"))).getOrThrow()
         assertNull(ContentLibrary(listOf(installed)).scriptFor("demo_attention"))
         assertTrue(ContentLibrary(listOf(installed)).scriptedPackageIds().isEmpty())
+    }
+
+    @Test fun `legacy compile can append a level without changing the saved version or earlier levels`() = runBlocking {
+        val disk = DirectoryPackSource(tmp.newFolder())
+        val library = ContentLibrary(listOf(disk))
+        val pkg = attention("shared")
+        val first = pkg.copy(levels = pkg.levels.take(1))
+        require(pkg.levels.size > 1)
+        suspend fun install(course: com.anything2game.contract.LearningPackage) =
+            library.install(PackCodec.toBytes(PackCodec.build(course, emptyList(), PackOrigin.SERVER)).inputStream())
+        install(first)
+        install(pkg)
+        assertEquals(pkg.levels, library.load(pkg.packageId, "shared").getOrThrow().levels)
+        assertTrue(runCatching { install(first) }.isFailure)
+        assertEquals(pkg.levels.first(), library.load(pkg.packageId, "shared").getOrThrow().levels.first())
     }
 
     @Test fun `versions compare by number, not by text`() {

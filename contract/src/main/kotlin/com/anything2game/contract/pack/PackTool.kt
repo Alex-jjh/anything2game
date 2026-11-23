@@ -56,5 +56,10 @@ object PackTool {
 fun main(args: Array<String>) {
     require(args.size >= 2) { "usage: PackTool <outDir> <inputDir>..." }
     val written = PackTool.packDirectories(args.drop(1).map(::File), File(args[0]), PackOrigin.PRESET)
-    println("packed ${written.size} preset pack(s) into ${args[0]}")
+    val games = listOf("en", "zh").flatMap(com.anything2game.contract.game.ReviewedGames::all)
+    for (game in games) {
+        val pack = PackCodec.build(game, PackOrigin.PRESET)
+        File(args[0], PackTool.fileName(game.gameId)).outputStream().use { PackCodec.write(pack, it) }
+    }
+    println("packed ${written.size + games.size} preset pack(s) into ${args[0]}")
 }

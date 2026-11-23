@@ -8,12 +8,13 @@ import com.anything2game.contract.LearningPackage
 import com.anything2game.app.data.tutor.SourceLayouts
 import com.anything2game.app.data.tutor.TutorScripts
 import com.anything2game.contract.PresetSourceLayout
-import com.anything2game.contract.pack.ContentPack
-import com.anything2game.contract.pack.PackCodec
 import com.anything2game.contract.tutor.TutorScript
 import com.anything2game.engine.ports.FrameRepository
 import com.anything2game.engine.ports.PackageRepository
 import com.anything2game.engine.ports.PackageSummary
+import com.anything2game.contract.game.*
+import com.anything2game.contract.pack.*
+import java.io.InputStream
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -26,32 +27,68 @@ import kotlinx.coroutines.sync.withLock
  */
 class ContentLibrary(private val sources: List<PackSource>) : PackageRepository, FrameRepository, TutorScripts, SourceLayouts {
     private val mutex = Mutex()
-    private var index: Map<String, PackRef>? = null
-    private val opened = HashMap<String, ContentPack>()
+    private var index: Map<ContentVersion, PackRef>? = null
+    private val opened = HashMap<ContentVersion, ContentPack>()
 
-    /** Forget what was listed, e.g. after a pack was installed or removed. */
     suspend fun refresh() = mutex.withLock { index = null; opened.clear() }
 
-    private suspend fun refs(): Map<String, PackRef> = mutex.withLock {
-        index ?: buildMap<String, PackRef> {
-            sources.forEach { source ->
-                runCatching { source.list() }.getOrDefault(emptyList()).forEach { ref ->
-                    val current = get(ref.manifest.packageId)
-                    if (current == null || compareVersions(ref.manifest.contentVersion, current.manifest.contentVersion) >= 0) put(ref.manifest.packageId, ref)
-                }
-            }
-        }.also { index = it }
+    private suspend fun refs(): Map<ContentVersion, PackRef> = mutex.withLock {
+        index ?: sources.flatMap { it.list() }.associateBy { it.version }.also { index = it }
     }
 
-    private suspend fun pack(packageId: String): ContentPack? {
-        mutex.withLock { opened[packageId] }?.let { return it }
-        val ref = refs()[packageId] ?: return null
+    private suspend fun latestCourses() = refs().values.filter { it.manifest.schema == PACK_SCHEMA_V1 }
+        .groupBy { it.manifest.packageId }.mapValues { (_, versions) ->
+            versions.maxWith { a, b -> compareVersions(a.manifest.contentVersion, b.manifest.contentVersion) }
+        }
+
+    suspend fun manifests() = refs().values.map { it.manifest }
+
+    suspend fun install(input: InputStream, availableDocuments: Set<ContentVersion> = emptySet(), expected: ContentVersion? = null,
+        verifyActivity: suspend (ActivityPack) -> Unit = {}): PackManifest {
+        val disk = sources.filterIsInstance<DirectoryPackSource>().last()
+        val bundled = sources.filter { it !== disk }.flatMap { it.list() }
+        val manifest = disk.install(input, availableVersions() + availableDocuments, expected, bundled, verifyActivity).getOrThrow()
+        refresh()
+        return manifest
+    }
+
+    /** Only verified playable games are offered, together with their offline provenance. */
+    suspend fun games(language: String? = null): List<Pair<PackManifest, GameSpec>> =
+        refs().values.filter { it.manifest.packageSchema == GAME_SCHEMA && (language == null || it.manifest.language == language) }
+            .mapNotNull { ref -> game(ref.version)?.let { ref.manifest to it } }
+
+    suspend fun availableVersions(): Set<ContentVersion> = refs().values.mapNotNull { ref ->
+        when {
+            ref.manifest.schema == PACK_SCHEMA_V1 -> ref.version.takeIf { course(it) != null }
+            ref.manifest.packageSchema == GAME_SCHEMA -> ref.version.takeIf { game(it) != null }
+            else -> null
+        }
+    }.toSet()
+
+    suspend fun activity(version: ContentVersion, available: Set<ContentVersion>): ActivityPack? =
+        refs()[version]?.activity(available)?.getOrNull()
+
+    suspend fun game(version: ContentVersion) = (activity(version, emptySet())?.payload as? ActivityPayload.Game)?.game
+
+    /** Read an already installed path even after a dependency disappeared; route status checks the current inventory. */
+    suspend fun path(version: ContentVersion): com.anything2game.contract.space.LearningPath? {
+        val ref = refs()[version] ?: return null
+        return (ref.activity(ref.manifest.dependencies).getOrNull()?.payload as? ActivityPayload.Path)?.path
+    }
+
+    suspend fun course(version: ContentVersion): ContentPack? {
+        mutex.withLock { opened[version] }?.let { return it }
+        val ref = refs()[version] ?: return null
         val pack = ref.open().getOrNull() ?: return null
-        // Page geometry is hundreds of KB per course and only "Show source" needs it: validated with the pack, not kept.
-        return mutex.withLock { opened.getOrPut(packageId) { pack.copy(sourceLayout = null) } }
+        return mutex.withLock {
+            val full = pack.copy(sourceLayout = null)
+            if (index?.get(version) === ref) opened.getOrPut(version) { full } else full
+        }
     }
 
-    override suspend fun list(): List<PackageSummary> = refs().values.sortedBy { it.manifest.title }.mapNotNull { ref ->
+    private suspend fun pack(packageId: String) = latestCourses()[packageId]?.let { course(it.version) }
+
+    override suspend fun list(): List<PackageSummary> = latestCourses().values.sortedBy { it.manifest.title }.mapNotNull { ref ->
         // Listing opens each pack once (validated, cached); a pack that fails validation is simply not offered.
         val p = pack(ref.manifest.packageId) ?: return@mapNotNull null
         PackageSummary(p.pkg.packageId, p.pkg.title, p.pkg.language, p.pkg.levels.size, p.pkg.generation.mode == GenerationMode.PRE_GENERATED)
@@ -59,6 +96,11 @@ class ContentLibrary(private val sources: List<PackSource>) : PackageRepository,
 
     override suspend fun load(packageId: String): Result<LearningPackage> =
         pack(packageId)?.let { Result.success(it.pkg) } ?: Result.failure(NoSuchElementException(packageId))
+
+    override suspend fun load(packageId: String, version: String): Result<LearningPackage> =
+        course(ContentVersion(packageId, version))?.let { Result.success(it.pkg) } ?: Result.failure(NoSuchElementException(packageId))
+
+    override suspend fun load(packageId: String, version: String, frameId: FrameId) = course(ContentVersion(packageId, version))?.frames?.get(frameId)
 
     override suspend fun available(packageId: String): List<FrameId> {
         val present = pack(packageId)?.frames?.keys.orEmpty()
@@ -72,11 +114,20 @@ class ContentLibrary(private val sources: List<PackSource>) : PackageRepository,
     /** Re-reads the pack (fully validated again) for its geometry; rare (attaching, opening a course) and never cached. */
     override suspend fun sourceLayoutFor(packageId: String): PresetSourceLayout? {
         if (pack(packageId)?.manifest?.entries?.any { it.path == PackCodec.LAYOUT } != true) return null
-        return refs()[packageId]?.open()?.getOrNull()?.sourceLayout
+        return latestCourses()[packageId]?.open()?.getOrNull()?.sourceLayout
+    }
+
+    override suspend fun savedScript(key: String): Pair<LearningPackage, TutorScript>? {
+        for (ref in refs().values.filter { it.manifest.entries.any { entry -> entry.path == PackCodec.TUTOR } }) {
+            val pack = course(ref.version) ?: continue
+            val script = pack.tutor ?: continue
+            if (com.anything2game.app.data.tutor.localTutorKey(pack.pkg) == key) return pack.pkg to script
+        }
+        return null
     }
 
     override suspend fun scriptedPackageIds(): List<String> =
-        refs().values.sortedBy { it.manifest.title }.map { it.manifest.packageId }.filter { pack(it)?.tutor != null }
+        latestCourses().values.sortedBy { it.manifest.title }.map { it.manifest.packageId }.filter { pack(it)?.tutor != null }
 
     internal companion object {
         /** "2" > "10"? No: numeric parts compare as numbers ("1.10" > "1.9"); otherwise as text. */

@@ -1,6 +1,10 @@
 package com.anything2game.app
 
 import android.content.Context
+import com.anything2game.app.data.api.ApiTransport
+import com.anything2game.app.data.api.ActivityApi
+import com.anything2game.app.data.learning.*
+import com.anything2game.app.data.tutor.TutorHttpClient
 import com.anything2game.app.data.content.AssetPackSource
 import com.anything2game.app.data.content.ContentLibrary
 import com.anything2game.app.data.content.DirectoryPackSource
@@ -44,6 +48,12 @@ import java.io.File
 
 /** Everything screens depend on. Screens see only interfaces, so tests and new adapters swap in freely. */
 interface AppDependencies {
+    val content: ContentLibrary? get() = null
+    val learningProgress: LearningProgress? get() = null
+    val materials: MaterialCatalog? get() = null
+    val spaces: SpaceRepository? get() = null
+    val generation: GenerationRepository? get() = null
+    val pdfImports: PdfImportQueue? get() = null
     val tutors: com.anything2game.app.data.tutor.TutorRepository
     val packages: PackageRepository
     val tutorScripts: com.anything2game.app.data.tutor.TutorScripts
@@ -72,7 +82,7 @@ class AndroidAppContainer(context: Context) : AppDependencies {
     // (from our server or imported). Same file format everywhere; the engine sees only the two ports.
     // Content is shared by all profiles; progress is not.
     val installedPacks = DirectoryPackSource(File(app.filesDir, "packs"))
-    val content = ContentLibrary(listOf(AssetPackSource(app.assets), installedPacks))
+    override val content = ContentLibrary(listOf(AssetPackSource(app.assets), installedPacks))
     override val packages: PackageRepository = content
     override val tutorScripts: com.anything2game.app.data.tutor.TutorScripts = content
     override val frames: FrameRepository = content
@@ -87,24 +97,32 @@ class AndroidAppContainer(context: Context) : AppDependencies {
     private inner class UserScope(val profile: LocalProfile) {
         private val dir = profile.dir(app)
         val sessions: SessionStore = FileSessionStore(File(dir, "sessions"))
-        val mastery: MasteryStore = FileMasteryStore(File(dir, "mastery"))
+        val mastery: MasteryStore = FileMasteryStore(File(dir, "mastery")) { content.load(it).getOrNull()?.contentVersion }
+        val progress = LearningProgress(File(dir, "learning.json"), profile.id, clock)
+        private val transport = ApiTransport(app, prefsName = profile.prefs("tutor_connection"))
+        private val http = TutorHttpClient(app, transport)
+        private val api = ActivityApi(transport)
         val framePreferences: FramePreferences = SharedPrefsFramePreferences(app, profile.prefs("frames"))
         val homePreferences = HomePreferences(app, profile.prefs("home"))
         val avatarPreferences: AvatarPreferences = SharedPrefsAvatarPreferences(app, profile.prefs("avatar"))
         val explainerPreferences: ExplainerPreferences = SharedPrefsExplainerPreferences(app, profile.prefs("explainer"))
-        val tutors = AndroidTutorRepository(app, packages, tutorScripts, ::installServerPackage, File(dir, "tutor-sessions"), profile.prefs("tutor_connection"), File(dir, "source-documents"))
+        val tutors = AndroidTutorRepository(app, packages, tutorScripts, ::installServerPackage, File(dir, "tutor-sessions"), profile.prefs("tutor_connection"), File(dir, "source-documents"), http, progress::tutorRead)
         // Same per-profile directory as the imported PDFs, so a lookup by the session's ids finds an attached preset PDF too.
         // Unit tests run with the papers left out (-Da2g.bundledPdfs=off): they exercise "nothing attached", and
         // Robolectric cannot render a PDF page anyway; the bundled path has its own test on PresetSources.
         val presetSources = PresetSources(content, SourceDocumentStore(File(dir, "source-documents"))) { id ->
             if (System.getProperty("a2g.bundledPdfs") == "off") null else runCatching { app.assets.open("sample-pdfs/$id.pdf") }.getOrNull()
         }
+        val materials = MaterialCatalog(content, tutors, presetSources)
+        val spaces = SpaceRepository(File(dir, "spaces.json"), materials::materials, api, content::path)
+        val generation = GenerationRepository(File(dir, "generation.json"), api, content, materials, spaces)
+        val imports = PdfImportQueue(File(dir, "pdf-imports"), http::readPdf, tutors, spaces)
+
     }
 
     private suspend fun installServerPackage(pkg: com.anything2game.contract.LearningPackage) {
         val pack = PackCodec.build(pkg, emptyList(), PackOrigin.SERVER)
-        installedPacks.install(PackCodec.toBytes(pack).inputStream()).getOrThrow()
-        content.refresh()
+        content.install(PackCodec.toBytes(pack).inputStream())
     }
 
     private val registry = ProfileRegistry(app).also { r ->
@@ -115,6 +133,11 @@ class AndroidAppContainer(context: Context) : AppDependencies {
     }
     @Volatile private var scope = UserScope(registry.active() ?: LocalProfile.GUEST)
 
+    override val materials get() = scope.materials
+    override val spaces get() = scope.spaces
+    override val generation get() = scope.generation
+    override val learningProgress get() = scope.progress
+    override val pdfImports get() = scope.imports
     override val tutors: TutorRepository get() = scope.tutors
     override val framePreferences: FramePreferences get() = scope.framePreferences
     override val homePreferences: HomePreferences get() = scope.homePreferences
@@ -134,7 +157,7 @@ class AndroidAppContainer(context: Context) : AppDependencies {
         override suspend fun choose(profile: LocalProfile) = chooseLock.withLock {
             val next = UserScope(profile)
             if (profile.kind == ProfileKind.SAMPLE && !registry.isSeeded(profile)) {
-                SampleProfileSeeder(packages, frames, grading, masteryPolicy, next.sessions, next.mastery, next.homePreferences, next.avatarPreferences, next.framePreferences, clock)
+                SampleProfileSeeder(packages, frames, grading, masteryPolicy, next.sessions, next.mastery, next.homePreferences, next.avatarPreferences, next.framePreferences, clock, next.progress)
                     .seed(nickname = app.getString(R.string.sample_profile_name), avatarId = "pip")
                 registry.markSeeded(profile)
             }

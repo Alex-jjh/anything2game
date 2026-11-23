@@ -11,6 +11,8 @@ import com.anything2game.engine.session.SessionState
 interface PackageRepository {
     suspend fun list(): List<PackageSummary>
     suspend fun load(packageId: String): Result<LearningPackage>
+    suspend fun load(packageId: String, version: String): Result<LearningPackage> =
+        load(packageId).mapCatching { require(it.contentVersion == version); it }
 }
 
 data class PackageSummary(
@@ -26,12 +28,16 @@ data class PackageSummary(
 interface SessionStore {
     suspend fun save(state: SessionState)
     suspend fun load(packageId: String): SessionState?
+    suspend fun load(packageId: String, version: String): SessionState? = load(packageId)?.takeIf { it.contentVersion == version }
     suspend fun clear(packageId: String)
 }
 
 interface MasteryStore {
     suspend fun all(packageId: String): Map<String, MasteryRecord>
     suspend fun put(packageId: String, record: MasteryRecord)
+    suspend fun all(packageId: String, version: String): Map<String, MasteryRecord> = all(packageId)
+    suspend fun put(packageId: String, version: String, record: MasteryRecord) = put(packageId, record)
+    suspend fun legacyUnversioned(packageId: String): Map<String, MasteryRecord> = emptyMap()
 }
 
 fun interface Clock {
@@ -46,4 +52,6 @@ fun interface Clock {
 interface FrameRepository {
     suspend fun available(packageId: String): List<com.anything2game.contract.FrameId>
     suspend fun load(packageId: String, frameId: com.anything2game.contract.FrameId): com.anything2game.contract.FrameOverlay?
+    suspend fun load(packageId: String, version: String, frameId: com.anything2game.contract.FrameId) =
+        load(packageId, frameId)?.takeIf { it.contentVersion == version }
 }

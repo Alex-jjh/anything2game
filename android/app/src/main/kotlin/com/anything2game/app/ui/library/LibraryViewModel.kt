@@ -91,7 +91,7 @@ class LibraryViewModel(private val deps: AppDependencies) : ViewModel() {
                 try {
                     val pkg = deps.packages.load(summary.packageId).getOrThrow()
                     val frames = com.anything2game.app.ui.play.offeredFrames(pkg, deps.frames.available(pkg.packageId))
-                    libraryEntry(summary, pkg, deps.sessions.load(summary.packageId), deps.mastery.all(summary.packageId), deps.clock.now())
+                    libraryEntry(summary, pkg, deps.sessions.load(summary.packageId, pkg.contentVersion), deps.mastery.all(summary.packageId, pkg.contentVersion), deps.clock.now())
                         .copy(prepared = deps.homePreferences.isPrepared(pkg.packageId, pkg.contentVersion),
                             frames = frames, selectedFrame = deps.framePreferences.get(pkg.packageId)?.takeIf { it in frames } ?: FrameId.CLASSIC)
                 } catch (e: CancellationException) { throw e }

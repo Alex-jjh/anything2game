@@ -59,10 +59,14 @@ class PlayViewModel(
     private val packageId: String,
     private val levelId: String,
     private val frameId: FrameId,
+    private val contentVersion: String? = null,
 ) : ViewModel() {
     private val _state = MutableStateFlow<PlayUiState>(PlayUiState.Loading)
     val state: StateFlow<PlayUiState> = _state.asStateFlow()
 
+    private val sessions = deps.sessions
+    private val masteryStore = deps.mastery
+    private val progress = deps.learningProgress
     private val mutex = Mutex()
     private var engine: LevelSession? = null
     private val mastery = mutableMapOf<String, MasteryRecord>()
@@ -91,22 +95,27 @@ class PlayViewModel(
     fun stopListeningToContext() { contextJob?.cancel(); contextJob = null }
 
     private suspend fun load() = mutex.withLock {
-        val pkg = deps.packages.load(packageId).getOrElse {
+        val prior = sessions.load(packageId)
+        val version = contentVersion ?: prior?.takeIf { !it.isFinished && it.levelId == levelId && it.frameId == frameId }?.contentVersion
+        val pinned = version?.let { deps.packages.load(packageId, it) }
+        val loaded = if (contentVersion != null || pinned?.isSuccess == true) requireNotNull(pinned) else deps.packages.load(packageId)
+        val pkg = loaded.getOrElse {
             _state.value = PlayUiState.Failed(it.message ?: it::class.simpleName.orEmpty())
             return@withLock
         }
         // A frame whose overlay is missing falls back to Classic, so the level always plays.
-        val overlay = deps.frames.load(packageId, frameId)
+        val overlay = deps.frames.load(packageId, pkg.contentVersion, frameId)
         val frame = Frames.of(frameId).takeIf { it.isPlayable(overlay) } ?: Frames.CLASSIC
         val e = LevelSession(pkg, deps.grading, deps.masteryPolicy, deps.clock, frame = frame, overlay = overlay?.takeIf { frame.id == frameId })
             .also { engine = it; this.overlay = overlay?.takeIf { frame.id == frameId }; activeFrame = frame.id }
-        mastery.clear(); mastery.putAll(deps.mastery.all(packageId))
-        val saved = deps.sessions.load(packageId)?.takeIf { it.levelId == levelId && !it.isFinished && e.canResume(it) }
+        mastery.clear(); mastery.putAll(masteryStore.all(packageId, pkg.contentVersion))
+        val saved = sessions.load(packageId, pkg.contentVersion)?.takeIf { it.levelId == levelId && !it.isFinished && e.canResume(it) }
         var session = saved ?: e.start(levelId)
+        if (session.attemptId.isEmpty()) session = session.copy(attemptId = java.util.UUID.randomUUID().toString())
         val reason = context.pauseReason
         if (context.pause && reason != null) session = e.reduce(session, Action.Pause(reason)).state
         else if (session.isPaused) session = e.reduce(session, Action.Resume).state // a pause saved by an earlier run is stale once the phone is still
-        deps.sessions.save(session)
+        sessions.save(session)
         publish(pkg, e, session)
     }
 
@@ -121,11 +130,12 @@ class PlayViewModel(
                     when (effect) {
                         is Effect.MasteryChanged -> {
                             mastery[effect.record.unitId] = effect.record
-                            deps.mastery.put(packageId, effect.record)
+                            masteryStore.put(packageId, ready.pkg.contentVersion, effect.record)
                         }
                     }
                 }
-                deps.sessions.save(t.state)
+                progress?.practice(t.state)
+                sessions.save(t.state)
                 publish(ready.pkg, e, t.state)
             }
         }
@@ -138,8 +148,8 @@ class PlayViewModel(
                 val e = engine ?: return@withLock
                 // Replay asks what was missed in another form where the course has one (the cold-case screen promises it).
                 val missed = ready.session.results.filter { it.slot.kind == com.anything2game.engine.session.SlotKind.UNIT && !it.grade.correct }.map { it.slot.unitId }.toSet()
-                val s = e.start(levelId, missed)
-                deps.sessions.save(s)
+                val s = e.start(levelId, missed).copy(attemptId = java.util.UUID.randomUUID().toString())
+                sessions.save(s)
                 publish(ready.pkg, e, s)
             }
         }

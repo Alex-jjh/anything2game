@@ -10,6 +10,9 @@ interface TutorScripts {
     /** The script of the course the library currently serves, or null if that course has none. */
     suspend fun scriptFor(packageId: String): TutorScript?
 
+    /** Resolve an old saved session against its exact installed script and package. */
+    suspend fun savedScript(key: String): Pair<com.anything2game.contract.LearningPackage, TutorScript>? = null
+
     /** Ids of every course that has a script, in listing order. */
     suspend fun scriptedPackageIds(): List<String>
 }

@@ -30,6 +30,7 @@ class SampleProfileSeeder(
     private val avatar: AvatarPreferences,
     private val framePrefs: com.anything2game.app.data.FramePreferences,
     private val clock: Clock,
+    private val progress: com.anything2game.app.data.learning.LearningProgress? = null,
 ) {
     /** One past play: which course, which frame, how long ago, which answers were wrong, and whether it was finished. */
     data class Play(val packageId: String, val frame: FrameId, val hoursAgo: Long, val wrong: Set<Int> = emptySet(), val stopAfter: Int? = null)
@@ -51,8 +52,9 @@ class SampleProfileSeeder(
             val past = Clock { clock.now() - play.hoursAgo * 3_600_000L }
             val engine = LevelSession(pkg, grading, masteryPolicy, past, frame = frame, overlay = overlay?.takeIf { frame.id == play.frame })
             val levelId = pkg.levels.first().levelId
-            val played = ScriptedPlayer.play(engine, engine.start(levelId), { n, _ -> n !in play.wrong }, mastery.all(pkg.packageId), play.stopAfter)
-            played.mastery.values.forEach { mastery.put(pkg.packageId, it) }
+            val played = ScriptedPlayer.play(engine, engine.start(levelId).copy(attemptId = "sample-${pkg.packageId}"), { n, _ -> n !in play.wrong }, mastery.all(pkg.packageId, pkg.contentVersion), play.stopAfter)
+            played.mastery.values.forEach { mastery.put(pkg.packageId, pkg.contentVersion, it) }
+            progress?.practice(played.state, past.now())
             framePrefs.set(pkg.packageId, frame.id) // Practice shows the frame Lin actually plays this course in
             if (!played.state.isFinished) sessions.save(played.state)
         }
