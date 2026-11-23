@@ -91,6 +91,17 @@ internal fun SpaceScreen(deps: AppDependencies, language: String, route: Route.S
     val routeList = rememberLazyListState()
     val materialList = rememberLazyListState()
     val listState = if (route.materials) materialList else routeList
+    var selectedUris by rememberSaveable(route.id) { mutableStateOf(emptyArray<String>()) }
+    var selectionId by rememberSaveable(route.id) { mutableStateOf<String?>(null) }
+    val pickPdfs = rememberPdfPicker { uris ->
+        selectedUris = uris
+        selectionId = java.util.UUID.randomUUID().toString()
+    }
+    if (card != null && route.materials) PdfImportConfirmation(vm, route, selectedUris, selectionId) { batchId ->
+        selectedUris = emptyArray()
+        selectionId = null
+        nav.clearPdfConfirmation(batchId)
+    }
     BackHandler { if (rename) rename = false else nav.back() }
     Scaffold(containerColor = A2g.skin.paper) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).testTag(if (route.materials) "space_materials" else "space_route"),
@@ -111,7 +122,7 @@ internal fun SpaceScreen(deps: AppDependencies, language: String, route: Route.S
                 } }
             }
             item { SpaceFeedback(vm) }
-            if (card != null && route.materials) materialItems(deps, vm, card.space, nav, library, route)
+            if (card != null && route.materials) materialItems(deps, vm, card.space, nav, library, pickPdfs)
             if (card != null && !route.materials) {
                 item { Text(stringResource(R.string.spaces_counts, card.space.members.size, card.completed, card.path?.nodes?.size ?: 0)) }
                 item { GenerationPanel(vm.generation, { it is GenerationInput.SpacePath && it.spaceId == vm.remote?.spaceId },

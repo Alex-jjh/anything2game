@@ -22,6 +22,7 @@ import com.anything2game.app.R
 import com.anything2game.app.data.learning.*
 import com.anything2game.app.importing.IntentImportParser
 import com.anything2game.app.ui.Navigator
+import com.anything2game.app.ui.Route
 import com.anything2game.app.ui.home.*
 import com.anything2game.app.ui.library.*
 import com.anything2game.app.ui.play.offeredFrames
@@ -33,8 +34,8 @@ import com.anything2game.contract.space.*
 import com.anything2game.engine.ports.PackageSummary
 import kotlinx.coroutines.CancellationException
 
-internal fun LazyListScope.materialItems(deps: AppDependencies, vm: SpaceViewModel, space: Space, nav: Navigator, library: LibraryViewModel, route: com.anything2game.app.ui.Route.Space) {
-    item { MaterialActions(vm, space, route, nav::clearPdfConfirmation) }
+internal fun LazyListScope.materialItems(deps: AppDependencies, vm: SpaceViewModel, space: Space, nav: Navigator, library: LibraryViewModel, pickPdfs: () -> Unit) {
+    item { MaterialActions(vm, space, pickPdfs) }
     items(vm.imports, key = { it.id }) { row ->
         var confirm by rememberSaveable { mutableStateOf(false) }
         PaperCard {
@@ -79,30 +80,37 @@ internal fun LazyListScope.materialItems(deps: AppDependencies, vm: SpaceViewMod
 }
 
 @Composable
-private fun MaterialActions(vm: SpaceViewModel, space: Space, route: com.anything2game.app.ui.Route.Space, clearShare: (String) -> Unit) {
-    var adding by rememberSaveable { mutableStateOf(false) }
-    var selected by rememberSaveable(space.spaceId) { mutableStateOf(emptyArray<String>()) }
-    var selectionId by rememberSaveable(space.spaceId) { mutableStateOf<String?>(null) }
+internal fun rememberPdfPicker(onSelected: (Array<String>) -> Unit): () -> Unit {
+    val resolver = LocalContext.current.contentResolver
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        val selected = uris.distinct()
+        selected.forEach { runCatching { resolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION) } }
+        if (selected.isNotEmpty()) onSelected(selected.map(Uri::toString).toTypedArray())
+    }
+    return { picker.launch(arrayOf(IntentImportParser.PDF)) }
+}
+
+@Composable
+internal fun PdfImportConfirmation(vm: SpaceViewModel, route: Route.Space, selected: Array<String>, selectionId: String?,
+    clear: (String) -> Unit) {
     val resolver = LocalContext.current.contentResolver
     val parser = remember(resolver) { IntentImportParser(resolver) }
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
-        val unique = uris.distinct()
-        unique.forEach { runCatching { resolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION) } }
-        selectionId = java.util.UUID.randomUUID().toString()
-        selected = unique.map(Uri::toString).toTypedArray()
-    }
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Button({ picker.launch(arrayOf(IntentImportParser.PDF)) }, Modifier.fillMaxWidth().testTag("pick_pdfs"), enabled = !vm.busy) { Text(stringResource(R.string.spaces_import)) }
-        OutlinedButton({ adding = true }, Modifier.fillMaxWidth().testTag("add_existing"), enabled = !vm.busy) { Text(stringResource(R.string.spaces_add)) }
-    }
     val batchId = route.batchId ?: selectionId
     if (batchId != null && (route.share != null || selected.isNotEmpty())) {
         val files = remember(route.share, selected) { route.share?.let(::listOf) ?: selected.map { parser.pdf(it.toUri()) } }
-        val clear = { selected = emptyArray<String>(); selectionId = null; clearShare(batchId) }
-        AlertDialog(onDismissRequest = { if (!vm.busy) clear() }, title = { Text(stringResource(R.string.spaces_confirm)) },
+        AlertDialog(onDismissRequest = { if (!vm.busy) clear(batchId) }, title = { Text(stringResource(R.string.spaces_confirm)) },
             text = { Column(Modifier.verticalScroll(rememberScrollState())) { Text(stringResource(R.string.spaces_upload_info)); files.forEach { Text(it.title) } } },
-            confirmButton = { Button({ vm.importFiles(space.spaceId, files, batchId, clear) }, Modifier.testTag("confirm_pdfs"), enabled = !vm.busy) { Text(stringResource(R.string.spaces_confirm)) } },
-            dismissButton = { TextButton(clear, enabled = !vm.busy) { Text(stringResource(R.string.import_cancel)) } })
+            confirmButton = { Button({ vm.importFiles(route.id, files, batchId) { clear(batchId) } }, Modifier.testTag("confirm_pdfs"), enabled = !vm.busy) { Text(stringResource(R.string.spaces_confirm)) } },
+            dismissButton = { TextButton({ clear(batchId) }, enabled = !vm.busy) { Text(stringResource(R.string.import_cancel)) } })
+    }
+}
+
+@Composable
+private fun MaterialActions(vm: SpaceViewModel, space: Space, pickPdfs: () -> Unit) {
+    var adding by rememberSaveable { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Button(pickPdfs, Modifier.fillMaxWidth().testTag("pick_pdfs"), enabled = !vm.busy) { Text(stringResource(R.string.spaces_import)) }
+        OutlinedButton({ adding = true }, Modifier.fillMaxWidth().testTag("add_existing"), enabled = !vm.busy) { Text(stringResource(R.string.spaces_add)) }
     }
     if (adding) AlertDialog(onDismissRequest = { adding = false }, title = { Text(stringResource(R.string.spaces_add)) },
         text = { Column(Modifier.verticalScroll(rememberScrollState())) {

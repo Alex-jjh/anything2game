@@ -92,6 +92,48 @@ class ReviewedSpaceJourneysTest : LearnJourneyBase() {
         waitFor("one row owned by selected space") { runBlocking { deps.pdfImports!!.list().singleOrNull()?.spaceId == id } }
     }
 
+    @Test fun shared_pdf_confirmation_stays_visible_in_a_previously_scrolled_space_and_after_rotation() {
+        val title = "Research notes"
+        val id = runBlocking {
+            deps.profiles.choose(LocalProfile.GUEST)
+            val spaces = requireNotNull(deps.spaces)
+            val id = spaces.create(title).spaceId
+            for (page in 1..20) spaces.add(id, SpaceMember.ServerDocumentRef("paper-$page", "1"))
+            id
+        }
+        launch()
+        openMaterial(title)
+        rule.onNodeWithTag("space_materials").performScrollToNode(hasText("paper-20"))
+        rule.onNodeWithText("paper-20").assertIsDisplayed()
+        rule.onNodeWithTag("pick_pdfs").assertDoesNotExist()
+        systemBack()
+        waitForTag("home_SPACES")
+
+        val file = File(app.cacheDir, "new-paper.pdf").apply { writeText("invalid PDF") }
+        val intent = Intent(app, MainActivity::class.java).setAction(Intent.ACTION_SEND)
+            .setType("application/pdf").putExtra(Intent.EXTRA_STREAM, Uri.fromFile(file))
+        scenario!!.onActivity { activity ->
+            androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().callActivityOnNewIntent(activity, intent)
+        }
+        waitFor("destination list") { runCatching { rule.onNodeWithTag("share_spaces").performScrollToNode(hasText(title)); true }.getOrDefault(false) }
+        tap(rule.onNodeWithText(title))
+        fun assertOnePendingConfirmation() {
+            waitFor("confirmation without scrolling", 5000) { has("confirm_pdfs") }
+            rule.onAllNodes(isDialog()).assertCountEquals(1)
+            rule.onNodeWithTag("confirm_pdfs").assertIsDisplayed()
+            rule.onNodeWithText(file.name).assertIsDisplayed()
+            assertTrue(runBlocking { deps.pdfImports!!.list().isEmpty() })
+        }
+        assertOnePendingConfirmation()
+        scenario!!.recreate()
+        assertOnePendingConfirmation()
+        waitFor("confirmed destination ready") { runCatching { rule.onNodeWithTag("confirm_pdfs").assertIsEnabled(); true }.getOrDefault(false) }
+        tap(rule.onNodeWithTag("confirm_pdfs"))
+        waitFor("one imported row in the chosen Space") {
+            runBlocking { deps.pdfImports!!.list().singleOrNull()?.let { it.spaceId == id && it.title == file.name } == true }
+        }
+    }
+
     @Test fun practice_only_source_opens_all_original_pages_and_returns_to_its_material() {
         launch(); chooseGuest()
         val pkg = Level("demo_mapreduce", com.anything2game.contract.FrameId.CLASSIC).pkg
