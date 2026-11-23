@@ -25,6 +25,13 @@ class HomePreferences(context: Context, name: String = "home") {
         }
         set(value) { prefs.edit { putString("game.id", value?.contentId); putString("game.version", value?.contentVersion) } }
 
+    /** The best star count ever earned on a game (0 = none yet). Kept per profile; a new attempt never lowers it. */
+    fun bestStars(game: com.anything2game.contract.game.ContentVersion): Int = prefs.getInt(starKey(game), 0)
+    fun recordStars(game: com.anything2game.contract.game.ContentVersion, stars: Int) {
+        if (stars > bestStars(game)) prefs.edit { putInt(starKey(game), stars.coerceIn(0, 3)) }
+    }
+    private fun starKey(game: com.anything2game.contract.game.ContentVersion) = "stars:" + listOf(game.contentId, game.contentVersion).joinToString(":") { "${it.length}:$it" }
+
     // Length prefixes avoid collisions; versioning retains old answers without applying them to new content.
     private fun key(pkg: String, version: String, level: String) =
         listOf("familiarity", pkg, version, level).joinToString(":") { "${it.length}:$it" }

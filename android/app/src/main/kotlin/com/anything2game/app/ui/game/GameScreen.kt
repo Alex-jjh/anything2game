@@ -1,9 +1,14 @@
 package com.anything2game.app.ui.game
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -11,22 +16,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anything2game.app.AppDependencies
 import com.anything2game.app.R
 import com.anything2game.app.data.content.ContentLibrary
 import com.anything2game.app.data.learning.LearningProgress
-import com.anything2game.app.ui.home.PaperCard
+import com.anything2game.app.ui.character.LocalAvatar
+import com.anything2game.app.ui.character.Mood
+import com.anything2game.app.ui.character.rememberReducedMotion
+import com.anything2game.app.ui.common.Stamp
+import com.anything2game.app.ui.common.StampKind
 import com.anything2game.app.ui.space.ActivityEvidence
 import com.anything2game.app.ui.theme.A2g
 import com.anything2game.contract.game.*
+import com.anything2game.contract.pack.PackOrigin
 import com.anything2game.engine.game.*
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -35,11 +43,13 @@ import kotlin.random.Random
 internal class GameViewModel(private val content: ContentLibrary, private val progress: LearningProgress,
     private val version: ContentVersion) : ViewModel() {
     var run by mutableStateOf<GameRun?>(null); private set
+    var origin by mutableStateOf<PackOrigin?>(null); private set
     var busy by mutableStateOf(false); private set
     var error by mutableStateOf<String?>(null); private set
     init { load() }
     fun load(replay: Boolean = false) = save {
         val spec = requireNotNull(content.game(version))
+        origin = content.originOf(version)
         val checkpoint = if (replay) null else progress.checkpoint(version)
         if (checkpoint == null) progress.start(spec, Random.nextLong()) else GameRuntime.replay(spec, checkpoint)
     }
@@ -65,124 +75,169 @@ internal fun GameScreen(deps: AppDependencies, version: ContentVersion, onBack: 
     BackHandler { if (!vm.busy) onBack() }
     val run = vm.run
     LaunchedEffect(run?.spec, version) { if (run != null) deps.homePreferences.lastGame = version }
+    // Stars are kept per profile the moment a game is completed, so starting a fresh attempt never loses them.
+    LaunchedEffect(run?.checkpoint) { run?.let { r -> GameScore.stars(r)?.let { deps.homePreferences.recordStars(version, it) } } }
     var evidence by rememberSaveable { mutableStateOf<String?>(null) }
     Scaffold(containerColor = A2g.skin.paper) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(18.dp).testTag("game_board"),
+        Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 10.dp).testTag("game_board"),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            TextButton(onBack, enabled = !vm.busy) { Text(stringResource(R.string.action_back)) }
+            TextButton(onBack, enabled = !vm.busy) {
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.action_back))
+            }
             if (vm.busy && run == null) LinearProgressIndicator(Modifier.fillMaxWidth())
             vm.error?.let {
                 Text(if (run == null) stringResource(R.string.activity_missing) + " " + it else stringResource(R.string.games_save_failed, it), color = A2g.skin.wrong)
                 OutlinedButton({ vm.load() }) { Text(stringResource(R.string.home_retry)) }
             }
             if (run != null) {
-                Text(run.spec.title, style = MaterialTheme.typography.headlineMedium)
-                Text(stringResource(if (run.stage.transfer) R.string.games_transfer else R.string.games_practice), color = A2g.skin.action)
-                Text(run.stage.goal, style = MaterialTheme.typography.titleMedium)
-                val playing = !vm.busy && !run.actionLimitReached && run.status == StageStatus.PLAYING
-                val move: (GameAction) -> Unit = { vm.move(run, it) }
-                when (val b = run.board) {
-                    is PartitionBoard -> PartitionControls(b, run.stage.config as PartitionConfig, playing, move)
-                    is AllocationBoard -> AllocationControls(b, run.stage.config as AllocationConfig, run.checkpoint.actions.lastOrNull(), playing, move)
-                }
-                if (run.checkpoint.actions.lastOrNull() == GameAction.Help) Text(stringResource(
-                    if (run.board is PartitionBoard) R.string.games_split_hint else R.string.games_token_hint))
-                if (playing) OutlinedButton({ move(GameAction.Help) }) { Text(stringResource(R.string.games_help)) }
-                if (run.status != StageStatus.PLAYING) {
-                    Text(stringResource(when { run.completed -> R.string.games_complete; run.status == StageStatus.WON -> R.string.games_won; else -> R.string.games_lost }),
-                        style = MaterialTheme.typography.titleLarge, modifier = Modifier.testTag("game_verdict"))
-                }
-                when {
-                    run.completed || run.actionLimitReached -> {
-                        if (!run.completed) Text(stringResource(R.string.games_limit), color = A2g.skin.inkMuted)
-                        Button({ vm.load(true) }, Modifier.testTag("restart_game"), enabled = !vm.busy) { Text(stringResource(R.string.games_replay)) }
+                GameBody(run, vm.origin, vm.busy, deps.homePreferences.bestStars(version), onMove = { vm.move(run, it) }, onRestart = { vm.load(true) }) {
+                    run.spec.evidenceRefs.filter { it.evidenceId in run.stage.evidenceIds }.forEach { ref ->
+                        PixelButton(stringResource(R.string.source_open), { evidence = ref.evidenceId })
+                        if (evidence == ref.evidenceId) ActivityEvidence(requireNotNull(deps.materials), ref) { evidence = null }
                     }
-                    run.status == StageStatus.WON -> Button({ move(GameAction.Advance) }, Modifier.testTag("game_advance"), enabled = !vm.busy) { Text(stringResource(R.string.games_next)) }
-                    else -> TextButton({ move(GameAction.Reset) }, enabled = !vm.busy && run.checkpoint.actions.isNotEmpty()) { Text(stringResource(R.string.games_reset)) }
-                }
-                if (run.completed) CompletedMoves(run)
-                Text(run.spec.teachingSetting, style = MaterialTheme.typography.bodySmall)
-                Text(stringResource(R.string.games_record, run.checkpoint.actions.size), color = A2g.skin.inkMuted)
-                run.spec.evidenceRefs.filter { it.evidenceId in run.stage.evidenceIds }.forEach { ref ->
-                    OutlinedButton({ evidence = ref.evidenceId }) { Text(stringResource(R.string.source_open)) }
-                    if (evidence == ref.evidenceId) ActivityEvidence(requireNotNull(deps.materials), ref) { evidence = null }
                 }
             }
+        }
+    }
+}
+
+/** Everything under the Back button, stateless so the same layout is what the tests and the screenshots render. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun GameBody(run: GameRun, origin: PackOrigin?, busy: Boolean, bestStars: Int, onMove: (GameAction) -> Unit, onRestart: () -> Unit,
+    source: @Composable () -> Unit) {
+    val skin = A2g.skin
+    val playing = !busy && !run.actionLimitReached && run.status == StageStatus.PLAYING
+    val stageScores = remember(run.checkpoint) { GameScore.stages(run.spec, run.checkpoint) }
+    val stars = if (run.completed) GameScore.stars(run) else GameScore.currentStageStars(run)
+    val lastAction = run.checkpoint.actions.lastOrNull()
+    val mood = when {
+        run.status == StageStatus.WON -> if (stars == 3) Mood.CELEBRATE else Mood.HAPPY
+        run.status == StageStatus.LOST -> Mood.DEFLATED
+        lastAction == GameAction.Help -> Mood.THINKING
+        else -> Mood.IDLE
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(run.spec.title, style = MaterialTheme.typography.headlineMedium)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            PixelTag(stringResource(if (run.board is PartitionBoard) R.string.mechanism_partition else R.string.mechanism_allocation), fill = skin.card)
+            if (origin == PackOrigin.PRESET) PixelTag(stringResource(R.string.games_demo_badge), fill = skin.card, ink = skin.inkMuted,
+                modifier = Modifier.testTag("demo_badge"))
+        }
+        LevelStrip(run, stageScores)
+        if (run.stage.transfer && lastAction == GameAction.Advance) NewConditions(run)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+            LocalAvatar.current.Draw(mood, Modifier.size(68.dp).testTag("game_avatar"), pokeable = false)
+            PixelPanel(Modifier.weight(1f), fill = skin.card) {
+                Text(run.stage.goal, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = skin.ink)
+            }
+        }
+        when (val b = run.board) {
+            is PartitionBoard -> PartitionBoardView(b, run.stage.config as PartitionConfig, run.status, playing, onMove)
+            is AllocationBoard -> AllocationBoardView(b, run.stage.config as AllocationConfig, lastAction, run.status, playing, onMove)
+        }
+        if (lastAction == GameAction.Help) PixelPanel(Modifier.fillMaxWidth(), fill = skin.hintSoft) {
+            Text(stringResource(if (run.board is PartitionBoard) R.string.games_split_hint else R.string.games_token_hint), color = skin.ink)
+        }
+        if (run.status == StageStatus.PLAYING && !run.actionLimitReached) Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            PixelButton(stringResource(R.string.games_help), { onMove(GameAction.Help) }, enabled = playing)
+            PixelButton(stringResource(R.string.games_reset), { onMove(GameAction.Reset) }, enabled = !busy && run.checkpoint.actions.isNotEmpty())
+        }
+        if (run.status != StageStatus.PLAYING) Result(run, busy, stars, bestStars, mood, onMove, onRestart)
+        else if (run.actionLimitReached) {
+            Text(stringResource(R.string.games_limit), color = skin.inkMuted)
+            PixelButton(stringResource(R.string.games_replay), onRestart, Modifier.testTag("restart_game"), enabled = !busy, primary = true)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Top) {
+            Icon(Icons.Outlined.Info, null, Modifier.size(16.dp).padding(top = 2.dp), tint = skin.inkMuted)
+            Text(run.spec.teachingSetting, style = MaterialTheme.typography.bodySmall, color = skin.inkMuted)
+        }
+        source()
+    }
+}
+
+@Composable
+private fun LevelStrip(run: GameRun, scores: List<StageScore>) {
+    val skin = A2g.skin
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        run.spec.stages.forEachIndexed { i, stage ->
+            val cleared = scores.firstOrNull { it.stageIndex == i }
+            val current = i == run.stageIndex
+            val label = stringResource(if (stage.transfer) R.string.games_transfer else R.string.games_practice)
+            Row(Modifier.weight(1f).background(if (current) skin.card else skin.paper, pixelShape(5.dp))
+                .border(if (current) 2.dp else 1.5.dp, if (current) skin.ink else skin.outline.copy(alpha = 0.6f), pixelShape(5.dp)).padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(label, Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, fontWeight = if (current) FontWeight.Bold else FontWeight.Normal,
+                    color = if (current || cleared != null) skin.ink else skin.inkMuted, maxLines = 2)
+                if (cleared != null) StarsRow(cleared.stars, size = 16.dp)
+            }
+        }
+    }
+}
+
+/** The changed-condition banner: what is different now, taken from the two stage configurations. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun NewConditions(run: GameRun) {
+    val skin = A2g.skin
+    val previous = run.spec.stages.take(run.stageIndex).lastOrNull { !it.transfer && it.mechanicId == run.stage.mechanicId }?.config
+    val changes = mutableListOf<String>()
+    when (val now = run.stage.config) {
+        is PartitionConfig -> if (previous is PartitionConfig) {
+            val look = now.look()
+            if (now.candidates != previous.candidates) changes += stringResource(R.string.games_changed, look.items, previous.candidates, now.candidates)
+            if (now.queryBudget != previous.queryBudget) changes += stringResource(R.string.games_changed, look.query, previous.queryBudget, now.queryBudget)
+        }
+        is AllocationConfig -> if (previous is AllocationConfig) {
+            val look = now.look()
+            if (now.tokens != previous.tokens) changes += stringResource(R.string.games_changed, look.tokens, previous.tokens, now.tokens)
+            if (now.firstYield != previous.firstYield) changes += stringResource(R.string.games_changed_rate, look.firstGoods, previous.firstYield, now.firstYield, look.token)
+            if (now.secondYield != previous.secondYield) changes += stringResource(R.string.games_changed_rate, look.secondGoods, previous.secondYield, now.secondYield, look.token)
+            if (now.firstGoal != previous.firstGoal) changes += stringResource(R.string.games_changed_goal, look.firstGoods, previous.firstGoal, now.firstGoal)
+            if (now.secondGoal != previous.secondGoal) changes += stringResource(R.string.games_changed_goal, look.secondGoods, previous.secondGoal, now.secondGoal)
+        }
+    }
+    PixelPanel(Modifier.fillMaxWidth().testTag("new_conditions"), fill = skin.hintSoft, outline = skin.hint) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PixelSprite(Sprites.sparkle, 22.dp)
+            Text(stringResource(R.string.games_new_conditions), style = MaterialTheme.typography.titleLarge, color = skin.hint, fontWeight = FontWeight.Black)
+        }
+        Text(stringResource(R.string.games_new_conditions_hint), color = skin.ink)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            changes.forEach { PixelTag(it, fill = skin.card) }
         }
     }
 }
 
 @Composable
-private fun PartitionControls(b: PartitionBoard, config: PartitionConfig, enabled: Boolean, move: (GameAction) -> Unit) {
-    var choice by rememberSaveable(b.low, b.high) { mutableStateOf<Int?>(null) }
-    val split = choice ?: ((b.low + b.high) / 2)
-    PaperCard {
-        Text(stringResource(R.string.games_queries, b.queriesLeft, b.low, b.high), style = MaterialTheme.typography.titleMedium)
-        if (enabled && choice == null) Text(stringResource(R.string.games_choose_cut))
-        for (row in (1..config.candidates).chunked(4)) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            row.forEach { n ->
-                val active = n in b.low..b.high
-                val leftGroup = active && choice != null && n <= split
-                val fill = when { !active -> A2g.skin.paper; leftGroup -> A2g.skin.action; else -> A2g.skin.evidenceSoft }
-                val ink = if (leftGroup) A2g.skin.onAction else A2g.skin.inkMuted
-                val cutLabel = stringResource(R.string.games_cut_after, n)
-                val group = stringResource(when { !active -> R.string.games_door_out; choice == null -> R.string.games_door_in; n <= split -> R.string.games_door_left; else -> R.string.games_door_right })
-                Column(Modifier.weight(1f).heightIn(min = 48.dp).clickable(enabled = enabled && n in b.low until b.high,
-                    onClickLabel = cutLabel) { choice = n }.testTag("cut_$n").semantics { stateDescription = group }.background(fill, RoundedCornerShape(6.dp)).border(1.dp, A2g.skin.outline, RoundedCornerShape(6.dp))
-                    .padding(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(Modifier.width(18.dp).height(2.dp).background(ink))
-                    Text(n.toString(), color = ink, style = MaterialTheme.typography.titleMedium)
-                }
-            }
-            repeat(4-row.size) { Spacer(Modifier.weight(1f)) }
+private fun Result(run: GameRun, busy: Boolean, stars: Int?, best: Int, mood: Mood, onMove: (GameAction) -> Unit, onRestart: () -> Unit) {
+    val skin = A2g.skin
+    val reduced = rememberReducedMotion()
+    val won = run.status == StageStatus.WON
+    PixelPanel(Modifier.fillMaxWidth().testTag("game_result"), fill = if (won) skin.correctSoft else skin.wrongSoft, outline = if (won) skin.correct else skin.wrong) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (won) {
+                Stamp(stringResource(if (run.completed) R.string.games_stamp_complete else R.string.games_stamp_clear), StampKind.YES, skin.correct,
+                    animate = !reduced, big = run.completed)
+            } else Stamp(stringResource(R.string.games_stamp_miss), StampKind.NO, skin.wrong, animate = !reduced)
         }
-        if (b.eliminated > 0) Text(stringResource(R.string.games_eliminated, b.eliminated), color = A2g.skin.correct)
-        if (b.low < b.high) {
-            choice?.let { Text(stringResource(R.string.games_groups, it-b.low+1, b.high-it)) }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                val left = stringResource(R.string.games_less)
-                OutlinedButton({ choice = (split-1).coerceAtLeast(b.low) }, Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics { contentDescription = left }, enabled = enabled && (choice == null || split > b.low)) { Text("−") }
-                Text(stringResource(R.string.games_split, split), Modifier.weight(1f).padding(horizontal = 8.dp))
-                val right = stringResource(R.string.games_more)
-                OutlinedButton({ choice = (split+1).coerceAtMost(b.high-1) }, Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics { contentDescription = right }, enabled = enabled && (choice == null || split < b.high-1)) { Text("+") }
-            }
-            Button({ move(GameAction.Split(split)) }, Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("split_submit"), enabled = enabled && choice != null) { Text(stringResource(R.string.games_ask)) }
+        Text(stringResource(when { run.completed -> R.string.games_complete; won -> R.string.games_won; else -> R.string.games_lost }),
+            style = MaterialTheme.typography.titleLarge, modifier = Modifier.testTag("game_verdict"), color = skin.ink)
+        if (won && stars != null) {
+            val earned = stringResource(R.string.games_stars_earned, stars)
+            StarsRow(stars, size = 40.dp, animate = !reduced, modifier = Modifier.testTag("game_stars"))
+            Text(earned, color = skin.inkMuted, style = MaterialTheme.typography.bodySmall)
+            if (run.completed && best > stars) Text(stringResource(R.string.games_best_stars, best), color = skin.inkMuted, style = MaterialTheme.typography.bodySmall)
         }
+        when {
+            run.completed || run.actionLimitReached -> PixelButton(stringResource(R.string.games_replay), onRestart, Modifier.fillMaxWidth().testTag("restart_game"),
+                enabled = !busy, primary = true)
+            won -> PixelButton(stringResource(R.string.games_next), { onMove(GameAction.Advance) }, Modifier.fillMaxWidth().testTag("game_advance"), enabled = !busy, primary = true)
+            else -> PixelButton(stringResource(R.string.games_retry), { onMove(GameAction.Reset) }, Modifier.fillMaxWidth().testTag("retry_round"), enabled = !busy, primary = true)
+        }
+        if (run.completed) CompletedMoves(run)
     }
 }
-
-@Composable
-private fun AllocationControls(b: AllocationBoard, config: AllocationConfig, last: GameAction?, enabled: Boolean, move: (GameAction) -> Unit) {
-    PaperCard {
-        Text(stringResource(R.string.games_tokens, b.available), style = MaterialTheme.typography.titleLarge)
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) { repeat(config.tokens) { i ->
-            Box(Modifier.size(16.dp).background(if (i < b.available) A2g.skin.evidence else A2g.skin.paper, RoundedCornerShape(100))
-                .border(1.dp, A2g.skin.outline, RoundedCornerShape(100)))
-        } }
-        val zones = if (b.firstOnLeft) Zone.entries else Zone.entries.reversed()
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            zones.forEach { zone ->
-                val first = zone == Zone.FIRST
-                Column(Modifier.weight(1f).background(if (first) A2g.skin.evidenceSoft else A2g.skin.correctSoft,
-                    RoundedCornerShape(10.dp)).padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(stringResource(R.string.games_product, if (first) "A" else "B"), style = MaterialTheme.typography.titleMedium)
-                    Text(stringResource(R.string.games_yield, if (first) config.firstYield else config.secondYield))
-                    Text(stringResource(R.string.games_output, if (first) b.firstOutput else b.secondOutput, if (first) config.firstGoal else config.secondGoal))
-                    Button({ move(GameAction.Place(zone)) }, Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("place_${zone.name}"),
-                        enabled = enabled && b.available > 0, contentPadding = PaddingValues(4.dp)) { Text(stringResource(R.string.games_place)) }
-                }
-            }
-        }
-        if (last is GameAction.Place) {
-            val first = last.zone == Zone.FIRST
-            Text(stringResource(R.string.games_tradeoff, if (first) config.firstYield else config.secondYield,
-                if (first) "A" else "B", if (first) config.secondYield else config.firstYield, if (first) "B" else "A"), color = A2g.skin.action)
-        }
-        OutlinedButton({ move(GameAction.Undo) }, enabled = enabled && b.placements.isNotEmpty()) { Text(stringResource(R.string.games_undo)) }
-        Button({ move(GameAction.Submit) }, Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("allocation_submit"), enabled = enabled) { Text(stringResource(R.string.games_deliver)) }
-    }
-}
-
 
 @Composable
 private fun CompletedMoves(run: GameRun) {

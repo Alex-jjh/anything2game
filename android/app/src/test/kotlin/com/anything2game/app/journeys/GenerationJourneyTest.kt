@@ -104,7 +104,7 @@ class GenerationJourneyTest : JourneyTest() {
                 container.profiles.choose(LocalProfile.GUEST)
                 container.generation.enqueue(GenerationInput.ConceptGame("binary search", "en"))
             }
-            launch(); waitForTag("tab_PLAYGROUND"); tap(rule.onNodeWithTag("tab_PLAYGROUND"))
+            launch(); waitForTag("tab_PLAYGROUND"); openGenerationTools()
             val interrupted = hasText(str(R.string.job_offline), substring = true)
             waitFor("temporary polling failure shown") { exists(interrupted) }
             restored.set(true)
@@ -126,13 +126,14 @@ class GenerationJourneyTest : JourneyTest() {
         server.start()
         try {
             useServer(server)
-            launch(); chooseGuest(); tap(rule.onNodeWithTag("tab_PLAYGROUND"))
+            launch(); chooseGuest(); openGenerationTools()
             rule.onNodeWithTag("concept_input").performTextInput("orbital dynamics")
             tap(rule.onNodeWithTag("generate_game"))
             waitForText(str(com.anything2game.app.R.string.job_unsupported))
             rule.onNodeWithTag("concept_input").assertTextContains("orbital dynamics")
             assertTrue(runBlocking { deps.generation!!.list().single().admissionError?.code == "UNSUPPORTED_TOPIC" })
-            tap(rule.onNodeWithTag("game_partition"))
+            tap(rule.onNodeWithTag("tab_PLAYGROUND"))
+            waitForTag("game_partition"); tap(rule.onNodeWithTag("game_partition"))
             waitForTag("cut_8")
         } finally { server.stop(0) }
     }
@@ -172,7 +173,7 @@ class GenerationJourneyTest : JourneyTest() {
         try {
             val container = useServer(server)
             launch(); chooseGuest()
-            tap(rule.onNodeWithTag("tab_PLAYGROUND"))
+            openGenerationTools()
             rule.onNodeWithTag("concept_input").performTextInput("binary search")
             tap(rule.onNodeWithTag("generate_game"))
             waitFor("real design stage") { textShown(str(com.anything2game.app.R.string.job_experience)) }
@@ -185,13 +186,15 @@ class GenerationJourneyTest : JourneyTest() {
             scenario!!.moveToState(Lifecycle.State.RESUMED)
             waitForTag("game_board"); waitForText("Generated lockers")
             tap(rule.onNodeWithTag("cut_8")); tap(rule.onNodeWithTag("split_submit"))
-            waitForText("8 doors eliminated")
+            waitForText("8 lockers ruled out")
             systemBack()
+            tap(rule.onNodeWithTag("tab_PLAYGROUND"))
             waitForText("Test provider · fixture-game")
             assertTrue(runBlocking { container.generation.list().single().installed })
             val checkpoint = runBlocking { requireNotNull(container.learningProgress.checkpoint(version)) }
             org.robolectric.RuntimeEnvironment.setQualifiers("+zh")
             scenario!!.recreate()
+            waitForTag("tab_PLAYGROUND"); tap(rule.onNodeWithTag("tab_PLAYGROUND"))
             for (tag in listOf("resume_game", "game_${version.contentId}_${version.contentVersion}")) {
                 waitForTag(tag)
                 tap(rule.onNodeWithTag(tag))

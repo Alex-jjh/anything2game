@@ -117,7 +117,7 @@ fun ProfileContent(
                 }
             }
         }
-        if (simulator != null) item {
+        if (simulator != null) item(key = "demo-tools") {
             var expanded by rememberSaveable { mutableStateOf(false) }
             PaperCard {
                 TextButton(onClick = { expanded = !expanded }) { Text(stringResource(R.string.home_demo_tools)) }

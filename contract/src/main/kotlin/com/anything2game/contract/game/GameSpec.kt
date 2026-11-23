@@ -72,17 +72,62 @@ fun LearningPackage.scopeEvidence(ref: SourceRef, evidenceId: String): EvidenceR
 }
 
 @Serializable
-sealed interface StageConfig { val mechanicId: String }
+sealed interface StageConfig {
+    val mechanicId: String
+    /** The configuration with its presentation removed: two stages with equal rules are the same conditions. */
+    fun rulesOnly(): StageConfig
+}
+
+/**
+ * What the board is *about*. Purely presentational: it never changes a rule, a reducer outcome or a checkpoint, so
+ * [StageConfig.rulesOnly] drops it before conditions are compared. Every field is optional; a missing field falls back to the
+ * client's neutral wording, which keeps older packs and saved games readable.
+ *
+ * Nouns are lower-case words for use inside a sentence ("commit", "commits"); [query] is the plural noun for the budget ("test runs"),
+ * and Chinese nouns carry their measure word ("个提交"). [icon] is a key of [GameIcons].
+ */
+@Serializable
+data class PartitionTheme(val item: String? = null, val items: String? = null, val target: String? = null,
+    val query: String? = null, val ask: String? = null, val icon: String? = null) {
+    fun validate() {
+        listOfNotNull(item, items, target, query, ask).forEach(::requireThemeText)
+        require(ask == null || "{n}" in ask) { "The question label must contain {n}" }
+        require(icon == null || icon in GameIcons.partition) { "Unknown partition icon" }
+    }
+}
+
+/** Zone, good and token names for the allocation board. Goods use singular + plural so the rules can be spoken in a sentence. */
+@Serializable
+data class AllocationTheme(val firstZone: String? = null, val secondZone: String? = null,
+    val firstGood: String? = null, val firstGoods: String? = null, val secondGood: String? = null, val secondGoods: String? = null,
+    val token: String? = null, val tokens: String? = null,
+    val firstIcon: String? = null, val secondIcon: String? = null, val tokenIcon: String? = null) {
+    fun validate() {
+        listOfNotNull(firstZone, secondZone, firstGood, firstGoods, secondGood, secondGoods, token, tokens).forEach(::requireThemeText)
+        listOfNotNull(firstIcon, secondIcon, tokenIcon).forEach { require(it in GameIcons.allocation) { "Unknown allocation icon" } }
+    }
+}
+
+private fun requireThemeText(text: String) =
+    require(text.isNotBlank() && text.length <= 48 && text.none { it.isISOControl() }) { "Invalid theme text" }
+
+/** The fixed set of drawable icon keys. A key outside the set is rejected rather than silently shown as a blank. */
+object GameIcons {
+    val partition = setOf("locker", "commit", "page", "layer", "number", "server")
+    val allocation = setOf("bowl", "cup", "wine", "cloth", "book", "scroll", "wheat", "corn", "layers", "clock", "chip", "worker", "coin", "plot")
+}
 
 @Serializable @SerialName("partition")
-data class PartitionConfig(val candidates: Int, val queryBudget: Int) : StageConfig {
+data class PartitionConfig(val candidates: Int, val queryBudget: Int, val theme: PartitionTheme? = null) : StageConfig {
     override val mechanicId get() = MechanicRegistry.PARTITION
+    override fun rulesOnly() = copy(theme = null)
 }
 
 @Serializable @SerialName("allocation")
 data class AllocationConfig(val tokens: Int, val firstYield: Int, val secondYield: Int, val firstGoal: Int,
-    val secondGoal: Int) : StageConfig {
+    val secondGoal: Int, val theme: AllocationTheme? = null) : StageConfig {
     override val mechanicId get() = MechanicRegistry.ALLOCATION
+    override fun rulesOnly() = copy(theme = null)
 }
 
 @Serializable
@@ -114,6 +159,7 @@ object MechanicRegistry {
     fun describe(): String = """
         partition: $PARTITION v$VERSION, candidates=$candidates, queryBudget=$queries; split after an ordered candidate.
         allocation: $ALLOCATION v$VERSION, tokens=$tokens, firstYield/secondYield=$yields, firstGoal/secondGoal=$goals; place, undo, submit.
+        Optional presentation: partition theme (item, items, target, query, ask containing {n}, icon in ${GameIcons.partition}); allocation theme (firstZone, secondZone, firstGood(s), secondGood(s), token(s), firstIcon/secondIcon/tokenIcon in ${GameIcons.allocation}). Themes never change the rules.
         Stages=$stageCount. End with a changed-condition transfer. Required capabilities: ${capabilities.joinToString()}.
     """.trimIndent()
 
@@ -133,12 +179,18 @@ object MechanicRegistry {
             require(stage.goal.isNotBlank() && stage.evidenceIds.isNotEmpty() && evidenceIds.containsAll(stage.evidenceIds))
             if (stage.transfer) {
                 val practice = spec.stages.take(i).filter { !it.transfer && it.mechanicId == stage.mechanicId }
-                require(practice.isNotEmpty() && practice.none { it.config == stage.config }) { "Transfer must change conditions" }
+                require(practice.isNotEmpty() && practice.none { it.config.rulesOnly() == stage.config.rulesOnly() }) { "Transfer must change conditions" }
             }
             when (val c = stage.config) {
-                is PartitionConfig -> require(c.candidates in candidates && c.queryBudget in queries)
-                is AllocationConfig -> require(c.tokens in tokens && c.firstYield in yields && c.secondYield in yields &&
-                    c.firstGoal in goals && c.secondGoal in goals)
+                is PartitionConfig -> {
+                    require(c.candidates in candidates && c.queryBudget in queries)
+                    c.theme?.validate()
+                }
+                is AllocationConfig -> {
+                    require(c.tokens in tokens && c.firstYield in yields && c.secondYield in yields &&
+                        c.firstGoal in goals && c.secondGoal in goals)
+                    c.theme?.validate()
+                }
             }
         }
     }

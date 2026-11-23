@@ -51,6 +51,16 @@ V2 model payloads reject unknown fields. Games also verify reviewed evidence, su
 
 The fake provider follows the same prompt and validation path. Its generation status and installed manifest carry `fixture=true` and its model ID. Bundled samples use `PackOrigin.PRESET`; generated archives use `SERVER`. Preserve this attribution offline.
 
+## Playground presets and presentation themes
+
+The Playground ships ten reviewed games per language (`ReviewedGames.catalog`): the original locker search and two workshops, plus git bisect, high-low guessing, dictionary lookup and deep-network layer faults on the partition mechanism, and comparative advantage, exam revision, a GPU budget and a two-crop farm on the allocation mechanism. Each has a practice and a changed-condition transfer stage and cites a reviewed source. Their numbers are invented teaching setups. They are packed as `PackOrigin.PRESET` archives by `PackTool`.
+
+`PartitionConfig` and `AllocationConfig` carry an optional `theme` (`PartitionTheme`, `AllocationTheme`): item, zone, good and token nouns, an ask template containing `{n}`, and icon keys from `GameIcons`. A theme is presentation only. `StageConfig.rulesOnly()` drops it before a transfer is compared with its practice stage, an absent theme is not written, and a game without one renders with the neutral locker/zone wording, so older archives and checkpoints are unchanged. Chinese theme nouns carry their measure word.
+
+"Add a game" on the Playground is a demonstration. It never calls the server: it plays a staged sequence (about three seconds, instant under reduced motion), matches the topic against the catalog aliases (`ReviewedGames.find`) and opens the matching preset, or offers the prepared games when nothing matches. Presets are labelled "Demo · pre-generated". Real server generation (`GenerationPanel`) remains available under the profile tab's demo controls.
+
+Stars are derived from the recorded actions (`GameScore`): three for a clean stage, one fewer for each hint, retry, wasted question and every second undo, never fewer than one. The best result per profile is kept in `HomePreferences`.
+
 ## Space and generation API
 
 All routes use the existing Bearer authentication and `ErrorBody/ApiError`. Ownership is derived from authentication. A body never selects another owner. Reads of another owner's records return 404.

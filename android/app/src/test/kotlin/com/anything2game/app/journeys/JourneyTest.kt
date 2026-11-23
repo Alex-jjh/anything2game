@@ -170,6 +170,13 @@ abstract class JourneyTest {
         tap(rule.onNodeWithTag("tab_PROFILE"))
         waitForTag("home_PROFILE")
     }
+    /** The real server generation path lives in the profile tab's demo controls, not on the Playground. */
+    protected fun openGenerationTools() {
+        openMe()
+        waitFor("demo controls") { runCatching { rule.onNodeWithTag("home_PROFILE").performScrollToNode(hasText(str(R.string.home_demo_tools))); true }.getOrDefault(false) }
+        tap(rule.onNode(hasText(str(R.string.home_demo_tools)) and hasClickAction()))
+        waitFor("generation tools") { runCatching { rule.onNodeWithTag("home_PROFILE").performScrollToNode(hasTestTag("concept_input")); true }.getOrDefault(false) }
+    }
     protected fun switchProfile() {
         openMe()
         val action = hasText(str(R.string.profile_switch)) and hasClickAction()

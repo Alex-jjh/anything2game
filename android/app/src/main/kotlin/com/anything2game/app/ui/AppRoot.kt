@@ -68,6 +68,10 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator) {
     LaunchedEffect(navigator, current.id) { navigator.initializeTab(deps.homePreferences.lastTab); deps.homePreferences.lastTab = navigator.tab.value.name }
     val language = if (androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language == "zh") "zh" else "en"
     val library = viewModel(key = "library:${current.id}") { LibraryViewModel(deps) }
+    // Demo controls: the context simulator, and the real (server) game generation, which the Playground itself no longer offers.
+    val profileTools: (@Composable () -> Unit)? = simulator?.let { sim ->
+        { sim(); com.anything2game.app.ui.game.DeveloperGameTools(deps, language) { navigator.openGame(it.contentId, it.contentVersion) } }
+    }
     val selectTab: (HomeTab) -> Unit = { navigator.selectTab(it); deps.homePreferences.lastTab = it.name }
     androidx.compose.runtime.CompositionLocalProvider(LocalAvatar provides Avatars.of(avatarId)) {
     when (val r = route) {
@@ -83,7 +87,7 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator) {
                             val state by library.state.collectAsStateWithLifecycle()
                             ProfileContent(state, avatarId, nickname, onSelectAvatar = { avatarId = it; deps.avatarPreferences.set(it) },
                                 onRename = { nickname = it; deps.homePreferences.nickname = it }, onSpaces = { selectTab(HomeTab.SPACES) },
-                                onRetry = { library.refresh() }, padding = padding, simulator = simulator,
+                                onRetry = { library.refresh() }, padding = padding, simulator = profileTools,
                                 onSwitchProfile = { navigator.resetProfile(); deps.profiles.leave() },
                                 pauseWhenWalking = pauseWalking, onPauseWhenWalking = { pauseWalking = it; deps.homePreferences.pauseWhenWalking = it })
                         }

@@ -59,6 +59,9 @@ class ContentLibrary(private val sources: List<PackSource>) : PackageRepository,
         refs().values.filter { it.manifest.packageSchema == GAME_SCHEMA && (language == null || it.manifest.language == language) }
             .mapNotNull { ref -> game(ref.version)?.let { DeviceGame(ref.manifest, it, ref.installedOrigin) } }
 
+    /** Where an installed version came from (bundled preset, server or import), without opening its archive. */
+    suspend fun originOf(version: ContentVersion): PackOrigin? = refs()[version]?.installedOrigin
+
     suspend fun availableVersions(): Set<ContentVersion> = refs().values.mapNotNull { ref ->
         when {
             ref.manifest.schema == PACK_SCHEMA_V1 -> ref.version.takeIf { course(it) != null }
