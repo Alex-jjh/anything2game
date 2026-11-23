@@ -49,7 +49,7 @@ internal fun Playground(deps: AppDependencies, language: String, padding: Paddin
         try {
             games = requireNotNull(deps.content).games().map { (manifest, spec, origin) ->
                 val ck = deps.learningProgress?.checkpoint(ContentVersion(spec.gameId, spec.gameVersion))
-                InstalledGame(manifest, spec, origin, ck != null && !GameRuntime.replay(spec, ck).completed,
+                InstalledGame(manifest, spec, origin, ck != null && ck.actions.isNotEmpty() && !GameRuntime.replay(spec, ck).completed,   // opening a game and leaving is not progress
                     deps.homePreferences.bestStars(ContentVersion(spec.gameId, spec.gameVersion)))
             }.filter { it.origin != PackOrigin.PRESET || it.spec.language == language || it.resume }
                 .sortedWith(compareByDescending<InstalledGame> { it.resume }.thenByDescending {

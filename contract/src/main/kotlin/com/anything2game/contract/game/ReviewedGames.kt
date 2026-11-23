@@ -36,7 +36,7 @@ object ReviewedGames {
         for (entry in catalog) for (alias in entry.aliases.map(::normalise)) {
             val score = when {
                 q == alias -> 100
-                alias.length >= 2 && alias in q -> 50 + alias.length
+                alias.length >= 2 && mentions(q, alias) -> 50 + alias.length
                 q.length >= 3 && q in alias -> 30
                 alias.split(' ').any { it.length >= 3 && it in qTokens } -> 20
                 else -> 0
@@ -45,6 +45,10 @@ object ReviewedGames {
         }
         return best
     }
+
+    /** A Latin alias must be a whole word (or its plural): "git" is not in "digital", "exam" is not in "example". Chinese has no spaces, so it stays a substring test. */
+    private fun mentions(query: String, alias: String) =
+        if (alias.all { it.code < 128 }) Regex("(^| )" + Regex.escape(alias) + "(e?s)?( |$)").containsMatchIn(query) else alias in query
 
     private fun normalise(text: String) = text.trim().lowercase(Locale.ROOT).replace(Regex("[-_\\s]+"), " ")
 

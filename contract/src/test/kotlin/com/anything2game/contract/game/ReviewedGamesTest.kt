@@ -84,6 +84,7 @@ class ReviewedGamesTest {
             "GPU budget" to "gpu-budget", "算力" to "gpu-budget", "resnet" to "layer-fault", "dictionary" to "dictionary", "查字典" to "dictionary",
             "farm crops" to "farm-crops", "种地" to "farm-crops", "exam revision" to "exam-revision", "复习计划" to "exam-revision")
         for ((topic, key) in cases) assertEquals(topic, key, ReviewedGames.find(topic)?.key)
-        for (topic in listOf("orbital dynamics", "量子纠缠", "", "   ", "??")) assertNull(topic, ReviewedGames.find(topic))
+        for (topic in listOf("orbital dynamics", "量子纠缠", "", "   ", "??", "digital twin", "an example of recursion", "default settings")) assertNull(topic, ReviewedGames.find(topic))
+        assertEquals("git-bisect", ReviewedGames.find("my bugs")?.key)
     }
 }
