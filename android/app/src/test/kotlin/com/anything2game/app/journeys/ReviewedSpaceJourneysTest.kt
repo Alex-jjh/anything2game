@@ -14,7 +14,6 @@ import androidx.test.core.app.ActivityScenario
 import com.anything2game.app.R
 import com.anything2game.app.MainActivity
 import com.anything2game.app.data.profile.LocalProfile
-import com.anything2game.app.R
 import com.anything2game.contract.progress.ActivityOutcome
 import com.anything2game.contract.space.*
 import com.anything2game.contract.tutor.*
