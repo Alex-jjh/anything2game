@@ -391,7 +391,15 @@ class LearningRecoveryTest {
         }
     }
 
-    @Test fun `withdrawing a rejected add after verification also withdraws its queued identity change`() = runBlocking {
+    @Test fun `withdrawing a rejected add after verification also withdraws its queued identity change`() =
+        assertVerifiedAddWithdrawal { spaces, id, _ ->
+            spaces.withdrawRejected(id, spaces.rejectedEdits(id).keys.single())
+        }
+
+    @Test fun `removing a rejected add after verification also withdraws its queued identity change`() =
+        assertVerifiedAddWithdrawal { spaces, id, document -> spaces.remove(id, document) }
+
+    private fun assertVerifiedAddWithdrawal(withdraw: suspend (SpaceRepository, String, SpaceMember) -> Space) = runBlocking {
         val deps = AndroidAppContainer(app)
         val store = tmp.newFolder()
         val pkg = deps.packages.load(EXAMPLE_TUTOR_PACKAGE).getOrThrow().copy(packageId = "rejected-local")
@@ -399,19 +407,26 @@ class LearningRecoveryTest {
         val receipts = AuthenticatedCourses(File(store, "receipts"), content) { "owner" }
         val catalog = MaterialCatalog(content, deps.tutors, authenticated = receipts::owns)
         content.install(PackCodec.toBytes(PackCodec.build(pkg, emptyList(), PackOrigin.SERVER)).inputStream())
+        val pack = SpaceMember.LocalPackRef(pkg.packageId, pkg.contentVersion)
+        val document = SpaceMember.ServerDocumentRef(pkg.documentId, pkg.documentVersion)
+        val mutations = mutableListOf<Pair<String, SpaceMember>>()
         val remote = Space("remote", pkg.title, 1)
-        server({ _, method, _ ->
-            if (method == "PUT") errorResponse(409, "SPACE_STALE") else 200 to json.encodeToString(remote)
+        server({ _, method, body ->
+            if (method == "PUT" || method == "DELETE")
+                mutations += method to json.decodeFromString<SpaceMemberRequest>(body).member
+            if (method == "PUT" && mutations.size == 1) errorResponse(409, "SPACE_STALE") else 200 to json.encodeToString(remote)
         }) { transport ->
             fun reopen() = SpaceRepository(File(store, "spaces"), catalog::materials, ActivityApi(transport))
             val id = reopen().list().single().spaceId
             assertEquals("SPACE_STALE", (runCatching { reopen().sync(id) }.exceptionOrNull() as ApiException).code)
             receipts.install(pkg)
-            assertEquals(listOf(SpaceMember.ServerDocumentRef(pkg.documentId, pkg.documentVersion)), reopen().list().single().members)
-            val rejected = reopen().rejectedEdits(id).keys.single()
-            assertTrue(reopen().withdrawRejected(id, rejected).members.isEmpty())
-            assertNull(reopen().route(id, "en"))
-            assertTrue(reopen().sync(id).members.isEmpty())
+            assertEquals(listOf(document), reopen().list().single().members)
+            assertTrue(withdraw(reopen(), id, document).members.isEmpty())
+            val restarted = reopen()
+            assertNull(restarted.route(id, "en"))
+            assertTrue(restarted.sync(id).members.isEmpty())
+            assertEquals(listOf("PUT" to pack), mutations)
+            assertEquals(pkg, content.load(pkg.packageId, pkg.contentVersion).getOrThrow())
         }
     }
 

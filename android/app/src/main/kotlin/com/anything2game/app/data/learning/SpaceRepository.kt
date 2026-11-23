@@ -123,9 +123,10 @@ class SpaceRepository(file: File, private val materials: suspend () -> List<Mate
         val aliases = materials().verifiedAliases()
         val canonical = aliases[member] ?: member
         return edit(id) { entry ->
-            val remaining = entry.copy(edits = entry.edits.filterNot {
+            val rejectedAdd = entry.edits.firstOrNull {
                 it.kind == EditKind.ADD && it.rejection != null && (aliases[it.member] ?: it.member) == canonical
-            }).reconcile(aliases)
+            }
+            val remaining = if (rejectedAdd == null) entry.reconcile(aliases) else entry.withoutRejectedEdit(rejectedAdd, aliases)
             if (canonical !in remaining.view().members) remaining else
                 remaining.copy(edits = remaining.edits + SpaceEdit(EditKind.REMOVE, this.id(), member = canonical))
         }.view()
@@ -166,20 +167,23 @@ class SpaceRepository(file: File, private val materials: suspend () -> List<Mate
     suspend fun rejectedEdits(id: String): Map<String, ApiError> =
         disk.read().entries.getValue(id).edits.mapNotNull { e -> e.rejection?.let { e.requestId to it } }.toMap()
 
+    private fun SavedSpace.withoutRejectedEdit(op: SpaceEdit, aliases: Map<SpaceMember, SpaceMember>): SavedSpace {
+        require(op.rejection != null && op.kind != EditKind.CREATE)
+        val document = aliases[op.member] ?: edits.firstNotNullOfOrNull {
+            if (it.member == op.member) it.verificationFor else null
+        } ?: op.member
+        // Edits behind a rejected head are unsent. Recompute its derived membership changes
+        // from the remaining user edits, so withdrawing an ADD cannot leave a replacement ADD.
+        val retained = edits.filterNot {
+            it == op || (op.verificationFor == null && document != null && it.verificationFor == document)
+        }
+        return copy(edits = retained).reconcile(aliases)
+    }
+
     suspend fun withdrawRejected(id: String, requestId: String): Space {
         val aliases = materials().verifiedAliases()
         return edit(id) { saved ->
-            val op = saved.edits.single { it.requestId == requestId }
-            require(op.rejection != null && op.kind != EditKind.CREATE)
-            val document = aliases[op.member] ?: saved.edits.firstNotNullOfOrNull {
-                if (it.member == op.member) it.verificationFor else null
-            } ?: op.member
-            // Edits behind a rejected head are unsent. Recompute its derived membership changes
-            // from the remaining user edits, so withdrawing an ADD cannot leave a replacement ADD.
-            val retained = saved.edits.filterNot {
-                it == op || (op.verificationFor == null && document != null && it.verificationFor == document)
-            }
-            saved.copy(edits = retained).reconcile(aliases)
+            saved.withoutRejectedEdit(saved.edits.single { it.requestId == requestId }, aliases)
         }.view()
     }
 
