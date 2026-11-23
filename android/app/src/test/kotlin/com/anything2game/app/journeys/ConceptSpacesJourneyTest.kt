@@ -96,7 +96,7 @@ class ConceptSpacesJourneyTest : JourneyTest() {
         scenario!!.recreate()
         waitForTag("space_materials")
         tap(rule.onNodeWithTag("show_route"))
-        waitForText(str(R.string.spaces_counts, 2, 0, com.anything2game.app.awaitIo {
+        waitForText(str(R.string.route_progress_done, 0, com.anything2game.app.awaitIo {
             val space = deps.spaces!!.list().first { it.title == "My two papers" }
             deps.spaces!!.route(space.spaceId, "en")!!.nodes.size
         }))

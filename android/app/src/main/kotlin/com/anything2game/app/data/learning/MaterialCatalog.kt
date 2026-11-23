@@ -1,8 +1,10 @@
 package com.anything2game.app.data.learning
 
 import com.anything2game.app.data.content.ContentLibrary
+import com.anything2game.app.data.content.availableFrames
 import com.anything2game.app.data.stableId
 import com.anything2game.app.data.tutor.*
+import com.anything2game.app.ui.play.offeredFrames
 import com.anything2game.contract.*
 import com.anything2game.contract.game.*
 import com.anything2game.contract.pack.*
@@ -13,7 +15,9 @@ import com.anything2game.engine.progress.ActivityProgress
 import com.anything2game.engine.game.completionActivity
 
 data class Material(val source: ContentVersion, val title: String, val member: SpaceMember, val nodes: List<PathNode>,
-    val language: String = "", val tutorKey: String? = null, val chunks: List<SourceChunk> = emptyList(), val localPack: SpaceMember.LocalPackRef? = null)
+    val language: String = "", val tutorKey: String? = null, val chunks: List<SourceChunk> = emptyList(), val localPack: SpaceMember.LocalPackRef? = null,
+    /** Made by the explicit test generator rather than a model; the route marks its section. */
+    val fixture: Boolean = false)
 
 /** Old server paths used document, concept and path language to name their tutor. Only an owned lesson can satisfy those references. */
 private fun List<Material>.lesson(ref: ActivityRef.Tutor, language: String): Material? = singleOrNull { material ->
@@ -58,14 +62,15 @@ sealed interface SourceTarget {
 }
 
 class MaterialCatalog(private val content: ContentLibrary, private val tutors: TutorRepository, private val presets: PresetSources? = null,
-    private val sessions: com.anything2game.engine.ports.SessionStore? = null, private val authenticated: suspend (ContentPack) -> Boolean = { false }) {
+    private val sessions: com.anything2game.engine.ports.SessionStore? = null, private val authenticated: suspend (ContentPack) -> Boolean = { false },
+    private val framePrefs: com.anything2game.app.data.FramePreferences? = null) {
     suspend fun materials(): List<Material> {
         val saved = tutors.list()
         val result = mutableListOf<Material>()
         for (s in saved) {
             val source = ContentVersion(s.documentId, s.documentVersion)
             result += Material(source, s.title, SpaceMember.ServerDocumentRef(s.documentId, s.documentVersion),
-                tutorNodes(source, s.sessionId, s.questions, s.sources), s.language, s.sessionId, s.sources)
+                tutorNodes(source, s.sessionId, s.questions, s.sources), s.language, s.sessionId, s.sources, fixture = s.mode == "mock")
         }
         for (manifest in content.manifests().filter { it.schema == PACK_SCHEMA_V1 }) {
             val version = ContentVersion(manifest.packageId, manifest.contentVersion)
@@ -77,15 +82,17 @@ class MaterialCatalog(private val content: ContentLibrary, private val tutors: T
                 else SpaceMember.LocalPackRef(pkg.packageId, pkg.contentVersion)
             val questions = pack.tutor?.blueprint?.concepts.orEmpty().map { it.question }
             val checkpoint = sessions?.load(pkg.packageId, pkg.contentVersion)?.takeUnless { it.isFinished }
-            val nodes = tutorNodes(source, localTutorKey(pkg), questions, pkg.sources) + pkg.levels.map { level ->
-                val frame = checkpoint?.takeIf { it.levelId == level.levelId }?.frameId ?: FrameId.CLASSIC
+            val preferred = framePrefs?.get(pkg.packageId)?.takeIf { it in offeredFrames(pkg, availableFrames(pack)) } ?: FrameId.CLASSIC
+            val practice = pkg.levels.map { level ->
+                val frame = checkpoint?.takeIf { it.levelId == level.levelId }?.frameId ?: preferred
                 val ref = ActivityRef.Practice(pkg.packageId, pkg.contentVersion, level.levelId, frame)
                 val node = nodeId(ref)
                 val evidence = level.units.firstOrNull()?.item?.allSourceRefs?.firstOrNull()?.let { pkg.scopeEvidence(it, "e-$node") }
                 PathNode(node, level.title, ref, evidence = listOfNotNull(evidence))
             }
+            val nodes = PresetRoute.arrange(pkg, questions, tutorNodes(source, localTutorKey(pkg), questions, pkg.sources), practice)
             result += Material(source, pkg.title, member, nodes, pkg.language, if (questions.isEmpty()) null else localTutorKey(pkg), pkg.sources,
-                SpaceMember.LocalPackRef(pkg.packageId, pkg.contentVersion))
+                SpaceMember.LocalPackRef(pkg.packageId, pkg.contentVersion), fixture = manifest.fixture)
         }
         return result
     }

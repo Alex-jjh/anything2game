@@ -157,13 +157,22 @@ class TutorService(
         TutorIntent.START -> "Start with my results"; TutorIntent.REPHRASE -> "Rephrase"; TutorIntent.EXAMPLE -> "Give an example"; TutorIntent.CONTINUE -> "Continue"; TutorIntent.REVISIT -> "Explain that one again"; else -> "Ask"
     }
 
+    /** A concept name taken from the passage itself, so the route shows what the step is about. Test fixtures are labelled by the client, not in the title. */
+    private fun headline(quote: String, zh: Boolean): String {
+        val clause = quote.trim().split(Regex("[,;:，；：。.!?！？]")).firstOrNull { it.isNotBlank() }?.trim().orEmpty().ifBlank { quote.trim() }
+        val limit = if (zh) 16 else 44
+        if (clause.length <= limit) return clause
+        val cut = if (zh) clause.take(limit) else clause.take(limit).substringBeforeLast(' ', clause.take(limit))
+        return cut.trimEnd() + "…"
+    }
+
     private fun fakeBlueprint(sources: List<SourceChunk>, language: String): TutorBlueprint {
         val zh = language == "zh"
         val excerpts = sources.flatMap { c -> c.text.split(Regex("(?<=[.!?。！？])\\s+")).filter { it.length >= 16 }.map { c to it.take(600) } }.take(3)
         if (excerpts.isEmpty()) throw GenerationException.failed("Not enough text for an introductory diagnostic.")
         return TutorBlueprint(concepts = excerpts.mapIndexed { i, (c, quote) ->
             val options = listOf(TutorOption("source", quote), TutorOption("unsupported", if (zh) "这段材料没有任何可阅读的文字。" else "The material contains no readable text."))
-            TutorConcept(TutorQuestion("q${i + 1}", "concept${i + 1}", if (zh) "基础内容 ${i + 1}（mock）" else "Foundation ${i + 1} (mock)",
+            TutorConcept(TutorQuestion("q${i + 1}", "concept${i + 1}", headline(quote, zh),
                 if (zh) "哪一项出现在文档的这段基础内容中？" else "Which statement appears in this document?", if (i % 2 == 0) options else options.reversed(), listOf(SourceRef(c.chunkId, quote))),
                 "source", if (zh) "文档原文写道：$quote\n这是规则生成的测试讲解，不是 AI 概念分析。" else "The source says: $quote\nThis is rule-based test teaching, not AI analysis.",
                 if (zh) "先抓住这句话：$quote\nmock 模式只能引用原文，不能真正改写其含义。" else "Focus on this statement: $quote\nMock mode quotes rather than interprets it.",

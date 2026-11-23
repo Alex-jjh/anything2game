@@ -256,8 +256,14 @@ class SpaceRepository(file: File, private val materials: suspend () -> List<Mate
         val kept = generatedNodes.map { it.nodeId }.toSet()
         val pathLanguage = generated?.language ?: language
         val nodes = generatedNodes.map { it.bindTutor(members, pathLanguage).copy(prerequisites = it.prerequisites.filter(kept::contains)) }.toMutableList()
-        val used = nodes.map { it.activity.key("") }.toMutableSet()
-        for (node in members.flatMap { it.nodes }) if (used.add(node.activity.key(""))) nodes += node
+        val used = nodes.associate { it.activity.key("") to it.nodeId }.toMutableMap()
+        // A local step the generated route already covers is dropped; steps that waited on it wait on the generated one.
+        val merged = mutableMapOf<String, String>()
+        for (node in members.flatMap { it.nodes }) {
+            val existing = used[node.activity.key("")]
+            if (existing == null) { used[node.activity.key("")] = node.nodeId; nodes += node } else merged[node.nodeId] = existing
+        }
+        if (merged.isNotEmpty()) nodes.replaceAll { n -> n.copy(prerequisites = n.prerequisites.map { merged[it] ?: it }.distinct()) }
         if (nodes.isEmpty()) return null
         return LearningPath(generated?.pathId ?: "local-$id", generated?.pathVersion ?: "local", id, space.title,
             pathLanguage, nodes, generated?.excludedMembers.orEmpty().filter { it in space.members })

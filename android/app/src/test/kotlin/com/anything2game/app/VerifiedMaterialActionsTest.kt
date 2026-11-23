@@ -149,8 +149,10 @@ class VerifiedMaterialActionsTest {
         val route = rule.onNodeWithTag("space_route")
         rule.waitUntil(15000) {
             ShadowLooper.idleMainLooper()
-            runCatching { route.performScrollToNode(hasTestTag("open_node_${node.nodeId}")); true }.getOrDefault(false)
+            runCatching { route.performScrollToNode(hasTestTag("route_node_${node.nodeId}")); true }.getOrDefault(false)
         }
-        route.performScrollToNode(hasText(label))
+        rule.onNodeWithTag("route_node_${node.nodeId}").performClick()
+        rule.waitUntil(15000) { ShadowLooper.idleMainLooper(); rule.onAllNodesWithTag("route_sheet_source").fetchSemanticsNodes().isNotEmpty() }
+        rule.onNode(hasTestTag("route_sheet_source") and hasText(label, substring = true)).assertExists()
     }
 }

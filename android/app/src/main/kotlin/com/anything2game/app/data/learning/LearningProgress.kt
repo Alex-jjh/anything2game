@@ -107,6 +107,15 @@ class LearningProgress(file: File, val profileId: String, private val clock: Clo
         store.update { it.add(event(id, ref, ActivityOutcome.READ, time, zoneId)) }
     }
 
+    /** Credits an activity completed at a known time, for histories reconstructed outside the activity itself (the sample student). */
+    suspend fun record(ref: ActivityRef, outcome: ActivityOutcome, time: Long, zoneId: String = zone().id) {
+        val session = (ref as? ActivityRef.Tutor)?.let { requireNotNull(it.sessionId) } ?: ""
+        val key = ref.key(profileId)
+        store.update { it.add(event(stableId("record", key.activityKind.name, key.contentId, key.contentVersion, key.activityId, session, outcome.name), ref, outcome, time, zoneId)) }
+    }
+
+    suspend fun recordRead(ref: ActivityRef.Tutor, time: Long) = record(ref, ActivityOutcome.READ, time)
+
     suspend fun practice(state: SessionState, time: Long = clock.now(), zoneId: String = zone().id) {
         if (!state.isFinished) return
         val results = state.results.filter { it.slot.kind == SlotKind.UNIT }

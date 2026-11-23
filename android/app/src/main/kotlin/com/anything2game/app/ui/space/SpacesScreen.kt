@@ -12,6 +12,26 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.animation.*
+import androidx.compose.material.icons.filled.*
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import com.anything2game.app.ui.character.LocalAvatar
+import com.anything2game.app.ui.character.Mood
+import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -80,14 +100,22 @@ internal fun SpacesHome(deps: AppDependencies, language: String, padding: Paddin
     }
 }
 
+/** Items above the first unit on the route tab: back row, title, tabs, feedback, progress strip, generation panel. */
+private const val ROUTE_HEADER_ITEMS = 6
+
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 internal fun SpaceScreen(deps: AppDependencies, language: String, route: Route.Space, nav: Navigator, library: LibraryViewModel) {
     val profile by deps.profiles.active.collectAsStateWithLifecycle()
     val vm = spaceModel(deps, language, route.id)
     val card = vm.cards.firstOrNull()
+    val resources = androidx.compose.ui.platform.LocalResources.current
     var rename by rememberSaveable { mutableStateOf(false) }
     var generate by rememberSaveable { mutableStateOf(false) }
     var selectedEvidence by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedStep by rememberSaveable(route.id) { mutableStateOf<String?>(null) }
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     val routeList = rememberLazyListState()
     val materialList = rememberLazyListState()
     val listState = if (route.materials) materialList else routeList
@@ -102,92 +130,202 @@ internal fun SpaceScreen(deps: AppDependencies, language: String, route: Route.S
         selectionId = null
         nav.clearPdfConfirmation(batchId)
     }
-    BackHandler { if (rename) rename = false else nav.back() }
-    Scaffold(containerColor = A2g.skin.paper) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding).testTag(if (route.materials) "space_materials" else "space_route"),
-            listState, contentPadding = PaddingValues(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                TextButton(nav::back) { Text(stringResource(R.string.action_back)) }
-                TextButton({ rename = true }, enabled = card != null && !vm.busy) { Text(stringResource(R.string.spaces_rename)) }
-            } }
-            if (card != null) {
-                item { Text(card.space.title, style = MaterialTheme.typography.headlineMedium) }
-                if (rename) item { NameEditor(card.space.title, { rename = false }) { name ->
-                    rename = false
-                    vm.perform { vm.spaces.rename(route.id, name) }
-                } }
-                item { Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(!route.materials, { nav.openSpace(route.id) }, { Text(stringResource(R.string.spaces_route)) }, Modifier.heightIn(min = 48.dp).testTag("show_route"))
-                    FilterChip(route.materials, { nav.openSpace(route.id, true) }, { Text(stringResource(R.string.spaces_materials)) }, Modifier.heightIn(min = 48.dp).testTag("show_materials"))
-                } }
+    val map = remember(card?.path, card?.status, vm.materials) { card?.path?.let { path -> routeMap(path, card.status, vm::materialInfo, vm::sourceTitle) } }
+    val sheet = map?.steps?.firstOrNull { it.id == selectedStep }
+    // Like a course map, open where the learner is: at the unit of the next step, once per visit.
+    var positioned by rememberSaveable(route.id) { mutableStateOf(false) }
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    LaunchedEffect(map != null, route.materials) {
+        if (map != null && !route.materials && !positioned) {
+            positioned = true
+            val unit = map.sections.indexOfFirst { s -> s.steps.any { it.state == StepState.CURRENT } }
+            if (unit > 0) routeList.requestScrollToItem(ROUTE_HEADER_ITEMS + unit, -with(density) { 60.dp.roundToPx() })
+        }
+    }
+    BackHandler { if (rename) rename = false else if (selectedStep != null) selectedStep = null else nav.back() }
+    fun tapStep(step: RouteStep) {
+        when (step.state) {
+            StepState.LOCKED -> scope.launch { snackbar.currentSnackbarData?.dismiss(); snackbar.showSnackbar(
+                step.waitingFor?.let { resources.getString(R.string.route_locked_hint, it) } ?: resources.getString(R.string.route_locked_generic)) }
+            StepState.UPDATE -> scope.launch { snackbar.currentSnackbarData?.dismiss(); snackbar.showSnackbar(resources.getString(R.string.route_update_hint)) }
+            else -> selectedStep = step.id
+        }
+    }
+    fun start(node: PathNode) = vm.perform {
+        val activity = node.activity
+        val open = vm.catalog.resolve(activity, language) ?: error("Missing activity")
+        if (nav.route.value != route || deps.profiles.active.value != profile) return@perform
+        selectedStep = null
+        when (open) {
+            is OpenActivity.Game -> nav.openGame(open.spec.gameId, open.spec.gameVersion)
+            is OpenActivity.Practice -> nav.openPlay(activity.contentId, activity.activityId, open.activity.frame, activity.contentVersion)
+            is OpenActivity.Tutor -> {
+                val local = vm.materials.find { it.tutorKey == open.sessionKey }?.localPack
+                nav.openRead(open.sessionKey, open.conceptId, local?.packageId, local?.contentVersion)
             }
-            item { SpaceFeedback(vm) }
-            if (card != null && route.materials) materialItems(deps, vm, card.space, nav, library, pickPdfs)
-            if (card != null && !route.materials) {
-                item { Text(stringResource(R.string.spaces_counts, card.space.members.size, card.completed, card.path?.nodes?.size ?: 0)) }
-                item { GenerationPanel(vm.generation, { it is GenerationInput.SpacePath && it.spaceId == vm.remote?.spaceId },
-                    { busy, enqueue ->
-                        OutlinedButton({ generate = true }, Modifier.fillMaxWidth().testTag("generate_route"), enabled = !busy && !vm.busy) { Text(stringResource(R.string.spaces_generate)) }
-                        if (generate) AlertDialog(onDismissRequest = { generate = false }, title = { Text(stringResource(R.string.spaces_generate)) },
-                            text = { val excluded = card.space.members.filterIsInstance<SpaceMember.LocalPackRef>()
-                                Text(if (excluded.isEmpty()) stringResource(R.string.spaces_included) else stringResource(R.string.spaces_exclusions) + "\n" + excluded.joinToString("\n", transform = vm::memberTitle)) },
-                            confirmButton = { TextButton({ generate = false; enqueue { vm.pathRequest(route.id) } }) { Text(stringResource(R.string.spaces_generate)) } },
-                            dismissButton = { TextButton({ generate = false }) { Text(stringResource(R.string.import_cancel)) } })
-                    }, { vm.perform() }, scopeKey = vm.remote?.spaceId, confirmSpaceRetry = { generate = true })
+        }
+    }
+    Scaffold(containerColor = A2g.skin.paper, snackbarHost = { SnackbarHost(snackbar, Modifier.testTag("route_snackbar")) }) { padding ->
+        Box(Modifier.fillMaxSize().padding(padding)) {
+            LazyColumn(Modifier.align(Alignment.TopCenter).widthIn(max = 560.dp).fillMaxSize().testTag(if (route.materials) "space_materials" else "space_route"),
+                listState, contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    TextButton(nav::back) { Text(stringResource(R.string.action_back)) }
+                    TextButton({ rename = true }, enabled = card != null && !vm.busy) { Text(stringResource(R.string.spaces_rename)) }
+                } }
+                if (card != null) {
+                    item { Text(card.space.title, style = MaterialTheme.typography.headlineMedium) }
+                    if (rename) item { NameEditor(card.space.title, { rename = false }) { name ->
+                        rename = false
+                        vm.perform { vm.spaces.rename(route.id, name) }
+                    } }
+                    // The tabs stay in reach while the map scrolls; the map opens at the learner's unit.
+                    stickyHeader { Row(Modifier.fillMaxWidth().background(A2g.skin.paper).padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(!route.materials, { nav.openSpace(route.id) }, { Text(stringResource(R.string.spaces_route)) }, Modifier.heightIn(min = 48.dp).testTag("show_route"))
+                        FilterChip(route.materials, { nav.openSpace(route.id, true) }, { Text(stringResource(R.string.spaces_materials)) }, Modifier.heightIn(min = 48.dp).testTag("show_materials"))
+                    } }
                 }
-                if (!card.path?.excludedMembers.isNullOrEmpty()) item {
-                    Text(stringResource(R.string.spaces_exclusions) + "\n" + card.path.excludedMembers.joinToString("\n", transform = vm::memberTitle))
+                item { SpaceFeedback(vm) }
+                if (card != null && route.materials) materialItems(deps, vm, card.space, nav, library, pickPdfs)
+                if (card != null && !route.materials) {
+                    if (map == null) item { EmptyRoute(card.space.members.isEmpty(), { nav.openSpace(route.id, true) }) {
+                        RouteGenerator(vm, card.space, route.id, generate, { generate = it }, primary = true) } }
+                    else {
+                        item { ProgressStrip(map, card.space.members.size, vm.weekDays) }
+                        // Generation progress and its retry belong where the learner is looking; the button itself stays quiet.
+                        item { RouteGenerator(vm, card.space, route.id, generate, { generate = it }, primary = false) }
+                        var index = 0
+                        for (section in map.sections) {
+                            val first = index
+                            index += section.steps.size
+                            item(key = "section-${section.number}-${section.title}") { SectionPath(section, first, ::tapStep) }
+                        }
+                        if (map.current == null && map.total > 0) item { Text(stringResource(R.string.route_all_done), Modifier.testTag("route_all_done"), color = A2g.skin.inkMuted) }
+                    }
+                    if (!card.path?.excludedMembers.isNullOrEmpty()) item {
+                        Text(stringResource(R.string.spaces_exclusions) + "\n" + card.path.excludedMembers.joinToString("\n", transform = vm::memberTitle))
+                    }
+                    if (map != null || card.space.members.isNotEmpty()) item { TextButton({ vm.perform { vm.spaces.refreshRemote(); vm.spaces.sync(route.id) } }, enabled = !vm.busy) { Text(stringResource(R.string.spaces_sync)) } }
+                    if (vm.remote?.activePathVersion != null && vm.remote?.activePathVersion != card.space.activePathVersion)
+                        item { Button({ vm.perform { vm.generation.downloadActivePath(route.id) } }) { Text(stringResource(R.string.spaces_update)) } }
+                    if (vm.stale) item { Button({ vm.perform { vm.spaces.rebase(route.id); vm.spaces.sync(route.id) } }) { Text(stringResource(R.string.spaces_rebase)) } }
+                    items(vm.rejected.entries.toList()) { (id, err) -> PaperCard {
+                        Text(err.message)
+                        TextButton({ vm.perform { vm.spaces.retryRejected(route.id, id); vm.spaces.sync(route.id) } }) { Text(stringResource(R.string.home_retry)) }
+                        TextButton({ vm.perform { vm.spaces.withdrawRejected(route.id, id) } }) { Text(stringResource(R.string.spaces_withdraw)) }
+                    } }
                 }
-                if (card.path == null) item { Text(stringResource(R.string.spaces_empty)) }
-                items(card.path?.nodes.orEmpty(), key = { it.nodeId }) { node ->
-                    val status = card.status[node.nodeId] ?: NodeStatus.NEEDS_UPDATE
-                    PaperCard {
-                        node.chapter?.let { Text(it, style = MaterialTheme.typography.labelMedium) }
-                        Text(node.title, style = MaterialTheme.typography.titleMedium)
-                        Text(stringResource(statusLabel(status)), color = A2g.skin.inkMuted, modifier = Modifier.testTag("route_status_${node.nodeId}"))
-                        val activity = node.activity
-                        val material = vm.materials.firstOrNull { m -> when (activity) {
-                            is ActivityRef.Tutor -> activity.sessionId != null && m.tutorKey == activity.sessionId
-                            is ActivityRef.Practice -> m.localPack?.version() == ContentVersion(activity.contentId, activity.contentVersion)
-                            is ActivityRef.Game -> false
-                        } }
-                        Button({ vm.perform {
-                            val open = vm.catalog.resolve(activity, language) ?: error("Missing activity")
-                            if (nav.route.value != route || deps.profiles.active.value != profile) return@perform
-                            when (open) {
-                                is OpenActivity.Game -> nav.openGame(open.spec.gameId, open.spec.gameVersion)
-                                is OpenActivity.Practice -> nav.openPlay(activity.contentId, activity.activityId, open.activity.frame, activity.contentVersion)
-                                is OpenActivity.Tutor -> {
-                                    val local = vm.materials.find { it.tutorKey == open.sessionKey }?.localPack
-                                    nav.openRead(open.sessionKey, open.conceptId, local?.packageId, local?.contentVersion)
-                                }
-                            }
-                        } }, Modifier.heightIn(min = 48.dp).testTag("open_node_${node.nodeId}"),
-                            enabled = !vm.busy && status != NodeStatus.LOCKED && status != NodeStatus.NEEDS_UPDATE) {
-                            Text(stringResource(when (activity) { is ActivityRef.Tutor -> R.string.spaces_explain; is ActivityRef.Practice -> R.string.spaces_light; is ActivityRef.Game -> R.string.spaces_challenge }))
-                        }
-                        node.evidence.forEach { ref ->
-                            val id = node.nodeId + "/" + ref.evidenceId
-                            TextButton({ selectedEvidence = id }) {
-                                Text(if (ref is EvidenceRef.Pdf) stringResource(R.string.spaces_source_page,
-                                    material?.takeIf { it.source == ContentVersion(ref.documentId, ref.documentVersion) }?.title
-                                        ?: vm.materials.find { it.source == ContentVersion(ref.documentId, ref.documentVersion) }?.title ?: ref.documentId,
-                                    ref.pageLabel ?: (ref.pageIndex+1).toString()) else stringResource(R.string.source_open))
-                            }
-                            if (selectedEvidence == id) ActivityEvidence(vm.catalog, ref, material) { selectedEvidence = null }
-                        }
+            }
+            var last by remember { mutableStateOf<RouteStep?>(null) }
+            if (sheet != null) last = sheet
+            AnimatedVisibility(sheet != null, Modifier.fillMaxSize(), enter = fadeIn(), exit = fadeOut()) {
+                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.42f)).clickable(onClickLabel = stringResource(R.string.route_close)) { selectedStep = null })
+            }
+            AnimatedVisibility(sheet != null, Modifier.align(Alignment.BottomCenter), enter = slideInVertically { it } + fadeIn(), exit = slideOutVertically { it } + fadeOut()) {
+                last?.let { step ->
+                    val material = vm.materialOf(step.node)
+                    val resumable by produceState(false, step.id, vm.cards) {
+                        val activity = step.node.activity
+                        value = activity is ActivityRef.Practice && runCatching { deps.sessions.load(activity.contentId, activity.contentVersion) }.getOrNull()
+                            ?.let { !it.isFinished && it.levelId == activity.activityId } == true
+                    }
+                    StepSheet(step, sectionAccent(map?.sections?.firstOrNull { s -> s.steps.any { it.id == step.id } }?.number?.minus(1) ?: 0), resumable, !vm.busy,
+                        onStart = { start(step.node) }, onDismiss = { selectedStep = null }, onSource = { selectedEvidence = step.id })
+                    if (selectedEvidence == step.id) step.source?.let { source ->
+                        ActivityEvidence(vm.catalog, source.evidence, material) { selectedEvidence = null }
                     }
                 }
-                item { TextButton({ vm.perform { vm.spaces.refreshRemote(); vm.spaces.sync(route.id) } }, enabled = !vm.busy) { Text(stringResource(R.string.spaces_sync)) } }
-                if (vm.remote?.activePathVersion != null && vm.remote?.activePathVersion != card.space.activePathVersion)
-                    item { Button({ vm.perform { vm.generation.downloadActivePath(route.id) } }) { Text(stringResource(R.string.spaces_update)) } }
-                if (vm.stale) item { Button({ vm.perform { vm.spaces.rebase(route.id); vm.spaces.sync(route.id) } }) { Text(stringResource(R.string.spaces_rebase)) } }
-                items(vm.rejected.entries.toList()) { (id, err) -> PaperCard {
-                    Text(err.message)
-                    TextButton({ vm.perform { vm.spaces.retryRejected(route.id, id); vm.spaces.sync(route.id) } }) { Text(stringResource(R.string.home_retry)) }
-                    TextButton({ vm.perform { vm.spaces.withdrawRejected(route.id, id) } }) { Text(stringResource(R.string.spaces_withdraw)) }
-                } }
             }
+        }
+    }
+}
+
+@Composable
+private fun RouteGenerator(vm: SpaceViewModel, space: Space, id: String, generate: Boolean, setGenerate: (Boolean) -> Unit, primary: Boolean) {
+    GenerationPanel(vm.generation, { it is GenerationInput.SpacePath && it.spaceId == vm.remote?.spaceId },
+        { busy, enqueue ->
+            val modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("generate_route")
+            if (primary) Button({ setGenerate(true) }, modifier, enabled = !busy && !vm.busy) { Text(stringResource(R.string.route_make)) }
+            else TextButton({ setGenerate(true) }, Modifier.heightIn(min = 48.dp).testTag("generate_route"), enabled = !busy && !vm.busy) {
+                Icon(Icons.Filled.AutoAwesome, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.spaces_generate))
+            }
+            if (generate) AlertDialog(onDismissRequest = { setGenerate(false) }, title = { Text(stringResource(R.string.spaces_generate)) },
+                text = { val excluded = space.members.filterIsInstance<SpaceMember.LocalPackRef>()
+                    Text(if (excluded.isEmpty()) stringResource(R.string.spaces_included) else stringResource(R.string.spaces_exclusions) + "\n" + excluded.joinToString("\n", transform = vm::memberTitle)) },
+                confirmButton = { TextButton({ setGenerate(false); enqueue { vm.pathRequest(id) } }) { Text(stringResource(R.string.spaces_generate)) } },
+                dismissButton = { TextButton({ setGenerate(false) }) { Text(stringResource(R.string.import_cancel)) } })
+        }, { vm.perform() }, scopeKey = vm.remote?.spaceId, confirmSpaceRetry = { setGenerate(true) })
+}
+
+/** A Space with no route yet: the player's character and one clear next action, never a greyed-out button. */
+@Composable
+private fun EmptyRoute(noMaterials: Boolean, addMaterials: () -> Unit, makeRoute: @Composable () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp).testTag("route_empty"), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Box(Modifier.size(132.dp).background(A2g.skin.evidenceSoft, CircleShape), contentAlignment = Alignment.Center) {
+            LocalAvatar.current.Draw(Mood.IDLE, Modifier.size(104.dp), pokeable = false)
+        }
+        Text(stringResource(R.string.route_empty_title), style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
+        Text(stringResource(if (noMaterials) R.string.route_empty_no_materials else R.string.route_empty_body), color = A2g.skin.inkMuted, textAlign = TextAlign.Center)
+        if (noMaterials) Button(addMaterials, Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("route_add_materials")) { Text(stringResource(R.string.route_add_materials)) }
+        else makeRoute()
+    }
+}
+
+@Composable
+private fun ProgressStrip(map: RouteMap, materials: Int, days: Int) {
+    val skin = A2g.skin
+    val fraction = if (map.total == 0) 0f else map.done.toFloat() / map.total
+    val description = stringResource(R.string.route_progress_description, map.done, map.total)
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(skin.card).border(1.dp, skin.outline.copy(alpha = 0.25f), RoundedCornerShape(18.dp)).padding(14.dp)
+        .semantics(mergeDescendants = true) { contentDescription = description }.testTag("route_progress"),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        Box(Modifier.size(56.dp), contentAlignment = Alignment.Center) {
+            Canvas(Modifier.fillMaxSize()) {
+                val stroke = 8.dp.toPx()
+                val inset = stroke / 2
+                val arc = androidx.compose.ui.geometry.Size(size.width - stroke, size.height - stroke)
+                drawArc(skin.outline.copy(alpha = 0.2f), 0f, 360f, false, Offset(inset, inset), arc, style = Stroke(stroke))
+                if (fraction > 0f) drawArc(skin.correct, -90f, 360f * fraction, false, Offset(inset, inset), arc, style = Stroke(stroke, cap = StrokeCap.Round))
+            }
+            Icon(if (map.current == null && map.total > 0) Icons.Filled.EmojiEvents else Icons.Filled.Flag, null, Modifier.size(24.dp), tint = skin.correct)
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(stringResource(R.string.route_progress_done, map.done, map.total), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.testTag("route_progress_text"))
+            Text(stringResource(R.string.route_materials_count, materials), style = MaterialTheme.typography.bodySmall, color = skin.inkMuted)
+            Text(stringResource(R.string.spaces_week, days), style = MaterialTheme.typography.bodySmall, color = skin.inkMuted)
+        }
+    }
+}
+
+/** What a tapped node offers: what it is, how long, where it comes from, and one big button. */
+@Composable
+private fun StepSheet(step: RouteStep, accent: Color, resumable: Boolean, enabled: Boolean, onStart: () -> Unit, onDismiss: () -> Unit, onSource: () -> Unit) {
+    val skin = A2g.skin
+    Column(Modifier.fillMaxWidth().widthIn(max = 560.dp).clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)).background(skin.card)
+        .pointerInput(Unit) {}.padding(horizontal = 22.dp, vertical = 18.dp).navigationBarsPadding().testTag("route_sheet"),
+        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Box(Modifier.align(Alignment.CenterHorizontally).size(width = 44.dp, height = 5.dp).background(skin.outline.copy(alpha = 0.4f), RoundedCornerShape(50)))
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Box(Modifier.size(56.dp).background(accent, CircleShape), contentAlignment = Alignment.Center) {
+                Icon(step.kind.icon(), null, Modifier.size(30.dp), tint = Color.White)
+            }
+            Column(Modifier.weight(1f)) {
+                Text(step.title, Modifier.testTag("route_sheet_title"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(step.kind.label() + " · " + stringResource(R.string.route_minutes, step.node.minutes), color = skin.inkMuted, modifier = Modifier.testTag("route_sheet_kind"))
+            }
+            IconButton(onDismiss, Modifier.testTag("route_sheet_close")) { Icon(Icons.Filled.Close, stringResource(R.string.route_close)) }
+        }
+        step.source?.let { source ->
+            AssistChip(onSource, { Text(stringResource(R.string.spaces_source_page, source.material ?: source.evidence.documentId, source.page), maxLines = 2, overflow = TextOverflow.Ellipsis) },
+                Modifier.heightIn(min = 48.dp).testTag("route_sheet_source"), leadingIcon = { Icon(Icons.Filled.Description, null, Modifier.size(18.dp)) })
+        }
+        Button(onStart, Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("open_node_${step.id}"), enabled = enabled,
+            colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color.White), shape = RoundedCornerShape(16.dp)) {
+            Text(stringResource(when {
+                step.state == StepState.DONE || step.state == StepState.REVIEW -> R.string.route_review
+                resumable -> R.string.route_continue
+                else -> R.string.route_start
+            }), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -213,12 +351,4 @@ private fun SpaceFeedback(vm: SpaceViewModel) {
         Text(problem, color = A2g.skin.wrong)
         OutlinedButton({ vm.perform() }) { Text(stringResource(R.string.home_retry)) }
     }
-}
-
-private fun statusLabel(status: NodeStatus) = when (status) {
-    NodeStatus.AVAILABLE -> R.string.spaces_available
-    NodeStatus.LOCKED -> R.string.spaces_locked
-    NodeStatus.NEEDS_UPDATE -> R.string.spaces_update_needed
-    NodeStatus.COMPLETE -> R.string.spaces_complete
-    NodeStatus.REVIEW -> R.string.spaces_review
 }

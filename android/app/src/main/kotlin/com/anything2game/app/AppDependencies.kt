@@ -121,7 +121,7 @@ class AndroidAppContainer(context: Context, private val apiBaseUrl: String = Bui
         val presetSources = PresetSources(content, SourceDocumentStore(File(dir, "source-documents"))) { id ->
             if (System.getProperty("a2g.bundledPdfs") == "off") null else runCatching { app.assets.open("sample-pdfs/$id.pdf") }.getOrNull()
         }
-        val materials = MaterialCatalog(content, tutors, presetSources, sessions, authenticated::owns)
+        val materials = MaterialCatalog(content, tutors, presetSources, sessions, authenticated::owns, framePreferences)
         val spaces = SpaceRepository(File(dir, "spaces.json"), materials::materials, api, content::path)
         val generation = GenerationRepository(File(dir, "generation.json"), api, content, materials, spaces)
         val imports = PdfImportQueue(File(dir, "pdf-imports"), http::readPdf, tutors, spaces)
@@ -161,7 +161,7 @@ class AndroidAppContainer(context: Context, private val apiBaseUrl: String = Bui
         override suspend fun choose(profile: LocalProfile) = chooseLock.withLock {
             val next = UserScope(profile)
             if (profile.kind == ProfileKind.SAMPLE && !registry.isSeeded(profile)) {
-                SampleProfileSeeder(packages, frames, grading, masteryPolicy, next.sessions, next.mastery, next.homePreferences, next.avatarPreferences, next.framePreferences, clock, next.progress)
+                SampleProfileSeeder(packages, frames, grading, masteryPolicy, next.sessions, next.mastery, next.homePreferences, next.avatarPreferences, next.framePreferences, clock, next.progress, next.materials)
                     .seed(nickname = app.getString(R.string.sample_profile_name), avatarId = "pip")
                 registry.markSeeded(profile)
             }
