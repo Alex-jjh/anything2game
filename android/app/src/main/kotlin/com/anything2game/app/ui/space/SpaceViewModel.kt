@@ -8,6 +8,8 @@ import com.anything2game.app.data.api.ApiException
 import com.anything2game.app.data.learning.*
 import com.anything2game.app.importing.ImportRequest
 import com.anything2game.contract.ApiError
+import com.anything2game.contract.game.ContentVersion
+import com.anything2game.contract.game.EvidenceRef
 import com.anything2game.contract.game.GenerationInput
 import com.anything2game.contract.space.*
 import com.anything2game.engine.progress.NodeStatus
@@ -96,6 +98,21 @@ internal class SpaceViewModel(deps: AppDependencies, private val language: Strin
     suspend fun pathRequest(id: String): GenerationInput.SpacePath {
         try { return spaces.pathRequest(id, language).also { remote = spaces.serverState(id) } }
         catch (e: ApiException) { stale = e.code == "SPACE_STALE"; readRejections(id); throw e }
+    }
+    /** The material a step comes from: its lesson, its course, or the document its citation names. */
+    fun materialOf(node: PathNode): Material? {
+        val activity = node.activity
+        return materials.firstOrNull { m -> when (activity) {
+            is ActivityRef.Tutor -> activity.sessionId != null && m.tutorKey == activity.sessionId
+            is ActivityRef.Practice -> m.localPack?.version() == ContentVersion(activity.contentId, activity.contentVersion)
+            is ActivityRef.Game -> false
+        } } ?: node.evidence.filterIsInstance<EvidenceRef.Pdf>().firstOrNull()?.let { ref -> materials.firstOrNull { it.source == ContentVersion(ref.documentId, ref.documentVersion) } }
+    }
+    fun materialInfo(node: PathNode): MaterialInfo? = materialOf(node)?.let { MaterialInfo(it.title, it.fixture) }
+    /** The step's own material when it holds the cited document: two lessons can share document labels. */
+    fun sourceTitle(node: PathNode, ref: EvidenceRef.Pdf): String? {
+        val source = ContentVersion(ref.documentId, ref.documentVersion)
+        return materialOf(node)?.takeIf { it.source == source }?.title ?: materials.firstOrNull { it.source == source }?.title
     }
     fun memberTitle(member: SpaceMember): String = materials.firstOrNull { it.member == member || it.localPack == member }?.title ?: member.version().contentId
 }

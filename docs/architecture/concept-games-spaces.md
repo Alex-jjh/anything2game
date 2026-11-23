@@ -108,6 +108,12 @@ Unavailable or local-only members appear in `excludedMembers`. An excluded local
 
 Space membership is mutable organization. A generated path and its content versions are immutable artifacts. Removing a relationship does not delete the document, installed pack or historical learning records. An active run remains pinned to its original content version.
 
+## Learning map
+
+The Route tab draws a Space's path as a winding map (`ui/space/RouteMap.kt` is the pure model, `RouteMapView.kt` the drawing). Nodes group into units by `PathNode.chapter`, otherwise by the material they come from. Each node's state comes from the existing progress projection: done, due for review, current (the first open step), open, locked (an unfinished prerequisite) or needs-update. Tapping an open node shows a sheet with its kind, minutes, cited page and the Start / Continue / Review button; tapping a locked node names the step to finish first.
+
+A bundled course builds its path from itself (`data/learning/PresetRoute.kt`): one chapter per level, named by the level title. Each chapter explains the concepts that belong to the level (the level citing the most of a concept's passages, never earlier than the previous concept), then the level's practice. Every step needs the one before it. Case, Rookie and Escape are ways to play the same level and share its completion, so the practice step opens in the player's preferred frame instead of adding steps that could not be completed separately. Server-generated routes keep their own chapters and prerequisites; a fixture-made lesson shows a "Test content" badge on its unit, and old saved "(mock)" suffixes are not displayed.
+
 ## Queue and persistence guarantees
 
 Flyway V3 preserves old compile records, permits source-free typed jobs, and scopes job deduplication by owner, operation and request ID. PostgreSQL owner and row locks order admission, revisions, cancellation, lease changes and publication. FileStore is a single-instance development store; a durable admission journal ties the job to absolute quota-counter values, so interrupted admission can replay without another debit.

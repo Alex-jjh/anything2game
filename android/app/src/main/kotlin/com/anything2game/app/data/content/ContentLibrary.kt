@@ -31,10 +31,16 @@ class ContentLibrary(private val sources: List<PackSource>) : PackageRepository,
     private var index: Map<ContentVersion, PackRef>? = null
     private val opened = HashMap<ContentVersion, ContentPack>()
 
-    suspend fun refresh() = mutex.withLock { index = null; opened.clear() }
+    private var generation = 0
 
-    private suspend fun refs(): Map<ContentVersion, PackRef> = mutex.withLock {
-        index ?: sources.flatMap { it.list() }.associateBy { it.version }.also { index = it }
+    suspend fun refresh() = mutex.withLock { generation++; index = null; opened.clear() }
+
+    /** Listing runs outside the lock: a holder suspended on the IO dispatcher would otherwise stall every caller until it resumes on its own thread. */
+    private suspend fun refs(): Map<ContentVersion, PackRef> {
+        val started = mutex.withLock { index?.let { return it }; generation }
+        val listed = sources.flatMap { it.list() }.associateBy { it.version }
+        // A refresh during the listing makes it stale: use it for this call, but do not keep it.
+        return mutex.withLock { if (generation != started) listed else index ?: listed.also { index = it } }
     }
 
     private suspend fun latestCourses() = refs().values.filter { it.manifest.schema == PACK_SCHEMA_V1 }
@@ -108,10 +114,6 @@ class ContentLibrary(private val sources: List<PackSource>) : PackageRepository,
 
     suspend fun available(version: ContentVersion) = availableFrames(course(version))
 
-    private fun availableFrames(course: ContentPack?): List<FrameId> {
-        val present = course?.frames?.keys.orEmpty()
-        return FrameId.entries.filter { !FrameSpec.of(it).needsOverlay || it in present }
-    }
 
     override suspend fun load(packageId: String, frameId: FrameId): FrameOverlay? = pack(packageId)?.frames?.get(frameId)
 
@@ -152,4 +154,10 @@ class ContentLibrary(private val sources: List<PackSource>) : PackageRepository,
             return 0
         }
     }
+}
+
+/** Frames a course can be played in: those that need no overlay, plus the ones it ships. */
+internal fun availableFrames(course: ContentPack?): List<FrameId> {
+    val present = course?.frames?.keys.orEmpty()
+    return FrameId.entries.filter { !FrameSpec.of(it).needsOverlay || it in present }
 }

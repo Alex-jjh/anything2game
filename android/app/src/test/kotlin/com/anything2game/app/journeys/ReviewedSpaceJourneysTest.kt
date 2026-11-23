@@ -13,6 +13,8 @@ import androidx.compose.ui.test.*
 import androidx.test.core.app.ActivityScenario
 import com.anything2game.app.MainActivity
 import com.anything2game.app.data.profile.LocalProfile
+import com.anything2game.app.R
+import com.anything2game.contract.progress.ActivityOutcome
 import com.anything2game.contract.space.*
 import com.anything2game.contract.tutor.*
 import kotlinx.coroutines.runBlocking
@@ -21,17 +23,27 @@ import org.junit.Test
 import java.io.File
 
 class ReviewedSpaceJourneysTest : LearnJourneyBase() {
+    /** Steps before the requested one are done, as they would be for a student who got that far: a locked step cannot be tapped. */
+    private var credited = 0
+
     private fun selectLaterConcept() {
         val (space, node) = runBlocking {
             val mat = deps.materials!!.materials().single { it.localPack?.packageId == attention }
             val parent = deps.spaces!!.list().first { mat.member in it.members }
-            parent to mat.nodes.filter { it.activity is ActivityRef.Tutor }.last()
+            val target = mat.nodes.filter { it.activity is ActivityRef.Tutor }.last()
+            mat.nodes.takeWhile { it.nodeId != target.nodeId }.forEach { before ->
+                deps.learningProgress!!.record(before.activity, if (before.activity is ActivityRef.Tutor) ActivityOutcome.READ else ActivityOutcome.INDEPENDENT, 1_000_000L)
+            }
+            credited = deps.learningProgress!!.projection().completed.size
+            parent to target
         }
         waitFor("parent Space card") { runCatching { rule.onNodeWithTag("home_SPACES").performScrollToNode(hasTestTag("open_space_${space.spaceId}")); true }.getOrDefault(false) }
         tap(rule.onNodeWithTag("open_space_${space.spaceId}"))
         waitForTag("show_route")
         val tag = "open_node_${node.nodeId}"
-        rule.onNodeWithTag("space_route").performScrollToNode(hasTestTag(tag))
+        rule.onNodeWithTag("space_route").performScrollToNode(hasTestTag("route_node_${node.nodeId}"))
+        tap(rule.onNodeWithTag("route_node_${node.nodeId}"))
+        waitForTag(tag)
         waitFor("node enabled") { runCatching { rule.onNodeWithTag(tag).assertIsEnabled(); true }.getOrDefault(false) }
         tap(rule.onNodeWithTag(tag))
     }
@@ -44,11 +56,15 @@ class ReviewedSpaceJourneysTest : LearnJourneyBase() {
         chooseFocus()
         scenario!!.recreate()
         val questions = cache(attention).session.questions
-        for (q in questions) answerCurrent(q, UNKNOWN_ANSWER)
+        questions.forEachIndexed { i, q ->
+            // Wait for each question to be on screen: a tap that lands during the previous transition is lost.
+            if (i > 0) waitForText(str(R.string.tutor_question_count, i + 1, questions.size))
+            answerCurrent(q, UNKNOWN_ANSWER)
+        }
         waitForTag("route_prerequisite")
         assertTrue(textOf("route_prerequisite").contains(questions.last().concept))
         assertTrue(textOf("route_prerequisite").contains(questions.first().concept))
-        assertTrue(runBlocking { deps.learningProgress!!.projection().completed.isEmpty() })
+        assertEquals(credited, runBlocking { deps.learningProgress!!.projection().completed.size })
         tap(rule.onNodeWithTag("route_follow"))
         waitForTag("dialogue_text")
         assertEquals(questions.first().conceptId, TutorRules.orderedQuestions(cache(attention).session).first().conceptId)

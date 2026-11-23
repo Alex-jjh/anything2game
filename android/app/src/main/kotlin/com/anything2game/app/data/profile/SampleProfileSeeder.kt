@@ -3,6 +3,7 @@ package com.anything2game.app.data.profile
 import com.anything2game.app.data.AvatarPreferences
 import com.anything2game.app.data.HomePreferences
 import com.anything2game.contract.FrameId
+import com.anything2game.contract.space.ActivityRef
 import com.anything2game.engine.demo.ScriptedPlayer
 import com.anything2game.engine.frames.Frames
 import com.anything2game.engine.grading.Grading
@@ -31,6 +32,7 @@ class SampleProfileSeeder(
     private val framePrefs: com.anything2game.app.data.FramePreferences,
     private val clock: Clock,
     private val progress: com.anything2game.app.data.learning.LearningProgress? = null,
+    private val materials: com.anything2game.app.data.learning.MaterialCatalog? = null,
 ) {
     /** One past play: which course, which frame, how long ago, which answers were wrong, and whether it was finished. */
     data class Play(val packageId: String, val frame: FrameId, val hoursAgo: Long, val wrong: Set<Int> = emptySet(), val stopAfter: Int? = null)
@@ -57,6 +59,14 @@ class SampleProfileSeeder(
             progress?.practice(played.state, past.now())
             framePrefs.set(pkg.packageId, frame.id) // Practice shows the frame Lin actually plays this course in
             if (!played.state.isFinished) sessions.save(played.state)
+            readExplanations(pkg.packageId, levelId, past.now() - 30 * 60_000L)
         }
+    }
+
+    /** A student who practised a level has read what the route explains before it. */
+    private suspend fun readExplanations(packageId: String, levelId: String, time: Long) {
+        val route = materials?.materials()?.firstOrNull { it.localPack?.packageId == packageId }?.nodes ?: return
+        val practice = route.indexOfFirst { (it.activity as? ActivityRef.Practice)?.activityId == levelId }
+        route.take(practice.coerceAtLeast(0)).map { it.activity }.filterIsInstance<ActivityRef.Tutor>().forEach { progress?.recordRead(it, time) }
     }
 }
