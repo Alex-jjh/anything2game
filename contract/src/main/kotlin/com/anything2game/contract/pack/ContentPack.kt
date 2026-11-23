@@ -8,6 +8,11 @@ import com.anything2game.contract.LearningPackage
 import com.anything2game.contract.PackageValidator
 import com.anything2game.contract.PresetSourceLayout
 import com.anything2game.contract.tutor.TutorScript
+import com.anything2game.contract.game.*
+import com.anything2game.contract.space.LearningPath
+import com.anything2game.contract.space.PATH_SCHEMA
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.io.ByteArrayOutputStream
@@ -48,6 +53,7 @@ enum class PackOrigin {
 @Serializable
 data class PackEntry(val path: String, val sha256: String, val bytes: Long)
 
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class PackManifest(
     val schema: String,
@@ -60,6 +66,8 @@ data class PackManifest(
     val origin: PackOrigin,
     val frames: List<FrameId>,
     val entries: List<PackEntry>,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val dependencies: Set<ContentVersion> = emptySet(),
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val requiredCapabilities: Set<String> = emptySet(),
 )
 
 /**
@@ -73,6 +81,8 @@ data class ContentPack(
 
 /** Builds, writes and reads content packs. Pure JVM: shared by the app, the server and the build tool. */
 object PackCodec {
+    const val GAME = "game.json"
+    const val PATH = "path.json"
     const val MANIFEST = "manifest.json"
     const val PACKAGE = "package.json"
     const val TUTOR = "tutor.json"
@@ -82,7 +92,7 @@ object PackCodec {
     /** Packs come from outside the app (downloads, imports), so reading is bounded: no zip bombs, no surprise entries. */
     data class Limits(val maxEntries: Int = 16, val maxEntryBytes: Long = 8L shl 20, val maxTotalBytes: Long = 32L shl 20)
 
-    private val allowedPaths: Set<String> = setOf(MANIFEST, PACKAGE, TUTOR, LAYOUT) + FrameId.entries.map(::framePath)
+    private val allowedPaths: Set<String> = setOf(MANIFEST, PACKAGE, TUTOR, LAYOUT, GAME, PATH) + FrameId.entries.map(::framePath)
     // Fixed entry time so the same content always produces the same bytes.
     private const val ENTRY_TIME = 315_532_800_000L // 1980-01-01
 
@@ -114,20 +124,56 @@ object PackCodec {
     }
 
     fun write(pack: ContentPack, out: OutputStream) {
-        ZipOutputStream(out).use { zip ->
-            fun put(path: String, bytes: ByteArray) {
-                zip.putNextEntry(ZipEntry(path).apply { time = ENTRY_TIME })
-                zip.write(bytes); zip.closeEntry()
-            }
-            put(MANIFEST, ContractJson.json.encodeToString(PackManifest.serializer(), pack.manifest).toByteArray())
-            put(PACKAGE, ContractJson.encodePackage(pack.pkg).toByteArray())
-            pack.tutor?.let { put(TUTOR, encodeTutor(it)) }
-            pack.sourceLayout?.let { put(LAYOUT, encodeLayout(it)) }
-            pack.manifest.frames.forEach { put(framePath(it), ContractJson.encodeFrame(pack.frames.getValue(it)).toByteArray()) }
-        }
+        val files = linkedMapOf(PACKAGE to ContractJson.encodePackage(pack.pkg).toByteArray())
+        pack.tutor?.let { files[TUTOR] = encodeTutor(it) }
+        pack.sourceLayout?.let { files[LAYOUT] = encodeLayout(it) }
+        pack.manifest.frames.forEach { files[framePath(it)] = ContractJson.encodeFrame(pack.frames.getValue(it)).toByteArray() }
+        writeArchive(pack.manifest, files, out)
     }
 
     fun toBytes(pack: ContentPack): ByteArray = ByteArrayOutputStream().also { write(pack, it) }.toByteArray()
+
+    fun build(game: GameSpec, origin: PackOrigin): ActivityPack {
+        MechanicRegistry.validate(game)
+        val payload = ActivityPayload.Game(game)
+        val manifest = PackManifest(PACK_SCHEMA_V2, game.gameId, game.gameVersion, GAME_SCHEMA, game.title, game.language,
+            origin, emptyList(), listOf(entry(GAME, encode(payload))), requiredCapabilities = game.requiredCapabilities)
+        return ActivityPack(manifest, payload)
+    }
+
+    fun build(path: LearningPath, origin: PackOrigin): ActivityPack {
+        path.validate()
+        val payload = ActivityPayload.Path(path)
+        val manifest = PackManifest(PACK_SCHEMA_V2, path.pathId, path.pathVersion, PATH_SCHEMA, path.title, path.language,
+            origin, emptyList(), listOf(entry(PATH, encode(payload))), dependencies = path.dependencies)
+        return ActivityPack(manifest, payload)
+    }
+
+    private fun encode(payload: ActivityPayload) = when (payload) {
+        is ActivityPayload.Game -> ContractJson.json.encodeToString(GameSpec.serializer(), payload.game)
+        is ActivityPayload.Path -> ContractJson.json.encodeToString(LearningPath.serializer(), payload.path)
+    }.toByteArray()
+
+    fun write(pack: ActivityPack, out: OutputStream) {
+        val name = when (pack.payload) { is ActivityPayload.Game -> GAME; is ActivityPayload.Path -> PATH }
+        val bytes = encode(pack.payload)
+        val manifest = pack.manifest.copy(entries = listOf(entry(name, bytes)))
+        writeArchive(manifest, mapOf(name to bytes), out)
+    }
+
+    fun toBytes(pack: ActivityPack): ByteArray = ByteArrayOutputStream().also { write(pack, it) }.toByteArray()
+
+    private fun writeArchive(manifest: PackManifest, files: Map<String, ByteArray>, out: OutputStream) {
+        ZipOutputStream(out).use { zip ->
+            fun put(path: String, bytes: ByteArray) {
+                zip.putNextEntry(ZipEntry(path).apply { time = ENTRY_TIME })
+                zip.write(bytes)
+                zip.closeEntry()
+            }
+            put(MANIFEST, ContractJson.json.encodeToString(PackManifest.serializer(), manifest).toByteArray())
+            files.forEach(::put)
+        }
+    }
 
     /** Reads only the manifest (the first entry), for cheap listing. Checksums are checked by [read]. */
     fun readManifest(input: InputStream, limits: Limits = Limits()): Result<PackManifest> = runCatching {
@@ -140,6 +186,55 @@ object PackCodec {
 
     /** Reads, verifies checksums and validates everything. Any problem → failure; a pack is never partly accepted. */
     fun read(input: InputStream, limits: Limits = Limits()): Result<ContentPack> = runCatching {
+        val (manifest, files) = readArchive(input, limits)
+        require(manifest.schema == PACK_SCHEMA_V1) { "Expected v1 course pack" }
+        require(manifest.dependencies.isEmpty() && manifest.requiredCapabilities.isEmpty()) { "Unexpected v1 dependencies" }
+        val declared = manifest.entries.associateBy { it.path }
+        val pkg = ContractJson.readValidPackage(files.getValue(PACKAGE).decodeToString()).getOrThrow()
+        require(pkg.packageId == manifest.packageId && pkg.contentVersion == manifest.contentVersion && pkg.schema == manifest.packageSchema) {
+            "manifest does not describe the package inside"
+        }
+        require(manifest.frames.toSet().size == manifest.frames.size && manifest.frames.map(::framePath).toSet() == declared.keys - PACKAGE - TUTOR - LAYOUT) {
+            "manifest frame list does not match the frame files"
+        }
+        val frames = manifest.frames.associateWith { id ->
+            ContractJson.readValidFrame(files.getValue(framePath(id)).decodeToString(), pkg).getOrThrow()
+                .also { require(it.frameId == id) { "frames/${id.name.lowercase()}.json holds frame ${it.frameId}" } }
+        }
+        val tutor = files[TUTOR]?.let { bytes ->
+            ContractJson.json.decodeFromString(TutorScript.serializer(), bytes.decodeToString()).validate(pkg)
+        }
+        val layout = files[LAYOUT]?.let { bytes ->
+            ContractJson.json.decodeFromString(PresetSourceLayout.serializer(), bytes.decodeToString()).validate(pkg)
+        }
+        ContentPack(manifest, pkg, frames, tutor, layout)
+    }
+
+    /** Validation is mandatory at the engine boundary. Installers may atomically move their original temporary file on success. */
+    fun readActivity(input: InputStream, installed: Set<ContentVersion>, limits: Limits = Limits(),
+        validateGame: (GameSpec) -> Unit): Result<ActivityPack> = runCatching {
+        val (manifest, files) = readArchive(input, limits)
+        require(manifest.schema == PACK_SCHEMA_V2 && manifest.frames.isEmpty()) { "Expected v2 activity pack" }
+        require(MechanicRegistry.capabilities.containsAll(manifest.requiredCapabilities)) { "Unsupported runtime capability" }
+        require(installed.containsAll(manifest.dependencies)) { "Missing content dependency" }
+        val pack = when (manifest.packageSchema) {
+            GAME_SCHEMA -> {
+                require(files.keys == setOf(MANIFEST, GAME)) { "Invalid game entries" }
+                val game = ContractJson.json.decodeFromString(GameSpec.serializer(), files.getValue(GAME).decodeToString())
+                build(game, manifest.origin).also { validateGame(game) }
+            }
+            PATH_SCHEMA -> {
+                require(files.keys == setOf(MANIFEST, PATH)) { "Invalid path entries" }
+                build(ContractJson.json.decodeFromString(LearningPath.serializer(), files.getValue(PATH).decodeToString()), manifest.origin)
+            }
+            else -> error("Unsupported activity schema")
+        }
+        // Checksums refer to the incoming representation, including its legal whitespace and property order.
+        require(pack.manifest.copy(entries = manifest.entries) == manifest) { "Manifest does not describe activity or dependencies" }
+        ActivityPack(manifest, pack.payload)
+    }
+
+    private fun readArchive(input: InputStream, limits: Limits): Pair<PackManifest, Map<String, ByteArray>> {
         val files = LinkedHashMap<String, ByteArray>()
         ZipInputStream(input.buffered()).use { zip ->
             var total = 0L
@@ -163,24 +258,7 @@ object PackCodec {
             val bytes = files.getValue(d.path)
             require(bytes.size.toLong() == d.bytes && sha256(bytes) == d.sha256) { "checksum mismatch for ${d.path}" }
         }
-        val pkg = ContractJson.readValidPackage(files.getValue(PACKAGE).decodeToString()).getOrThrow()
-        require(pkg.packageId == manifest.packageId && pkg.contentVersion == manifest.contentVersion && pkg.schema == manifest.packageSchema) {
-            "manifest does not describe the package inside"
-        }
-        require(manifest.frames.toSet().size == manifest.frames.size && manifest.frames.map(::framePath).toSet() == declared.keys - PACKAGE - TUTOR - LAYOUT) {
-            "manifest frame list does not match the frame files"
-        }
-        val frames = manifest.frames.associateWith { id ->
-            ContractJson.readValidFrame(files.getValue(framePath(id)).decodeToString(), pkg).getOrThrow()
-                .also { require(it.frameId == id) { "frames/${id.name.lowercase()}.json holds frame ${it.frameId}" } }
-        }
-        val tutor = files[TUTOR]?.let { bytes ->
-            ContractJson.json.decodeFromString(TutorScript.serializer(), bytes.decodeToString()).validate(pkg)
-        }
-        val layout = files[LAYOUT]?.let { bytes ->
-            ContractJson.json.decodeFromString(PresetSourceLayout.serializer(), bytes.decodeToString()).validate(pkg)
-        }
-        ContentPack(manifest, pkg, frames, tutor, layout)
+        return manifest to files
     }
 
     private fun encodeTutor(t: TutorScript): ByteArray = ContractJson.json.encodeToString(TutorScript.serializer(), t).toByteArray()
@@ -188,7 +266,7 @@ object PackCodec {
 
     private fun decodeManifest(bytes: ByteArray): PackManifest {
         val m = ContractJson.json.decodeFromString(PackManifest.serializer(), bytes.decodeToString())
-        require(m.schema == PACK_SCHEMA_V1) { "unsupported pack schema '${m.schema}'" }
+        require(m.schema == PACK_SCHEMA_V1 || m.schema == PACK_SCHEMA_V2) { "unsupported pack schema '${m.schema}'" }
         return m
     }
 

@@ -127,6 +127,29 @@ class PackCodecTest {
         assertTrue(retrieval.tutor!!.blueprint.concepts.all { it.question.facet != null })
     }
 
+    @Test fun `v2 rejects unknown formats path entries checksum changes and oversized content before dispatch`() {
+        val game = com.anything2game.contract.game.ReviewedGames.partition("en")
+        val src = PackCodec.toBytes(PackCodec.build(game, PackOrigin.PRESET))
+        listOf(
+            rewrite(src, extra = "../other" to byteArrayOf()),
+            rewrite(src) { n, b -> if (n == PackCodec.GAME) b + 32.toByte() else b },
+            rewrite(src) { n, b -> if (n == PackCodec.MANIFEST) b.decodeToString().replace(PACK_SCHEMA_V2, "future").toByteArray() else b },
+        ).forEach { assertTrue(PackCodec.readActivity(it.inputStream(), emptySet()) { }.isFailure) }
+        assertTrue(PackCodec.readActivity(src.inputStream(), emptySet(), PackCodec.Limits(maxEntryBytes = 128)) { }.isFailure)
+    }
+
+    @Test fun `rewriting a validated noncanonical game keeps its new checksum valid`() {
+        val game = com.anything2game.contract.game.ReviewedGames.partition("en")
+        val pack = PackCodec.build(game, PackOrigin.PRESET)
+        val src = PackCodec.toBytes(pack)
+        val data = ("  " + ContractJson.json.encodeToString(com.anything2game.contract.game.GameSpec.serializer(), game)).toByteArray()
+        val hash = MessageDigest.getInstance("SHA-256").digest(data).joinToString("") { "%02x".format(it) }
+        val manifest = pack.manifest.copy(entries = listOf(PackEntry(PackCodec.GAME, hash, data.size.toLong())))
+        val original = rewrite(src) { name, _ -> if (name == PackCodec.GAME) data else ContractJson.json.encodeToString(PackManifest.serializer(), manifest).toByteArray() }
+        val read = PackCodec.readActivity(original.inputStream(), emptySet()) { }.getOrThrow()
+        assertEquals(read.payload, PackCodec.readActivity(PackCodec.toBytes(read).inputStream(), emptySet()) { }.getOrThrow().payload)
+    }
+
     /** A pack in which tutor.json was swapped and the manifest recomputed, so only the content rules can catch it. */
     private fun withTutorReplacedBy(newTutor: ByteArray): ByteArray {
         val manifest = PackCodec.readManifest(ByteArrayInputStream(withTutor)).getOrThrow()

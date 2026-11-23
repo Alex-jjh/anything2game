@@ -14,10 +14,9 @@ dependencyResolutionManagement {
 }
 rootProject.name = "anything2game"
 
-include(":contract")
+include(":contract", ":android:engine")
 // A2G_SERVER_ONLY=1 builds the backend (and its Docker image) without an Android SDK.
 if (System.getenv("A2G_SERVER_ONLY") != "1") {
-    include(":android:engine")
     include(":android:app")
 }
 include(":server")
