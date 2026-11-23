@@ -200,6 +200,97 @@ class LearningRecoveryTest {
         }
     }
 
+    @Test fun `receipt write failure cannot publish an archive for migration on restart`() = runBlocking {
+        val deps = AndroidAppContainer(app)
+        val store = tmp.newFolder()
+        val packs = File(store, "packs")
+        val receipt = File(store, "receipts.json")
+        val pkg = deps.packages.load(EXAMPLE_TUTOR_PACKAGE).getOrThrow().copy(packageId = "authenticated")
+        fun library() = ContentLibrary(listOf(DirectoryPackSource(packs)))
+        fun receipts(content: ContentLibrary) = AuthenticatedCourses(receipt, content) { "owner" }
+        fun spaces(content: ContentLibrary): SpaceRepository {
+            val materials = MaterialCatalog(content, deps.tutors, authenticated = receipts(content)::owns)
+            return SpaceRepository(File(store, "spaces"), materials::materials)
+        }
+        require(receipt.mkdir())
+        assertTrue(runCatching { receipts(library()).install(pkg) }.isFailure)
+        require(receipt.delete())
+        assertTrue("no local Space may appear from a failed publication", spaces(library()).list().isEmpty())
+        receipts(library()).install(pkg)
+        val stored = spaces(library())
+        val only = stored.list().single()
+        assertEquals(listOf(SpaceMember.ServerDocumentRef(pkg.documentId, pkg.documentVersion)), only.members)
+        assertTrue(stored.route(only.spaceId, "en")!!.nodes.any { it.activity.contentId == pkg.packageId })
+    }
+
+    @Test fun `Space migration sees no archive until its validated owner receipt is durable`() = runBlocking {
+        val deps = AndroidAppContainer(app)
+        val store = tmp.newFolder()
+        val packs = File(store, "packs")
+        val receiptFile = File(store, "receipts")
+        val pkg = deps.packages.load(EXAMPLE_TUTOR_PACKAGE).getOrThrow().copy(packageId = "concurrent-install")
+        fun library() = ContentLibrary(listOf(DirectoryPackSource(packs)))
+        fun spaces(): SpaceRepository {
+            val content = library()
+            val receipts = AuthenticatedCourses(receiptFile, content) { "owner" }
+            return SpaceRepository(File(store, "spaces"), MaterialCatalog(content, deps.tutors, authenticated = receipts::owns)::materials)
+        }
+        val content = library()
+        val receipts = AuthenticatedCourses(receiptFile, content) { "owner" }
+        val pack = PackCodec.build(pkg, emptyList(), PackOrigin.SERVER)
+        val record = receipts.publicationReceipt()
+        val staged = CompletableDeferred<Unit>()
+        val allowReceipt = CompletableDeferred<Unit>()
+        val written = CompletableDeferred<Unit>()
+        val allowPublish = CompletableDeferred<Unit>()
+        val install = async(Dispatchers.IO) {
+            content.install(PackCodec.toBytes(pack).inputStream(), beforeCoursePublish = { validated ->
+                staged.complete(Unit)
+                allowReceipt.await()
+                record(validated)
+                written.complete(Unit)
+                allowPublish.await()
+            })
+        }
+        try {
+            withTimeout(10000) { staged.await() }
+            assertFalse(receipts.owns(pack))
+            assertTrue(spaces().list().isEmpty())
+            allowReceipt.complete(Unit)
+            withTimeout(10000) { written.await() }
+            assertTrue(AuthenticatedCourses(receiptFile, library()) { "owner" }.owns(pack))
+            assertTrue(spaces().list().isEmpty())
+        } finally {
+            allowReceipt.complete(Unit)
+            allowPublish.complete(Unit)
+        }
+        install.await()
+        val after = spaces()
+        val only = after.list().single()
+        assertEquals(listOf(SpaceMember.ServerDocumentRef(pkg.documentId, pkg.documentVersion)), only.members)
+        assertTrue(after.route(only.spaceId, "en")!!.nodes.any { it.activity.contentId == pkg.packageId })
+    }
+
+    @Test fun `an already migrated local practice remains accessible by its original Space after verification`() = runBlocking {
+        val deps = AndroidAppContainer(app)
+        val store = tmp.newFolder()
+        val pkg = deps.packages.load(EXAMPLE_TUTOR_PACKAGE).getOrThrow().copy(packageId = "local-before-verification")
+        val content = ContentLibrary(listOf(DirectoryPackSource(File(store, "packs"))))
+        val receipts = AuthenticatedCourses(File(store, "receipts"), content) { "owner" }
+        val materials = MaterialCatalog(content, deps.tutors, authenticated = receipts::owns)
+        fun reopen() = SpaceRepository(File(store, "spaces"), materials::materials)
+        content.install(PackCodec.toBytes(PackCodec.build(pkg, emptyList(), PackOrigin.SERVER)).inputStream())
+        val original = reopen().list().single()
+        val alias = SpaceMember.LocalPackRef(pkg.packageId, pkg.contentVersion)
+        assertEquals(listOf(alias), original.members)
+        val other = reopen().create("Personal collection")
+        reopen().add(other.spaceId, alias)
+        receipts.install(pkg)
+        val upgraded = reopen()
+        assertEquals(setOf(original.spaceId, other.spaceId), upgraded.list().map { it.spaceId }.toSet())
+        for (space in listOf(original, other)) assertTrue(upgraded.route(space.spaceId, "en")!!.nodes.any { it.activity.contentId == pkg.packageId })
+    }
+
     private suspend fun server(handler: (String, String, String) -> Pair<Int, String>,
         install: () -> Pair<Int, String> = { 201 to json.encodeToString(InstallResponse("test", "sample")) },
         use: suspend (ApiTransport) -> Unit) {
@@ -357,6 +448,61 @@ class LearningRecoveryTest {
         val citation = mat.nodes.first().evidence.single()
         val target = catalog.source(citation) as SourceTarget.Pdf
         assertArrayEquals(bytes, requireNotNull(target.document).file.readBytes())
+    }
+
+    @Test fun `matching bundled evidence leaves uploaded profile PDF and layout intact`() = runBlocking {
+        val deps = AndroidAppContainer(app)
+        val pkg = deps.packages.load("demo_attention").getOrThrow()
+        val bundled = "%PDF-bundled".toByteArray()
+        val layout = requireNotNull(deps.content.sourceLayoutFor(pkg.packageId)).copy(pdfBytes = bundled.size.toLong(), pdfSha256 = PdfBytes.sha256(bundled))
+        val content = ContentLibrary(listOf(DirectoryPackSource(tmp.newFolder())))
+        content.install(PackCodec.toBytes(PackCodec.build(pkg, emptyList(), PackOrigin.PRESET, sourceLayout = layout)).inputStream())
+        val stored = SourceDocumentStore(File(app.filesDir, "source-documents"))
+        val uploaded = "%PDF-profile-upload".toByteArray()
+        val original = DocumentLayout(pages = listOf(PageBox(0, 321f, 654f)))
+        stored.save(pkg.documentId, pkg.documentVersion, 1, original, uploaded)
+        var bundledOpens = 0
+        val sources = PresetSources(content, stored) { bundledOpens++; bundled.inputStream() }
+        val catalog = MaterialCatalog(content, deps.tutors, sources)
+        val evidence = catalog.materials().single().nodes.first().evidence.first()
+        val selected = requireNotNull((catalog.source(evidence) as SourceTarget.Pdf).document)
+        assertArrayEquals(uploaded, selected.file.readBytes())
+        assertEquals(0, bundledOpens)
+        val reopened = requireNotNull(stored.load(pkg.documentId, pkg.documentVersion))
+        assertEquals(original, reopened.layout)
+        assertNull(reopened.pdfSha256)
+        assertArrayEquals(uploaded, reopened.file.readBytes())
+    }
+
+    @Test fun `upload arriving while a bundled source opens keeps the imported bytes and geometry`() = runBlocking {
+        val deps = AndroidAppContainer(app)
+        val pkg = deps.packages.load("demo_attention").getOrThrow()
+        val bundled = "%PDF-bundled".toByteArray()
+        val layout = requireNotNull(deps.content.sourceLayoutFor(pkg.packageId)).copy(pdfBytes = bundled.size.toLong(), pdfSha256 = PdfBytes.sha256(bundled))
+        val content = ContentLibrary(listOf(DirectoryPackSource(tmp.newFolder())))
+        content.install(PackCodec.toBytes(PackCodec.build(pkg, emptyList(), PackOrigin.PRESET, sourceLayout = layout)).inputStream())
+        val store = SourceDocumentStore(File(app.filesDir, "source-documents"))
+        val opening = CompletableDeferred<Unit>()
+        val proceed = java.util.concurrent.CountDownLatch(1)
+        val presets = PresetSources(content, store) {
+            opening.complete(Unit)
+            check(proceed.await(10, java.util.concurrent.TimeUnit.SECONDS))
+            bundled.inputStream()
+        }
+        val catalog = MaterialCatalog(content, deps.tutors, presets)
+        val evidence = catalog.materials().single().nodes.first().evidence.first()
+        val lookup = async(Dispatchers.IO) { catalog.source(evidence) }
+        val uploaded = "%PDF-profile-upload".toByteArray()
+        val original = DocumentLayout(pages = listOf(PageBox(0, 321f, 654f)))
+        try {
+            withTimeout(10000) { opening.await() }
+            store.save(pkg.documentId, pkg.documentVersion, 1, original, uploaded)
+        } finally { proceed.countDown() }
+        val selected = requireNotNull((lookup.await() as SourceTarget.Pdf).document)
+        assertArrayEquals(uploaded, selected.file.readBytes())
+        val reopened = requireNotNull(store.load(pkg.documentId, pkg.documentVersion))
+        assertEquals(original, reopened.layout)
+        assertArrayEquals(uploaded, reopened.file.readBytes())
     }
 
     @Test fun `matching editions with identical document versions can use geometry in the second pack`() = runBlocking {

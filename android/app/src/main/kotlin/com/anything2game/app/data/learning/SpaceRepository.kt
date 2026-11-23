@@ -37,8 +37,14 @@ class SpaceRepository(file: File, private val materials: suspend () -> List<Mate
     private fun creation(id: String, title: String) = SavedSpace(id, edits = listOf(SpaceEdit(EditKind.CREATE, this.id(), title = title)))
     private fun checkTitle(title: String) { require(title.isNotBlank() && title.length <= 120 && title.none(Char::isISOControl)) }
 
+    private fun migratedId(source: ContentVersion, member: SpaceMember): String = "source-" + when (member) {
+        is SpaceMember.ServerDocumentRef -> stableId("server", source.contentId, source.contentVersion)
+        is SpaceMember.LocalPackRef -> stableId("local", member.packageId, source.contentId, source.contentVersion)
+    }
+
     suspend fun list(): List<Space> {
         val catalog = materials()
+        val aliases = catalog.filter { it.member is SpaceMember.ServerDocumentRef && it.localPack != null }.groupBy { it.member }
         return disk.update { prior ->
             val entries = prior.entries.toMutableMap()
             val migrated = prior.migrated.toMutableSet()
@@ -49,11 +55,12 @@ class SpaceRepository(file: File, private val materials: suspend () -> List<Mate
                     member.version().contentId, member.version().contentVersion)
                 if (!migrated.add(key)) continue
                 if (entries.values.any { member in it.view().members }) continue
-                val group = when (member) {
-                    is SpaceMember.ServerDocumentRef -> stableId("server", source.contentId, source.contentVersion)
-                    is SpaceMember.LocalPackRef -> stableId("local", member.packageId, source.contentId, source.contentVersion)
+                // A formerly unverified installation may already have its own migrated Space. Keep that ID and its local relationships.
+                val priorLocalId = aliases[member].orEmpty().firstNotNullOfOrNull { verified ->
+                    val alias = requireNotNull(verified.localPack)
+                    migratedId(source, alias).takeIf { alias in entries[it]?.view()?.members.orEmpty() }
                 }
-                val id = "source-$group"
+                val id = priorLocalId ?: migratedId(source, member)
                 val saved = entries[id] ?: creation(id, material.title.filterNot(Char::isISOControl).trim().ifBlank { source.contentId }.take(120))
                 entries[id] = saved.copy(edits = saved.edits + SpaceEdit(EditKind.ADD, this.id(), member = member))
             }
@@ -183,7 +190,7 @@ class SpaceRepository(file: File, private val materials: suspend () -> List<Mate
     suspend fun route(id: String, language: String): LearningPath? {
         val space = list().single { it.spaceId == id }
         val catalog = materials()
-        val members = catalog.filter { it.member in space.members }
+        val members = catalog.filter { it.member in space.members || it.localPack?.let(space.members::contains) == true }
         val generated = space.activePathVersion?.let { loadPath(it) }
         val includedDocs = members.map { it.source }.toSet() + space.members.filterIsInstance<SpaceMember.ServerDocumentRef>().map { it.version() }
         val generatedNodes = generated?.nodes.orEmpty().filterNot { n -> n.evidence.filterIsInstance<EvidenceRef.Pdf>()

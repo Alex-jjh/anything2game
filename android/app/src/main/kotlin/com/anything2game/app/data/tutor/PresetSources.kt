@@ -46,7 +46,7 @@ class PresetSources(
     /** The attached PDF for the session with these ids, if one was attached here and is still the file the pack's geometry is for. */
     suspend fun load(packageId: String, documentId: String, documentVersion: String, contentVersion: String? = null): SourceDocument? {
         val l = layout(packageId, contentVersion)?.takeIf { it.documentId == documentId && it.documentVersion == documentVersion } ?: return null
-        return kept(l) ?: (attach(l) { bundled(l.packageId) } as? AttachResult.Accepted)?.document
+        return kept(l) ?: store.bundled(l) ?: (attach(l, isBundled = true) { bundled(l.packageId) } as? AttachResult.Accepted)?.document
     }
 
     private suspend fun kept(l: PresetSourceLayout): SourceDocument? {
@@ -61,10 +61,10 @@ class PresetSources(
     /** Reads the picked file once (bounded), checks it is a PDF and is the exact file measured, then keeps it. */
     suspend fun attach(packageId: String, open: () -> InputStream?): AttachResult {
         val layout = layout(packageId) ?: return AttachResult.NoLayout
-        return attach(layout, open)
+        return attach(layout, open = open)
     }
 
-    private suspend fun attach(l: PresetSourceLayout, open: () -> InputStream?): AttachResult {
+    private suspend fun attach(l: PresetSourceLayout, isBundled: Boolean = false, open: () -> InputStream?): AttachResult {
         val bytes = withContext(Dispatchers.IO) {
             try { open()?.use { PdfBytes.readBounded(it, PdfBytes.MAX + 1) } } catch (e: CancellationException) { throw e } catch (e: Exception) { null }
         } ?: return AttachResult.Unreadable
@@ -72,7 +72,10 @@ class PresetSources(
         if (!PdfBytes.looksLikePdf(bytes)) return AttachResult.NotPdf
         val sha = withContext(Dispatchers.Default) { PdfBytes.sha256(bytes) }
         if (sha != l.pdfSha256 || bytes.size.toLong() != l.pdfBytes) return AttachResult.Mismatch(describe(l), bytes.size.toLong())
-        try { store.save(l.documentId, l.documentVersion, l.pageCount, l.layout, bytes, sha) } catch (e: CancellationException) { throw e } catch (e: Exception) { return AttachResult.Unreadable }
+        try {
+            if (isBundled) return AttachResult.Accepted(requireNotNull(store.bundled(l, bytes)))
+            store.save(l.documentId, l.documentVersion, l.pageCount, l.layout, bytes, sha)
+        } catch (e: CancellationException) { throw e } catch (e: Exception) { return AttachResult.Unreadable }
         return kept(l)?.let { AttachResult.Accepted(it) } ?: AttachResult.Unreadable
     }
 

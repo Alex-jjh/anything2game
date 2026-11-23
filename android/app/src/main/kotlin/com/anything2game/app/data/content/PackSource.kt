@@ -43,7 +43,7 @@ class DirectoryPackSource(private val dir: File, override val name: String = "in
     }
 
     suspend fun install(input: InputStream, dependencies: Set<ContentVersion> = emptySet(), expected: ContentVersion? = null,
-        bundled: List<PackRef> = emptyList(), verifyActivity: suspend (ActivityPack) -> Unit = {}): Result<PackManifest> = withContext(Dispatchers.IO) {
+        bundled: List<PackRef> = emptyList(), beforeCoursePublish: suspend (ContentPack) -> Unit = {}, verifyActivity: suspend (ActivityPack) -> Unit = {}): Result<PackManifest> = withContext(Dispatchers.IO) {
         dir.mutex().withLock {
             runCatching {
                 check(dir.isDirectory || dir.mkdirs())
@@ -79,6 +79,7 @@ class DirectoryPackSource(private val dir: File, override val name: String = "in
                                 (previous.tutor == null || next.tutor == previous.tutor) &&
                                 (previous.sourceLayout == null || next.sourceLayout == previous.sourceLayout)) { "Changed existing course content" }
                         }
+                        beforeCoursePublish(next)
                     }
                     tmp.promote(existingFile ?: File(dir, stableId(version.contentId, version.contentVersion) + PACK_EXTENSION))
                     incoming.manifest

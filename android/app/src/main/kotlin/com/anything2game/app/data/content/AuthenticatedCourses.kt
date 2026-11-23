@@ -18,11 +18,15 @@ internal class AuthenticatedCourses(file: File, private val content: ContentLibr
     private fun receipt(owner: String, manifest: PackManifest, pkg: LearningPackage) =
         CourseReceipt(owner, pkg.documentId, pkg.documentVersion, stableId(ContractJson.json.encodeToString(PackManifest.serializer(), manifest)))
 
-    suspend fun install(pkg: LearningPackage) {
+    /** Capture this authenticated response's owner. Commit the receipt after validation, before publishing any bytes. */
+    fun publicationReceipt(): suspend (ContentPack) -> Unit {
         val identity = requireNotNull(owner()) { "No authenticated package owner" }
+        return { validated -> receipts.update { it + receipt(identity, validated.manifest, validated.pkg) } }
+    }
+
+    suspend fun install(pkg: LearningPackage) {
         val pack = PackCodec.build(pkg, emptyList(), PackOrigin.SERVER)
-        val installed = content.install(PackCodec.toBytes(pack).inputStream())
-        receipts.update { it + receipt(identity, installed, pkg) }
+        content.install(PackCodec.toBytes(pack).inputStream(), beforeCoursePublish = publicationReceipt())
     }
 
     suspend fun owns(pack: ContentPack): Boolean {

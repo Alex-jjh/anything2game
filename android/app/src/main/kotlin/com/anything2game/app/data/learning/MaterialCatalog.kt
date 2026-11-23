@@ -11,7 +11,7 @@ import com.anything2game.contract.tutor.TutorQuestion
 import com.anything2game.engine.progress.NodeStatus
 
 data class Material(val source: ContentVersion, val title: String, val member: SpaceMember, val nodes: List<PathNode>,
-    val language: String = "", val tutorKey: String? = null, val chunks: List<SourceChunk> = emptyList())
+    val language: String = "", val tutorKey: String? = null, val chunks: List<SourceChunk> = emptyList(), val localPack: SpaceMember.LocalPackRef? = null)
 
 sealed interface OpenActivity {
     data class Tutor(val sessionKey: String, val conceptId: String) : OpenActivity
@@ -52,7 +52,8 @@ class MaterialCatalog(private val content: ContentLibrary, private val tutors: T
                 val evidence = level.units.firstOrNull()?.item?.allSourceRefs?.firstOrNull()?.let { pkg.scopeEvidence(it, "e-$node") }
                 PathNode(node, level.title, ref, evidence = listOfNotNull(evidence))
             }
-            result += Material(source, pkg.title, member, nodes, pkg.language, if (questions.isEmpty()) null else localTutorKey(pkg), pkg.sources)
+            result += Material(source, pkg.title, member, nodes, pkg.language, if (questions.isEmpty()) null else localTutorKey(pkg), pkg.sources,
+                SpaceMember.LocalPackRef(pkg.packageId, pkg.contentVersion))
         }
         return result
     }
@@ -122,12 +123,17 @@ class MaterialCatalog(private val content: ContentLibrary, private val tutors: T
                 val matches = materials().filter { it.matches(evidence) }
                 if (matches.isEmpty()) return null
                 val reference = SourceRef(evidence.chunkId, evidence.quote)
+                val existing = tutors.sourceDocument(evidence.documentId, evidence.documentVersion)
+                if (existing != null) return SourceTarget.Pdf(matches.first().chunks, reference, existing)
                 for (material in matches) {
-                    val local = material.member as? SpaceMember.LocalPackRef ?: continue
+                    val local = material.localPack ?: continue
                     val pdf = presets?.load(local.packageId, evidence.documentId, evidence.documentVersion, local.contentVersion)
-                    if (pdf != null) return SourceTarget.Pdf(material.chunks, reference, pdf)
+                    if (pdf != null) {
+                        val document = tutors.sourceDocument(evidence.documentId, evidence.documentVersion) ?: pdf
+                        return SourceTarget.Pdf(material.chunks, reference, document)
+                    }
                 }
-                SourceTarget.Pdf(matches.first().chunks, reference, tutors.sourceDocument(evidence.documentId, evidence.documentVersion))
+                SourceTarget.Pdf(matches.first().chunks, reference, null)
             }
         }
     }

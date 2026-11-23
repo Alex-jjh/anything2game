@@ -44,10 +44,10 @@ class ContentLibrary(private val sources: List<PackSource>) : PackageRepository,
     suspend fun manifests() = refs().values.map { it.manifest }
 
     suspend fun install(input: InputStream, availableDocuments: Set<ContentVersion> = emptySet(), expected: ContentVersion? = null,
-        verifyActivity: suspend (ActivityPack) -> Unit = {}): PackManifest {
+        beforeCoursePublish: suspend (ContentPack) -> Unit = {}, verifyActivity: suspend (ActivityPack) -> Unit = {}): PackManifest {
         val disk = sources.filterIsInstance<DirectoryPackSource>().last()
         val bundled = sources.filter { it !== disk }.flatMap { it.list() }
-        val manifest = disk.install(input, availableVersions() + availableDocuments, expected, bundled, verifyActivity).getOrThrow()
+        val manifest = disk.install(input, availableVersions() + availableDocuments, expected, bundled, beforeCoursePublish, verifyActivity).getOrThrow()
         refresh()
         return manifest
     }

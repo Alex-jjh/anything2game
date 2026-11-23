@@ -1,6 +1,10 @@
 package com.anything2game.app.data.tutor
 
 import android.util.AtomicFile
+import com.anything2game.app.data.mutex
+import com.anything2game.app.data.promote
+import com.anything2game.contract.PresetSourceLayout
+import kotlinx.coroutines.sync.withLock
 import com.anything2game.contract.ContractJson
 import com.anything2game.contract.DocumentLayout
 import com.anything2game.contract.DocumentResponse
@@ -47,6 +51,23 @@ class SourceDocumentStore(private val directory: File) {
         val r = AtomicFile(target).openRead().bufferedReader().use { ContractJson.json.decodeFromString(SourceDocumentRecord.serializer(), it.readText()) }
         if (r.documentId != documentId || r.documentVersion != documentVersion || !file.isFile) null
         else SourceDocument(r.documentId, r.documentVersion, r.pageCount, file, r.layout, r.pdfSha256)
+    }
+
+    /** Automatic bundled copies have their own content-addressed files, so reading a preset cannot replace an import. */
+    internal suspend fun bundled(layout: PresetSourceLayout, verifiedBytes: ByteArray? = null): SourceDocument? = withContext(Dispatchers.IO) {
+        val file = File(directory, base(layout.pdfSha256) + ".bundled.pdf")
+        file.mutex().withLock {
+            if (!file.isFile) {
+                if (verifiedBytes == null) return@withLock null
+                check(directory.isDirectory || directory.mkdirs())
+                val tmp = File.createTempFile("bundled", ".part", directory)
+                try {
+                    tmp.outputStream().use { it.write(verifiedBytes); it.fd.sync() }
+                    tmp.promote(file)
+                } finally { tmp.delete() }
+            }
+            SourceDocument(layout.documentId, layout.documentVersion, layout.pageCount, file, layout.layout, layout.pdfSha256)
+        }
     }
 
     private fun write(file: File, bytes: ByteArray) {
