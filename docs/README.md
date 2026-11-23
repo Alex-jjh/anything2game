@@ -23,6 +23,7 @@ Language: documents are in English. Some teammate design docs are in Chinese (ma
 | `design/` | Player characters: pick your own, procedural motion, how it reacts, how the team's art swaps in | [characters.md](design/characters.md) | draft for team |
 | `design/` | *zh* Three-tab home (Practice / Learn / Me) and local profile; evidence | [home-navigation.md](design/home-navigation.md) · [acceptance](design/home-navigation-acceptance.md) | built; self-rating part superseded |
 | `design/` | *zh* Document diagnostic → concept starting point → grounded chat tutor; draft API; local run; evidence | [document-tutor.md](design/document-tutor.md) · [acceptance](design/document-tutor-acceptance.md) | built against fake models; draft schema |
+| `superpowers/specs/` | *zh* General-knowledge mobile games + multi-PDF Spaces: repository research, user journeys, prompt drafts, shared architecture and migration | [concept-games-spaces-design](superpowers/specs/2026-11-23-concept-games-spaces-design.md) | proposal, 2026-11-23; runtime unchanged |
 | `design/research/` | Research: mobile game feel, learning & narrative games, visual identity & a11y | [research/](design/research/) | 2026-11-19 |
 | `architecture/` | Solution architecture: components, contract, state machines, generation pipeline | [ARCHITECTURE.md](architecture/ARCHITECTURE.md) | draft |
 | `architecture/` | Decoupling + multi-cloud audit, fix plan, IaC choice | [portability-audit.md](architecture/portability-audit.md) | 2026-11-18 |
