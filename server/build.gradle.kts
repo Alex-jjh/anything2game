@@ -44,6 +44,16 @@ dependencies {
     testImplementation(libs.testcontainers.postgresql)
 }
 
+// Offline tooling, not part of the server: measures a preset course's page geometry on a local PDF (server/README.md,
+// "Preset source layouts"). Relative paths in --args resolve from the repo root.
+tasks.register<JavaExec>("presetLayout") {
+    group = "tooling"
+    description = "Writes samples/demo/layout.<name>.json for a preset package from a local copy of its PDF."
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("com.anything2game.server.ingest.PresetLayoutToolKt")
+    workingDir = rootProject.projectDir
+}
+
 tasks.test {
     // Canonical contract examples are test fixtures; test data lives under build/ and is deleted by the tests.
     systemProperty("contract.examples", rootProject.layout.projectDirectory.dir("contract/examples").asFile.absolutePath)

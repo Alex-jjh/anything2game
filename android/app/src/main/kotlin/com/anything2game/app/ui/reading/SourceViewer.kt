@@ -57,8 +57,27 @@ import com.anything2game.app.R
 import com.anything2game.contract.SourceChunk
 import com.anything2game.contract.SourceLayout
 import com.anything2game.contract.SourceRef
+import com.anything2game.app.data.tutor.AttachResult
+import com.anything2game.app.data.tutor.PresetPdf
 import com.anything2game.app.data.tutor.SourceDocument
+import com.anything2game.app.importing.IntentImportParser
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
+import android.text.format.Formatter
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.rememberUpdatedState
+import kotlinx.coroutines.CoroutineScope
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import java.io.InputStream
 
 /** Marker yellow, the colour of a highlighter in a PDF reader; the page itself stays white whatever the skin. */
 internal val Marker = Color(0xFFFFE066)
@@ -68,20 +87,76 @@ private val PageInk = Color(0xFF1F1F1F)
 private data class SourcePage(val pageIndex: Int, val label: String, val chunks: List<SourceChunk>)
 
 /**
+ * Attaching a preset's PDF (ADR-019), held by the reading screen rather than the viewer dialog: the check runs in the
+ * screen's scope, so closing the viewer mid-check still hands an accepted file to [onAttached], and the picker's result
+ * is registered outside the dialog, so it still arrives after the activity is recreated behind the system picker.
+ */
+@Stable
+internal class AttachFlow(private val scope: CoroutineScope, private val run: suspend (open: () -> InputStream?) -> AttachResult, private val onAttached: (SourceDocument) -> Unit) {
+    var state by mutableStateOf<AttachState>(AttachState.Idle)
+        private set
+    internal var pick: () -> Unit = {}
+
+    fun picked(open: () -> InputStream?) {
+        if (state == AttachState.Checking) return
+        state = AttachState.Checking
+        scope.launch {
+            val r = try { run(open) } catch (e: CancellationException) { throw e } catch (e: Exception) { AttachResult.Unreadable }
+            state = AttachState.Done(r)
+            if (r is AttachResult.Accepted) onAttached(r.document)
+        }
+    }
+
+    /** A new look at the source starts from the note again; a check still running keeps going. */
+    fun reset() { if (state is AttachState.Done) state = AttachState.Idle }
+}
+
+/** The [AttachFlow] for one course, with its system file picker; call it where the screen lives, not inside the viewer. */
+@Composable
+internal fun rememberAttachFlow(key: Any?, attach: suspend (open: () -> InputStream?) -> AttachResult, onAttached: (SourceDocument) -> Unit = {}): AttachFlow {
+    val scope = rememberCoroutineScope()
+    val run by rememberUpdatedState(attach)
+    val attached by rememberUpdatedState(onAttached)
+    val flow = remember(key, scope) { AttachFlow(scope, { run(it) }, { attached(it) }) }
+    val context = LocalContext.current
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) flow.picked { context.contentResolver.openInputStream(uri) }
+    }
+    flow.pick = { launcher.launch(arrayOf(IntentImportParser.PDF)) }
+    return flow
+}
+
+/** A preset course whose pack carries page geometry: the reader may attach their own copy of [expected] through [flow]. */
+internal class SourceAttach(val expected: PresetPdf, val flow: AttachFlow)
+
+/** Where an attachment stands. */
+internal sealed interface AttachState {
+    data object Idle : AttachState
+    data object Checking : AttachState
+    class Done(val result: AttachResult) : AttachState
+}
+
+/**
  * "Show source" as a PDF reader would show it: the whole printed page, the quoted sentences marked in yellow, and the
  * neighbouring pages one swipe away. With the reader's own PDF and a quote placed on it ([pdf]), the real page is shown
- * ([PdfSourceViewer]); otherwise (every preset course, text imports, a file that will not open) the extracted text is.
+ * ([PdfSourceViewer]); otherwise (text imports, a file that will not open, a preset with nothing attached) the extracted
+ * text is, and a preset that can show pages ([attach]) offers to attach its PDF there, under the text.
  */
 @Composable
-internal fun SourceViewer(sources: List<SourceChunk>, refs: List<SourceRef>, pdf: SourceDocument? = null, onDismiss: () -> Unit) {
-    val marks = remember(sources, refs, pdf) { pdf?.let { pdfMarks(sources, refs, it.layout) }?.takeIf { m -> m.values.any { it.rects.isNotEmpty() } } }
-    if (pdf == null || marks == null) TextSourceViewer(sources, refs, onDismiss)
-    else PdfSourceViewer(sources, pdf, marks, onText = { TextSourceViewer(sources, refs, onDismiss) }, onDismiss = onDismiss)
+internal fun SourceViewer(sources: List<SourceChunk>, refs: List<SourceRef>, pdf: SourceDocument? = null, attach: SourceAttach? = null, onDismiss: () -> Unit) {
+    val state = attach?.flow?.state ?: AttachState.Idle
+    val attached = ((state as? AttachState.Done)?.result as? AttachResult.Accepted)?.document
+    val doc = pdf ?: attached
+    val marks = remember(sources, refs, doc) { doc?.let { pdfMarks(sources, refs, it.layout) }?.takeIf { m -> m.values.any { it.rects.isNotEmpty() } } }
+    // Offered only while there is no PDF, and kept after an attempt so its outcome stays readable.
+    val offer = attach?.takeIf { pdf == null }
+    if (doc == null || marks == null) TextSourceViewer(sources, refs, offer, onDismiss)
+    else PdfSourceViewer(sources, doc, marks, onText = { TextSourceViewer(sources, refs, null, onDismiss) }, onDismiss = onDismiss)
 }
 
 /** The extracted text laid out as pages: what "Show source" is whenever the original PDF is not on this phone. */
 @Composable
-private fun TextSourceViewer(sources: List<SourceChunk>, refs: List<SourceRef>, onDismiss: () -> Unit) {
+private fun TextSourceViewer(sources: List<SourceChunk>, refs: List<SourceRef>, offer: SourceAttach?, onDismiss: () -> Unit) {
     val pages = remember(sources) {
         sources.groupBy { it.pageIndex }.toSortedMap().map { (i, chunks) -> SourcePage(i, chunks.first().pageLabel ?: (i + 1).toString(), chunks) }
     }
@@ -91,6 +166,50 @@ private fun TextSourceViewer(sources: List<SourceChunk>, refs: List<SourceRef>, 
     SourceFrame(pages.getOrNull(pager.currentPage)?.label.orEmpty(), pages.size, pager, onDismiss) {
         HorizontalPager(pager, Modifier.weight(1f).fillMaxWidth(), beyondViewportPageCount = 1) { i ->
             PageSheet(pages[i], refs, Modifier.fillMaxSize())
+        }
+        offer?.let { AttachBar(it) }
+    }
+}
+
+/**
+ * One quiet row above the page controls: a footnote for readers who have the paper, nothing a reader without it must
+ * act on. The picker copies the file once (no lasting grant); the outcome replaces the note, and a refusal says why.
+ * The text is capped and scrolls, so a long refusal at large font sizes never squeezes the page away.
+ */
+@Composable
+private fun AttachBar(offer: SourceAttach) {
+    val context = LocalContext.current
+    val size = { bytes: Long -> Formatter.formatShortFileSize(context, bytes) }
+    val state = offer.flow.state
+    val checking = state == AttachState.Checking
+    val done = (state as? AttachState.Done)?.result
+    val message = when (done) {
+        null -> stringResource(if (checking) R.string.source_attach_checking else R.string.source_attach_note)
+        is AttachResult.Accepted -> stringResource(R.string.source_attach_unplaced)
+        is AttachResult.Mismatch -> stringResource(R.string.source_attach_mismatch, done.expected.pdfSource ?: stringResource(R.string.source_attach_mismatch_unknown), size(done.expected.pdfBytes), size(done.actualBytes))
+        AttachResult.TooLarge -> stringResource(R.string.source_attach_too_large)
+        AttachResult.NotPdf -> stringResource(R.string.source_attach_not_pdf)
+        AttachResult.Unreadable, AttachResult.NoLayout -> stringResource(R.string.source_attach_unreadable)
+    }
+    val refused = done != null && done !is AttachResult.Accepted
+    // Where the right file can be fetched: a button, not a URL to retype from a dialog.
+    val download = (done as? AttachResult.Mismatch)?.expected?.pdfSource?.takeIf { it.startsWith("https://") }
+    val description = stringResource(R.string.source_attach_desc)
+    Row(Modifier.fillMaxWidth().background(Color(0xFF4A4E52)).padding(start = 14.dp, end = 4.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.weight(1f).heightIn(max = 96.dp).verticalScroll(rememberScrollState())) {
+            Text(message, style = MaterialTheme.typography.bodySmall, color = if (refused) Color(0xFFFFD7A8) else Color.White.copy(alpha = 0.85f),
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }.testTag(if (refused) "source_attach_refused" else "source_attach_status"))
+        }
+        if (done !is AttachResult.Accepted) Column(horizontalAlignment = Alignment.End) {
+            if (download != null) TextButton(onClick = { try { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(download))) } catch (e: ActivityNotFoundException) {} },
+                modifier = Modifier.heightIn(min = 48.dp).widthIn(min = 48.dp).testTag("source_attach_download")) {
+                Text(stringResource(R.string.source_attach_download), color = Color.White, fontWeight = FontWeight.Medium)
+            }
+            // Kept in place but disabled while checking, so TalkBack focus is not lost under the reader.
+            TextButton(onClick = offer.flow.pick, enabled = !checking, modifier = Modifier.heightIn(min = 48.dp).widthIn(min = 48.dp).testTag("source_attach_pdf")
+                .semantics { contentDescription = description }) {
+                Text(stringResource(if (refused) R.string.source_attach_retry else R.string.source_attach_action), color = if (checking) Color.White.copy(alpha = 0.4f) else Color.White, fontWeight = FontWeight.Medium)
+            }
         }
     }
 }

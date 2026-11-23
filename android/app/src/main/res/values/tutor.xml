@@ -77,4 +77,17 @@
     <string name="source_pdf_quote">Marked on this page: “%1$s”</string>
     <string name="source_pdf_quote_unplaced">Quoted on this page (not marked): “%1$s”</string>
     <string name="source_pdf_zoom_hint">Pinch to zoom, double-tap to reset</string>
+    <!-- Preset courses: the reader attaches their own copy of the paper's PDF (ADR-019). -->
+    <string name="source_attach_note">This is the extracted text. Have the original PDF? Attach it to see the real page.</string>
+    <string name="source_attach_action">Attach PDF</string>
+    <string name="source_attach_desc">Attach your copy of the original PDF to see the real page</string>
+    <string name="source_attach_checking">Checking the file…</string>
+    <string name="source_attach_mismatch">This isn\'t the exact file this course was measured on (its fingerprint doesn\'t match), so nothing can be marked on it. Showing the extracted text. Expected: %1$s, %2$s; this file is %3$s. If that exact download is still refused, the course\'s page layout needs re-measuring.</string>
+    <string name="source_attach_mismatch_unknown">this exact file</string>
+    <string name="source_attach_too_large">That file is over 20 MB. Showing the extracted text.</string>
+    <string name="source_attach_not_pdf">That file isn\'t a PDF. Showing the extracted text.</string>
+    <string name="source_attach_unreadable">That file couldn\'t be read or kept. Showing the extracted text.</string>
+    <string name="source_attach_unplaced">PDF attached. This passage has no position on its page, so its text is shown here.</string>
+    <string name="source_attach_retry">Choose another file</string>
+    <string name="source_attach_download">Open download page</string>
 </resources>

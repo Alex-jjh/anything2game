@@ -31,6 +31,8 @@ import com.anything2game.app.data.profile.ProfileKind
 import com.anything2game.app.data.profile.ProfileRegistry
 import com.anything2game.app.data.profile.SampleProfileSeeder
 import com.anything2game.app.data.tutor.AndroidTutorRepository
+import com.anything2game.app.data.tutor.PresetSources
+import com.anything2game.app.data.tutor.SourceDocumentStore
 import com.anything2game.app.data.tutor.TutorRepository
 import com.anything2game.contract.pack.PackCodec
 import com.anything2game.contract.pack.PackOrigin
@@ -59,6 +61,8 @@ interface AppDependencies {
     val clock: Clock
     /** Who is playing (guest / sample student). Per-user stores above follow the active profile. */
     val profiles: ProfileController
+    /** The reader's own PDF of a preset course, attached in "Show source" (ADR-019); null where nothing can be attached. */
+    val presetSources: com.anything2game.app.data.tutor.PresetSources? get() = null
 }
 
 /** Composition root: the only place that picks concrete implementations. */
@@ -89,6 +93,8 @@ class AndroidAppContainer(context: Context) : AppDependencies {
         val avatarPreferences: AvatarPreferences = SharedPrefsAvatarPreferences(app, profile.prefs("avatar"))
         val explainerPreferences: ExplainerPreferences = SharedPrefsExplainerPreferences(app, profile.prefs("explainer"))
         val tutors = AndroidTutorRepository(app, packages, tutorScripts, ::installServerPackage, File(dir, "tutor-sessions"), profile.prefs("tutor_connection"), File(dir, "source-documents"))
+        // Same per-profile directory as the imported PDFs, so a lookup by the session's ids finds an attached preset PDF too.
+        val presetSources = PresetSources(content, SourceDocumentStore(File(dir, "source-documents")))
     }
 
     private suspend fun installServerPackage(pkg: com.anything2game.contract.LearningPackage) {
@@ -112,6 +118,7 @@ class AndroidAppContainer(context: Context) : AppDependencies {
     override val explainerPreferences: ExplainerPreferences get() = scope.explainerPreferences
     override val sessions: SessionStore get() = scope.sessions
     override val mastery: MasteryStore get() = scope.mastery
+    override val presetSources: PresetSources get() = scope.presetSources
 
     override val profiles: ProfileController = object : ProfileController {
         private val state = MutableStateFlow(registry.active())

@@ -6,6 +6,7 @@ import com.anything2game.contract.FrameOverlay
 import com.anything2game.contract.FrameValidator
 import com.anything2game.contract.LearningPackage
 import com.anything2game.contract.PackageValidator
+import com.anything2game.contract.PresetSourceLayout
 import com.anything2game.contract.tutor.TutorScript
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -27,6 +28,7 @@ import java.util.zip.ZipOutputStream
  * manifest.json          first entry; ids, versions, checksums of every other entry
  * package.json           LearningPackage (a2g.package/v1)
  * tutor.json             optional TutorScript: pre-generated diagnostic + explanation for this course
+ * layout.json            optional PresetSourceLayout: page geometry of one exact PDF of the course's document (presets only)
  * frames/<frameId>.json  FrameOverlay for each generated frame (classic needs none)
  * ```
  */
@@ -60,25 +62,32 @@ data class PackManifest(
     val entries: List<PackEntry>,
 )
 
-/** A pack that has been read and fully validated. */
-data class ContentPack(val manifest: PackManifest, val pkg: LearningPackage, val frames: Map<FrameId, FrameOverlay>, val tutor: TutorScript? = null)
+/**
+ * A pack that has been read and fully validated. [sourceLayout] lets "Show source" draw on a reader's own copy of the
+ * PDF (ADR-019); only PackTool presets carry it, because a reader older than the entry refuses a pack that has it.
+ */
+data class ContentPack(
+    val manifest: PackManifest, val pkg: LearningPackage, val frames: Map<FrameId, FrameOverlay>, val tutor: TutorScript? = null,
+    val sourceLayout: PresetSourceLayout? = null,
+)
 
 /** Builds, writes and reads content packs. Pure JVM: shared by the app, the server and the build tool. */
 object PackCodec {
     const val MANIFEST = "manifest.json"
     const val PACKAGE = "package.json"
     const val TUTOR = "tutor.json"
+    const val LAYOUT = "layout.json"
     fun framePath(id: FrameId) = "frames/${id.name.lowercase()}.json"
 
     /** Packs come from outside the app (downloads, imports), so reading is bounded: no zip bombs, no surprise entries. */
     data class Limits(val maxEntries: Int = 16, val maxEntryBytes: Long = 8L shl 20, val maxTotalBytes: Long = 32L shl 20)
 
-    private val allowedPaths: Set<String> = setOf(MANIFEST, PACKAGE, TUTOR) + FrameId.entries.map(::framePath)
+    private val allowedPaths: Set<String> = setOf(MANIFEST, PACKAGE, TUTOR, LAYOUT) + FrameId.entries.map(::framePath)
     // Fixed entry time so the same content always produces the same bytes.
     private const val ENTRY_TIME = 315_532_800_000L // 1980-01-01
 
-    /** Validates the package, its frames and its tutor script (if any), then describes them in a manifest. */
-    fun build(pkg: LearningPackage, frames: Collection<FrameOverlay>, origin: PackOrigin, tutor: TutorScript? = null): ContentPack {
+    /** Validates the package, its frames, its tutor script and its source layout (if any), then describes them in a manifest. */
+    fun build(pkg: LearningPackage, frames: Collection<FrameOverlay>, origin: PackOrigin, tutor: TutorScript? = null, sourceLayout: PresetSourceLayout? = null): ContentPack {
         val pkgIssues = PackageValidator.validate(pkg)
         require(pkgIssues.isEmpty()) { "Invalid package ${pkg.packageId}: " + pkgIssues.joinToString("; ") }
         val byId = frames.associateBy { it.frameId }
@@ -90,14 +99,18 @@ object PackCodec {
         tutor?.let {
             runCatching { it.validate(pkg) }.onFailure { e -> throw IllegalArgumentException("Invalid tutor script for ${pkg.packageId}: ${e.message}", e) }
         }
+        sourceLayout?.let {
+            runCatching { it.validate(pkg) }.onFailure { e -> throw IllegalArgumentException("Invalid source layout for ${pkg.packageId}: ${e.message}", e) }
+        }
         val ids = byId.keys.sortedBy { it.ordinal }
         val entries = buildList {
             add(entry(PACKAGE, ContractJson.encodePackage(pkg).toByteArray()))
             tutor?.let { add(entry(TUTOR, encodeTutor(it))) }
+            sourceLayout?.let { add(entry(LAYOUT, encodeLayout(it))) }
             ids.forEach { add(entry(framePath(it), ContractJson.encodeFrame(byId.getValue(it)).toByteArray())) }
         }
         val manifest = PackManifest(PACK_SCHEMA_V1, pkg.packageId, pkg.contentVersion, pkg.schema, pkg.title, pkg.language, origin, ids, entries)
-        return ContentPack(manifest, pkg, ids.associateWith { byId.getValue(it) }, tutor)
+        return ContentPack(manifest, pkg, ids.associateWith { byId.getValue(it) }, tutor, sourceLayout)
     }
 
     fun write(pack: ContentPack, out: OutputStream) {
@@ -109,6 +122,7 @@ object PackCodec {
             put(MANIFEST, ContractJson.json.encodeToString(PackManifest.serializer(), pack.manifest).toByteArray())
             put(PACKAGE, ContractJson.encodePackage(pack.pkg).toByteArray())
             pack.tutor?.let { put(TUTOR, encodeTutor(it)) }
+            pack.sourceLayout?.let { put(LAYOUT, encodeLayout(it)) }
             pack.manifest.frames.forEach { put(framePath(it), ContractJson.encodeFrame(pack.frames.getValue(it)).toByteArray()) }
         }
     }
@@ -153,7 +167,7 @@ object PackCodec {
         require(pkg.packageId == manifest.packageId && pkg.contentVersion == manifest.contentVersion && pkg.schema == manifest.packageSchema) {
             "manifest does not describe the package inside"
         }
-        require(manifest.frames.toSet().size == manifest.frames.size && manifest.frames.map(::framePath).toSet() == declared.keys - PACKAGE - TUTOR) {
+        require(manifest.frames.toSet().size == manifest.frames.size && manifest.frames.map(::framePath).toSet() == declared.keys - PACKAGE - TUTOR - LAYOUT) {
             "manifest frame list does not match the frame files"
         }
         val frames = manifest.frames.associateWith { id ->
@@ -163,10 +177,14 @@ object PackCodec {
         val tutor = files[TUTOR]?.let { bytes ->
             ContractJson.json.decodeFromString(TutorScript.serializer(), bytes.decodeToString()).validate(pkg)
         }
-        ContentPack(manifest, pkg, frames, tutor)
+        val layout = files[LAYOUT]?.let { bytes ->
+            ContractJson.json.decodeFromString(PresetSourceLayout.serializer(), bytes.decodeToString()).validate(pkg)
+        }
+        ContentPack(manifest, pkg, frames, tutor, layout)
     }
 
     private fun encodeTutor(t: TutorScript): ByteArray = ContractJson.json.encodeToString(TutorScript.serializer(), t).toByteArray()
+    private fun encodeLayout(l: PresetSourceLayout): ByteArray = ContractJson.json.encodeToString(PresetSourceLayout.serializer(), l).toByteArray()
 
     private fun decodeManifest(bytes: ByteArray): PackManifest {
         val m = ContractJson.json.decodeFromString(PackManifest.serializer(), bytes.decodeToString())

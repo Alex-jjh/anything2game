@@ -99,18 +99,9 @@ class TutorHttpClient(private val context: Context, private val baseUrl: String 
             result
         } finally { connection.disconnect() }
     }
-    private fun readBounded(stream: java.io.InputStream, limit: Int): ByteArray {
-        val output = java.io.ByteArrayOutputStream()
-        val buffer = ByteArray(8192)
-        while (output.size() < limit) {
-            val n = stream.read(buffer, 0, minOf(buffer.size, limit - output.size()))
-            if (n < 0) break
-            output.write(buffer, 0, n)
-        }
-        return output.toByteArray()
-    }
+    private fun readBounded(stream: java.io.InputStream, limit: Int): ByteArray = PdfBytes.readBounded(stream, limit)
     companion object {
-        private const val MAX_PDF = 20 * 1024 * 1024
+        private const val MAX_PDF = PdfBytes.MAX
         private const val MAX_RESPONSE = 2 * 1024 * 1024
         private const val MAX_LAYOUT_RESPONSE = 12 * 1024 * 1024
     }

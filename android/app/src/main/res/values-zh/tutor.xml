@@ -77,4 +77,17 @@
     <string name="source_pdf_quote">本页标出的原句：“%1$s”</string>
     <string name="source_pdf_quote_unplaced">本页引用的原句（未能标出）：“%1$s”</string>
     <string name="source_pdf_zoom_hint">双指缩放，双击还原</string>
+    <!-- 预置课程：读者附上自己手里的论文 PDF（ADR-019）。 -->
+    <string name="source_attach_note">这里显示的是提取出的文字。手上有原始 PDF？附上它即可查看真实页面。</string>
+    <string name="source_attach_action">附上 PDF</string>
+    <string name="source_attach_desc">附上你的原始 PDF，查看真实页面</string>
+    <string name="source_attach_checking">正在核对文件…</string>
+    <string name="source_attach_mismatch">这不是制作本课程时测量的那个文件（文件指纹不一致），无法在上面标出原句。继续显示提取的文字。需要的文件：%1$s，%2$s；这个文件为 %3$s。如果下载的正是这个文件仍被拒绝，说明本课程的页面版式需要重新测量。</string>
+    <string name="source_attach_mismatch_unknown">与制作课程时完全相同的文件</string>
+    <string name="source_attach_too_large">文件超过 20 MB。继续显示提取的文字。</string>
+    <string name="source_attach_not_pdf">这个文件不是 PDF。继续显示提取的文字。</string>
+    <string name="source_attach_unreadable">无法读取或保存这个文件。继续显示提取的文字。</string>
+    <string name="source_attach_unplaced">PDF 已附上。这段原文在页面上没有位置信息，因此在这里显示文字。</string>
+    <string name="source_attach_retry">换一个文件</string>
+    <string name="source_attach_download">打开下载页面</string>
 </resources>

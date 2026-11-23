@@ -11,13 +11,15 @@ import java.io.File
 import java.security.MessageDigest
 
 /**
- * A PDF the reader imported, kept on this phone with the text geometry the server measured in it, so "Show source"
- * can show the real page. Only ever the user's own file (preset courses ship text only); the server keeps no copy.
+ * A PDF the reader imported, or attached to a preset course, kept on this phone with the text geometry measured in it,
+ * so "Show source" can show the real page. Only ever the user's own file: presets ship geometry, never a PDF, and the
+ * server keeps no copy. [pdfSha256] is set for an attached preset PDF (whose geometry was measured on exactly those bytes).
  */
-class SourceDocument(val documentId: String, val documentVersion: String, val pageCount: Int, val file: File, val layout: DocumentLayout)
+class SourceDocument(val documentId: String, val documentVersion: String, val pageCount: Int, val file: File, val layout: DocumentLayout, val pdfSha256: String? = null)
 
+// pdfSha256 is optional so records written before preset attachments existed still decode.
 @Serializable
-private data class SourceDocumentRecord(val documentId: String, val documentVersion: String, val pageCount: Int, val layout: DocumentLayout)
+private data class SourceDocumentRecord(val documentId: String, val documentVersion: String, val pageCount: Int, val layout: DocumentLayout, val pdfSha256: String? = null)
 
 /** Per profile, next to the tutor sessions. The record is written after the PDF, so a record always has its file. */
 class SourceDocumentStore(private val directory: File) {
@@ -26,12 +28,15 @@ class SourceDocumentStore(private val directory: File) {
     private fun pdf(documentId: String) = File(directory, base(documentId) + ".pdf")
     private fun record(documentId: String) = File(directory, base(documentId) + ".layout.json")
 
-    suspend fun save(document: DocumentResponse, bytes: ByteArray) = withContext(Dispatchers.IO) {
-        val layout = requireNotNull(document.layout) { "No layout to keep" }
+    suspend fun save(document: DocumentResponse, bytes: ByteArray) =
+        save(document.documentId, document.documentVersion, document.pageCount, requireNotNull(document.layout) { "No layout to keep" }, bytes)
+
+    /** Replaces whatever was kept for [documentId] (another version, an earlier attachment). PDF first, record second. */
+    suspend fun save(documentId: String, documentVersion: String, pageCount: Int, layout: DocumentLayout, bytes: ByteArray, pdfSha256: String? = null) = withContext(Dispatchers.IO) {
         check(directory.isDirectory || directory.mkdirs())
-        write(pdf(document.documentId), bytes)
-        write(record(document.documentId), ContractJson.json.encodeToString(SourceDocumentRecord.serializer(),
-            SourceDocumentRecord(document.documentId, document.documentVersion, document.pageCount, layout)).toByteArray())
+        write(pdf(documentId), bytes)
+        write(record(documentId), ContractJson.json.encodeToString(SourceDocumentRecord.serializer(),
+            SourceDocumentRecord(documentId, documentVersion, pageCount, layout, pdfSha256)).toByteArray())
     }
 
     /** The kept PDF of exactly this document version, or null (never imported here, another version, or a damaged record). */
@@ -41,7 +46,7 @@ class SourceDocumentStore(private val directory: File) {
         if (!target.exists() && !File(target.path + ".bak").exists()) return@withContext null
         val r = AtomicFile(target).openRead().bufferedReader().use { ContractJson.json.decodeFromString(SourceDocumentRecord.serializer(), it.readText()) }
         if (r.documentId != documentId || r.documentVersion != documentVersion || !file.isFile) null
-        else SourceDocument(r.documentId, r.documentVersion, r.pageCount, file, r.layout)
+        else SourceDocument(r.documentId, r.documentVersion, r.pageCount, file, r.layout, r.pdfSha256)
     }
 
     private fun write(file: File, bytes: ByteArray) {

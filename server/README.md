@@ -386,6 +386,43 @@ curl -s -X DELETE $B/documents/$DID -H "$AUTH"      # 204
 - [ ] Database backups (managed PostgreSQL snapshots); decide a retention period for uploaded documents (users can `DELETE`).
 - [ ] The consent screen in the app says that text is sent to an external AI provider.
 
+## Preset source layouts (offline tooling, ADR-019)
+
+The preset courses ship extracted text only; their PDFs are third-party papers and are never put in the repo or the APK.
+`PresetLayoutTool` (`ingest/PresetLayoutTool.kt`, not part of the running server) measures where each chunk of a preset sits on
+the pages of a **local** copy of its PDF and writes `samples/demo/layout.<name>.json` next to the package. PackTool puts that file
+into the pack as `layout.json`; on the phone a reader attaches their own copy of the PDF in "Show source", and the page is shown
+only if that copy has the SHA-256 recorded here.
+
+```bash
+# 1. Fetch the exact edition the course was made from (tools/eval/corpus.json "source"), OUTSIDE the repo:
+curl -L -o /tmp/attention.pdf https://arxiv.org/pdf/1706.03762v7
+# 2. Measure (relative paths resolve from the repo root):
+./gradlew :server:presetLayout --args="--package samples/demo/package.demo.attention.json --pdf /tmp/attention.pdf \
+    --source https://arxiv.org/pdf/1706.03762v7 --allow-unaligned c38,c39,c40"
+# 3. Rebuild the app: packPresets picks up samples/demo/layout.*.json.
+```
+
+What it checks, in order, and refuses (exit code 2, `REFUSED: ...`) otherwise:
+
+1. The file starts with `%PDF-`.
+2. The upload path's own extractor (`PdfTextExtractor`) and chunker reproduce the package exactly: `Chunker.documentVersion` equals the
+   package's `documentVersion`, and `Chunker.chunk` equals `sources` (chunkId, page, label, text). A different edition, or a PDFBox or
+   `cleanText` change since the course was made, stops here, so chunkIds can never be misattributed.
+3. Every chunk aligns (`ChunkLayouts`), verified with the real chunk text as the phone will use it: the whole chunk as a quote must give
+   rectangles, and at least `--min-coverage` (default 0.9) of its non-whitespace characters must have a box. A chunk that fails is named
+   with its coverage; a person may accept it with `--allow-unaligned` after looking at the page (figure text set vertically, e.g. the
+   attention-map figures c38-c40 of Attention, the plot axes c20 of ResNet). Accepted chunks keep the part that did align and are listed
+   in the file's `unaligned`.
+
+The file records `packageId`, `documentId`, `documentVersion`, `pdfSha256` and `pdfBytes` of the measured bytes, the PDF's real
+`pageCount`, `pdfSource` (shown to a reader whose file does not match) and the `DocumentLayout` (geometry only: no text, no image).
+The tool writes nothing else; never put the PDF itself under the repo.
+
+Shipped: `layout.demo.attention.json` (arXiv 1706.03762v7) and `layout.demo.resnet.json` (arXiv 1512.03385v1), the two PDF presets with a
+tutor script. MapReduce and CS231n lecture 1 also measure cleanly (MapReduce needs `--allow-unaligned c37`) but have no tutor script,
+hence no "Show source", so no layout ships for them. The Chinese preset is a text course and has none.
+
 ## Known limits
 
 - The worker runs in the server process. With the file store that means one instance; with Postgres any number of instances, and a job

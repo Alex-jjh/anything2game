@@ -83,3 +83,51 @@ object SourceLayout {
         return overlap > 0.6f * minOf(p.bottom - p.top, q.bottom - q.top) && q.left >= p.left - 0.002f
     }
 }
+
+const val SOURCE_LAYOUT_SCHEMA_V1 = "a2g.sourcelayout/v1"
+
+/**
+ * The [DocumentLayout] of a preset course, measured offline (server `PresetLayoutTool`) on one exact PDF file, which is
+ * NOT shipped: a reader attaches their own copy and the phone draws marks only if that copy has [pdfSha256]. Geometry
+ * belongs to bytes, not to text, so a same-text but re-stamped file is refused rather than marked in the wrong place.
+ * Travels in a pack as the optional `layout.json` (ADR-019).
+ */
+@Serializable
+data class PresetSourceLayout(
+    val schema: String = SOURCE_LAYOUT_SCHEMA_V1,
+    val packageId: String,
+    val documentId: String,
+    val documentVersion: String,
+    /** Lowercase hex SHA-256 of the PDF bytes measured; the only identity a phone can check without a PDF parser. */
+    val pdfSha256: String,
+    val pdfBytes: Long,
+    /** The PDF's real page count (a renderer's count must equal it), not the last cited page + 1. */
+    val pageCount: Int,
+    /** Where that exact file came from, so a refusal can tell the reader what to fetch. */
+    val pdfSource: String? = null,
+    /**
+     * Chunks a person accepted (by name, never silently) with incomplete or no geometry, e.g. figure text set vertically:
+     * what is laid out of them is still exact, the rest simply gets no mark (and a quote with no mark shows the text page).
+     */
+    val unaligned: List<String> = emptyList(),
+    val layout: DocumentLayout,
+) {
+    /** Checks it belongs to [pkg] and covers every chunk of it; throws with the reason. */
+    fun validate(pkg: LearningPackage): PresetSourceLayout {
+        require(schema == SOURCE_LAYOUT_SCHEMA_V1) { "unsupported source layout schema '$schema'" }
+        require(packageId == pkg.packageId && documentId == pkg.documentId && documentVersion == pkg.documentVersion) {
+            "source layout is for $packageId/$documentId/$documentVersion, not ${pkg.packageId}/${pkg.documentId}/${pkg.documentVersion}"
+        }
+        require(pdfSha256.matches(Regex("[0-9a-f]{64}"))) { "pdfSha256 must be 64 lowercase hex characters" }
+        require(pdfBytes > 0 && pageCount > 0) { "pdfBytes and pageCount must be positive" }
+        val ids = pkg.sources.map { it.chunkId }.toSet()
+        val laid = layout.chunks.map { it.chunkId }
+        require(laid.toSet().size == laid.size) { "a chunk is laid out twice" }
+        require(laid.all { it in ids } && unaligned.all { it in ids }) { "source layout names chunks the package does not have" }
+        val missing = ids - laid.toSet() - unaligned.toSet()
+        require(missing.isEmpty()) { "chunks without layout (and not declared unaligned): ${missing.sorted()}" }
+        require(layout.pages.all { it.pageIndex in 0 until pageCount && it.width > 0f && it.height > 0f }) { "a page box is outside the PDF's $pageCount pages" }
+        require(pkg.sources.all { it.pageIndex in 0 until pageCount }) { "a chunk sits on a page beyond the PDF's $pageCount pages" }
+        return this
+    }
+}

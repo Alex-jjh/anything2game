@@ -26,6 +26,8 @@ import com.anything2game.app.R
 import com.anything2game.app.ui.common.Badge
 import com.anything2game.app.ui.home.PaperCard
 import com.anything2game.app.ui.theme.A2g
+import com.anything2game.app.data.tutor.AttachResult
+import com.anything2game.app.data.tutor.PresetPdf
 import com.anything2game.app.data.tutor.SourceDocument
 import com.anything2game.contract.*
 import com.anything2game.contract.tutor.*
@@ -47,9 +49,20 @@ fun ReadingContent(deps: AppDependencies, packageId: String, onBack: () -> Unit)
     val skin = A2g.skin
     val list = rememberLazyListState()
     var input by rememberSaveable(packageId) { mutableStateOf("") }
-    var sourceRefs by remember { mutableStateOf<List<SourceRef>>(emptyList()) }
+    // Saveable: attaching a PDF leaves for the system picker, and the activity may be recreated behind it.
+    var sourceRefs by rememberSaveable(packageId, stateSaver = SourceRefsSaver) { mutableStateOf<List<SourceRef>>(emptyList()) }
     // The PDF as it was when "Show source" was tapped: a late-loading layout must not swap an open viewer into another mode.
     var sourcePdf by remember { mutableStateOf<SourceDocument?>(null) }
+    // Whether the open viewer was on the real page, so a viewer restored after recreation reopens in the same mode.
+    var sourceOnPage by rememberSaveable(packageId) { mutableStateOf(false) }
+    // Preset courses (ADR-019): the reader's own copy of the paper, attached in the viewer. Looked up here because the
+    // view model only asks for imported PDFs; keyed on the session's ids like that lookup, so both can never disagree.
+    val presets = deps.presetSources
+    val presetPdf by produceState<PresetPdf?>(null, presets, packageId) { value = presets?.available(packageId) }
+    var presetDoc by remember(profileId, packageId) { mutableStateOf<SourceDocument?>(null) }
+    LaunchedEffect(presets, s?.documentId, s?.documentVersion) { presetDoc = s?.let { presets?.load(packageId, it.documentId, it.documentVersion) } }
+    // Owned here, not by the dialog: a check outlives a closed viewer and a picker result outlives a recreated activity.
+    val attachFlow = rememberAttachFlow("$profileId:$packageId", attach = { open -> presets?.attach(packageId, open) ?: AttachResult.NoLayout }, onAttached = { presetDoc = it })
     // Pending intent is only for loading feedback; the displayed reply's mode comes from its saved metadata.
     var requestedIntent by rememberSaveable(packageId) { mutableStateOf<TutorIntent?>(null) }
     val context = LocalContext.current
@@ -66,7 +79,7 @@ fun ReadingContent(deps: AppDependencies, packageId: String, onBack: () -> Unit)
     Scaffold(containerColor = skin.paper) { padding ->
         if (phase == 3 && s != null) ExplainerTheatre(
             s, theme, busy = state.busy, enabled = !state.busy && state.problem == null, offline = state.offline, problem = state.problem,
-            lastIntent = if (state.busy) requestedIntent else c.replyIntent, input = input, onInput = { input = it }, onTurn = turn, onSource = { sourceRefs = it; sourcePdf = pdf },
+            lastIntent = if (state.busy) requestedIntent else c.replyIntent, input = input, onInput = { input = it }, onTurn = turn, onSource = { sourceRefs = it; sourcePdf = pdf ?: presetDoc; sourceOnPage = sourcePdf != null; attachFlow.reset() },
             onRetry = vm::retry, onReload = vm::reload, onCancel = vm::cancelPending, onBack = { if (state.busy) vm.cancelPending(); onBack() },
             modifier = Modifier.padding(padding).consumeWindowInsets(padding),
         ) else LazyColumn(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding().testTag("tutor_list"), state = list,
@@ -149,5 +162,16 @@ fun ReadingContent(deps: AppDependencies, packageId: String, onBack: () -> Unit)
             }
         }
     }
-    if (sourceRefs.isNotEmpty() && s != null) SourceViewer(s.sources, sourceRefs, sourcePdf?.takeIf { it.documentId == s.documentId && it.documentVersion == s.documentVersion }, onDismiss = { sourceRefs = emptyList() })
+    if (sourceRefs.isNotEmpty() && s != null) {
+        val attach = presetPdf?.takeIf { presets != null && it.documentId == s.documentId && it.documentVersion == s.documentVersion }?.let { SourceAttach(it, attachFlow) }
+        val shown = sourcePdf ?: (pdf ?: presetDoc).takeIf { sourceOnPage }
+        SourceViewer(s.sources, sourceRefs, shown?.takeIf { it.documentId == s.documentId && it.documentVersion == s.documentVersion }, attach,
+            onDismiss = { sourceRefs = emptyList(); sourcePdf = null; sourceOnPage = false })
+    }
 }
+
+/** The cited refs of an open viewer as a flat chunkId/quote list, so the viewer survives activity recreation. */
+private val SourceRefsSaver = androidx.compose.runtime.saveable.listSaver<List<SourceRef>, String>(
+    save = { refs -> refs.flatMap { listOf(it.chunkId, it.quote) } },
+    restore = { flat -> flat.chunked(2).filter { it.size == 2 }.map { (chunkId, quote) -> SourceRef(chunkId, quote) } },
+)

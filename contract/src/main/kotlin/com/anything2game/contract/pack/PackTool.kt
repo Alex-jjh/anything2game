@@ -3,6 +3,7 @@ package com.anything2game.contract.pack
 import com.anything2game.contract.ContractJson
 import com.anything2game.contract.FrameOverlay
 import com.anything2game.contract.LearningPackage
+import com.anything2game.contract.PresetSourceLayout
 import com.anything2game.contract.tutor.TutorScript
 import java.io.File
 
@@ -11,12 +12,16 @@ import java.io.File
  * Used by the app build to make the preset packs, and by anyone exporting server output by hand.
  */
 object PackTool {
-    /** Groups `package.*.json`, `frame.*.json` and `tutor.*.json` from [inputs] by packageId and writes one pack per package into [outDir]. */
+    /**
+     * Groups `package.*.json`, `frame.*.json`, `tutor.*.json` and `layout.*.json` (server `PresetLayoutTool` output) from
+     * [inputs] by packageId and writes one pack per package into [outDir].
+     */
     fun packDirectories(inputs: List<File>, outDir: File, origin: PackOrigin): List<File> {
         val files = inputs.flatMap { dir -> dir.listFiles().orEmpty().filter { it.isFile && it.extension == "json" } }.sortedBy { it.name }
         val packages = files.filter { it.name.startsWith("package.") }.map { ContractJson.decodePackage(it.readText()) }
         val frames = files.filter { it.name.startsWith("frame.") }.map { ContractJson.decodeFrame(it.readText()) }
         val tutors = files.filter { it.name.startsWith("tutor.") }.map { ContractJson.json.decodeFromString(TutorScript.serializer(), it.readText()) }
+        val layouts = files.filter { it.name.startsWith("layout.") }.map { ContractJson.json.decodeFromString(PresetSourceLayout.serializer(), it.readText()) }
         val dupes = packages.groupBy { it.packageId }.filterValues { it.size > 1 }.keys
         require(dupes.isEmpty()) { "packageId appears in more than one file: $dupes" }
         val orphans = frames.map { it.packageId }.toSet() - packages.map { it.packageId }.toSet()
@@ -25,12 +30,19 @@ object PackTool {
         require(tutorDupes.isEmpty()) { "more than one tutor script for: $tutorDupes" }
         val tutorOrphans = tutors.map { it.packageId }.toSet() - packages.map { it.packageId }.toSet()
         require(tutorOrphans.isEmpty()) { "tutor scripts without a package: $tutorOrphans" }
+        val layoutDupes = layouts.groupBy { it.packageId }.filterValues { it.size > 1 }.keys
+        require(layoutDupes.isEmpty()) { "more than one source layout for: $layoutDupes" }
+        val layoutOrphans = layouts.map { it.packageId }.toSet() - packages.map { it.packageId }.toSet()
+        require(layoutOrphans.isEmpty()) { "source layouts without a package: $layoutOrphans" }
         outDir.mkdirs()
-        return packages.map { pkg -> writePack(pkg, frames.filter { it.packageId == pkg.packageId }, origin, outDir, tutors.firstOrNull { it.packageId == pkg.packageId }) }
+        return packages.map { pkg ->
+            val id = pkg.packageId
+            writePack(pkg, frames.filter { it.packageId == id }, origin, outDir, tutors.firstOrNull { it.packageId == id }, layouts.firstOrNull { it.packageId == id })
+        }
     }
 
-    fun writePack(pkg: LearningPackage, frames: List<FrameOverlay>, origin: PackOrigin, outDir: File, tutor: TutorScript? = null): File {
-        val pack = PackCodec.build(pkg, frames, origin, tutor)
+    fun writePack(pkg: LearningPackage, frames: List<FrameOverlay>, origin: PackOrigin, outDir: File, tutor: TutorScript? = null, sourceLayout: PresetSourceLayout? = null): File {
+        val pack = PackCodec.build(pkg, frames, origin, tutor, sourceLayout)
         val file = File(outDir, fileName(pkg.packageId))
         file.outputStream().use { PackCodec.write(pack, it) }
         return file

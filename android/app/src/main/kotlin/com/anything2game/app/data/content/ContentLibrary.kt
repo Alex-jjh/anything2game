@@ -5,8 +5,11 @@ import com.anything2game.contract.FrameOverlay
 import com.anything2game.contract.FrameSpec
 import com.anything2game.contract.GenerationMode
 import com.anything2game.contract.LearningPackage
+import com.anything2game.app.data.tutor.SourceLayouts
 import com.anything2game.app.data.tutor.TutorScripts
+import com.anything2game.contract.PresetSourceLayout
 import com.anything2game.contract.pack.ContentPack
+import com.anything2game.contract.pack.PackCodec
 import com.anything2game.contract.tutor.TutorScript
 import com.anything2game.engine.ports.FrameRepository
 import com.anything2game.engine.ports.PackageRepository
@@ -21,7 +24,7 @@ import kotlinx.coroutines.sync.withLock
  * When two sources hold the same package, the newer contentVersion wins; on a tie the later source wins
  * (sources are given preset-first, so an installed copy replaces the bundled one).
  */
-class ContentLibrary(private val sources: List<PackSource>) : PackageRepository, FrameRepository, TutorScripts {
+class ContentLibrary(private val sources: List<PackSource>) : PackageRepository, FrameRepository, TutorScripts, SourceLayouts {
     private val mutex = Mutex()
     private var index: Map<String, PackRef>? = null
     private val opened = HashMap<String, ContentPack>()
@@ -44,7 +47,8 @@ class ContentLibrary(private val sources: List<PackSource>) : PackageRepository,
         mutex.withLock { opened[packageId] }?.let { return it }
         val ref = refs()[packageId] ?: return null
         val pack = ref.open().getOrNull() ?: return null
-        return mutex.withLock { opened.getOrPut(packageId) { pack } }
+        // Page geometry is hundreds of KB per course and only "Show source" needs it: validated with the pack, not kept.
+        return mutex.withLock { opened.getOrPut(packageId) { pack.copy(sourceLayout = null) } }
     }
 
     override suspend fun list(): List<PackageSummary> = refs().values.sortedBy { it.manifest.title }.mapNotNull { ref ->
@@ -64,6 +68,12 @@ class ContentLibrary(private val sources: List<PackSource>) : PackageRepository,
     override suspend fun load(packageId: String, frameId: FrameId): FrameOverlay? = pack(packageId)?.frames?.get(frameId)
 
     override suspend fun scriptFor(packageId: String): TutorScript? = pack(packageId)?.tutor
+
+    /** Re-reads the pack (fully validated again) for its geometry; rare (attaching, opening a course) and never cached. */
+    override suspend fun sourceLayoutFor(packageId: String): PresetSourceLayout? {
+        if (pack(packageId)?.manifest?.entries?.any { it.path == PackCodec.LAYOUT } != true) return null
+        return refs()[packageId]?.open()?.getOrNull()?.sourceLayout
+    }
 
     override suspend fun scriptedPackageIds(): List<String> =
         refs().values.sortedBy { it.manifest.title }.map { it.manifest.packageId }.filter { pack(it)?.tutor != null }
