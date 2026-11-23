@@ -15,13 +15,15 @@ import com.anything2game.contract.game.ReviewedGames
 import com.anything2game.contract.progress.ActivityOutcome
 import com.anything2game.contract.space.ActivityRef
 import com.anything2game.contract.space.PathNode
+import com.anything2game.contract.space.SpaceMember
+import com.anything2game.contract.tutor.TutorRules
+import com.anything2game.contract.tutor.Understanding
 import com.anything2game.contract.tutor.UNKNOWN_ANSWER
 import com.anything2game.engine.game.GameRuntime
 import com.anything2game.engine.game.PartitionBoard
 import com.anything2game.engine.game.StageStatus
 import com.anything2game.engine.session.Phase
 import org.junit.Assert.*
-import org.junit.Ignore
 import org.junit.Test
 import org.robolectric.RuntimeEnvironment
 import java.net.ServerSocket
@@ -29,8 +31,8 @@ import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * QA of the demo path, written the way a first-time student and a sceptical lecturer would walk it: the real app, real taps.
- * Journeys 1-8 of the demo-path brief. Tests marked @Ignore("BUG: ...") are failing proofs of real defects; they stay in the
- * file so the suite is green and the defect stays reproducible (remove the annotation to see it fail).
+ * Journeys 1-8 of the demo-path brief. The two defects the first pass found (start on the map re-teaching a done step; clipped
+ * labels at 200% text) are fixed and kept here as regression tests.
  */
 class DemoPathJourneyTest : LearnJourneyBase() {
     private val cjk = Regex("[\\u4e00-\\u9fff]")
@@ -66,7 +68,7 @@ class DemoPathJourneyTest : LearnJourneyBase() {
     private fun meRecord(): String {
         openMe()
         val p = awaitIo { deps.learningProgress!!.projection() }
-        val expected = str(R.string.completed_days, p.completed.size, p.days.size)
+        val expected = completedDays(p.completed.size, p.days.size)
         scrollMeTo(expected)
         return expected
     }
@@ -104,34 +106,16 @@ class DemoPathJourneyTest : LearnJourneyBase() {
 
     // ---- Journey 1: Lin, the lived-in Attention Space ------------------------------------------------------
 
-    /** Reads the target concept to its end from the explainer (assessment first when the tutor insists), then returns to the map. */
+    /** Reads the target concept to its end from the explainer. A route step opens it directly: no assessment, no focus question. */
     private fun explainUntilRead(pkg: String, node: PathNode) {
         val target = (node.activity as ActivityRef.Tutor).activityId
         fun read() = projectionNow().completed.any { it.activityKind == com.anything2game.contract.progress.ActivityKind.TUTOR && it.activityId == target }
-        waitFor("prerequisite screen or explanation") { has("route_prerequisite") || has("tutor_list") || has("explainer_stage") }
-        if (has("route_prerequisite") && textOf("route_prerequisite") == str(R.string.route_diagnostic, node.title)) {
-            tap(rule.onNodeWithTag("route_follow")); waitFor("focus or questions") { has("focus_continue") || has("tutor_list") }
-        }
-        if (has("focus_continue")) chooseFocus()
-        if (has("tutor_list") && !has("start_tutor") && !has("explainer_stage") && !has("route_follow")) {
-            val total = cache(pkg).session.questions.size
-            for (i in 0 until total) {
-                val q = cache(pkg).session.questions[i]
-                scrollTutorToText(q.prompt); answerCurrent(q, UNKNOWN_ANSWER)
-                if (i < total - 1) waitForText(str(R.string.tutor_question_count, i + 2, total))
-            }
-        }
+        waitFor("the explanation of ${node.title}") { has("explainer_stage") }
+        assertFalse("a route step never shows the diagnostic", has("tutor_list") || has("focus_continue") || has("start_tutor"))
         var guard = 0
         while (!read() && guard++ < 12) {
-            waitFor("next explainer step") { has("route_follow") || has("start_tutor") || has("explainer_stage") }
-            when {
-                has("route_follow") -> { tap(rule.onNodeWithTag("route_follow")); waitFor("after follow") { has("start_tutor") || has("explainer_stage") } }
-                has("start_tutor") -> { tapTutor("start_tutor"); sceneReady() }
-                else -> {
-                    sceneReady(); readPages("page of ${node.title}")
-                    if (!read()) choose(pkg, "tutor_continue")
-                }
-            }
+            sceneReady(); readPages("page of ${node.title}")
+            if (!read()) choose(pkg, "tutor_continue")
         }
         assertTrue("never finished ${node.title}", read())
     }
@@ -163,7 +147,7 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         // The numbers elsewhere agree with the map.
         back(); waitForTag("home_SPACES")
         scrollHomeTo("open_space_$spaceId")
-        assertTrue(textShown(str(R.string.spaces_counts, 1, doneBefore, total)))
+        assertTrue(textShown(spacesCounts(1, doneBefore, total)))
         val meBefore = meRecord()
         assertTrue(textShown(meBefore))
 
@@ -189,11 +173,11 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         // Header, Spaces card and Me all say the same.
         back(); waitForTag("home_SPACES")
         scrollHomeTo("open_space_$spaceId")
-        waitFor("card to say ${doneBefore + 1}") { textShown(str(R.string.spaces_counts, 1, doneBefore + 1, total)) }
+        waitFor("card to say ${doneBefore + 1}") { textShown(spacesCounts(1, doneBefore + 1, total)) }
         val after = projectionNow()
         assertEquals(before.completed.size + 1, after.completed.size)
         val meAfter = meRecord()
-        assertEquals(str(R.string.completed_days, after.completed.size, after.days.size), meAfter)
+        assertEquals(completedDays(after.completed.size, after.days.size), meAfter)
         assertNotEquals(meBefore, meAfter)
     }
     private fun startFromSheet(node: PathNode) {
@@ -210,8 +194,7 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         lin_attention_journey()
     }
 
-    @Ignore("BUG: Lin's map shows 'Why ditch recurrence' as done, but Start on the current step asks 4 diagnostic questions beginning with that very concept and says 'The lesson sequence starts from Why ditch recurrence' (SampleProfileSeeder credits reads without a tutor session)")
-    @Test fun journey1_bug_start_on_lins_current_step_does_not_re_teach_a_step_the_map_calls_done() {
+    @Test fun journey1_start_on_lins_current_step_opens_that_concept_and_does_not_re_teach_a_step_the_map_calls_done() {
         launch(); chooseLin()
         val nodes = nodesOf(attention)
         openSpaceCard(spaceIdOf(attention))
@@ -219,11 +202,18 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         val doneTitles = nodes.filter { state(it.nodeId) == str(R.string.route_state_done) }.map { it.title }
         tap(rule.onNodeWithTag("route_node_${current.nodeId}")); waitForTag("route_sheet")
         startFromSheet(current)
-        waitForTag("route_prerequisite")
-        tap(rule.onNodeWithTag("route_follow")); chooseFocus()
-        waitForTag("tutor_list")
+        waitFor("the explanation of the step") { has("explainer_stage") }
+        // Straight to the step's own concept: no starting assessment, no focus question, no 4-question diagnostic.
+        assertFalse(has("tutor_list")); assertFalse(has("focus_continue")); assertFalse(has("start_tutor"))
+        assertFalse(textShown(str(R.string.tutor_assessment_title)))
+        sceneReady()
+        val session = cache(attention).session
+        val concepts = TutorRules.orderedQuestions(session)
+        assertEquals((current.activity as ActivityRef.Tutor).activityId, concepts[session.conceptPosition].conceptId)
+        assertEquals(current.title, concepts[session.conceptPosition].concept)
         val shown = everythingShown().joinToString("\n")
-        doneTitles.forEach { assertFalse("the explainer asks about \"$it\", which the map shows as done", shown.contains(it)) }
+        doneTitles.forEach { assertFalse("the explainer teaches \"$it\", which the map shows as done", shown.contains(it) && it != current.title) }
+        assertTrue("the earlier concepts are still reachable from the concept list", TutorRules.introduced(session) > session.conceptPosition)
     }
 
     // ---- Journey 2: a practice node opens the right frame ------------------------------------------------
@@ -321,6 +311,10 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         val first = (c.firstGoal + c.firstYield - 1) / c.firstYield
         return first to (c.tokens - first)
     }
+    private fun deliver() {
+        waitFor("deliver enabled") { runCatching { rule.onNodeWithTag("allocation_submit").assertIsEnabled(); true }.getOrDefault(false) }
+        tap(rule.onNodeWithTag("allocation_submit"))
+    }
     private fun placeTokens(first: Int, second: Int) {
         fun place(zone: String, times: Int) = repeat(times) {
             val control = rule.onNodeWithTag("place_$zone")
@@ -359,7 +353,7 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         // Me reflects exactly one completed activity.
         val p = projectionNow()
         assertEquals(1, p.completed.size)
-        openMe(); scrollMeTo(str(R.string.completed_days, 1, 1))
+        openMe(); scrollMeTo(completedDays(1, 1))
     }
 
     @Test fun journey4_allocation_game_through_both_stages_with_a_real_drag() {
@@ -387,7 +381,7 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         back(); waitForTag("home_PLAYGROUND"); shelfLoaded()
         waitFor("stars on the tile") { rule.onAllNodes(hasContentDescription(str(R.string.playground_stars_cd, stars))).fetchSemanticsNodes().isNotEmpty() }
         assertFalse(has("resume_game"))
-        openMe(); scrollMeTo(str(R.string.completed_days, 1, 1))
+        openMe(); scrollMeTo(completedDays(1, 1))
     }
 
     @Test fun journey4_a_lost_round_can_be_retried_and_gives_no_stars_or_completion() {
@@ -529,10 +523,9 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         tap(rule.onNodeWithTag("space_create"))
         rule.onNodeWithTag("space_name").performTextInput("Biology notes")
         tap(rule.onNodeWithTag("save_space"))
-        waitForTag("space_materials")                    // a new Space opens on its materials
-        assertNoJargon("the new Space's materials", everythingShown())
-        waitForTag("show_route"); tap(rule.onNodeWithTag("show_route"))
-        waitForTag("route_empty")
+        waitForTag("route_empty")                        // a new Space opens on its route: the empty state with the one clear action
+        assertFalse("not on the materials tab", has("space_materials"))
+        rule.onNodeWithTag("show_route").assertIsSelected()
         assertTrue(textShown(str(R.string.route_empty_title))); assertTrue(textShown(str(R.string.route_empty_no_materials)))
         waitForTag("route_add_materials")
         assertNoJargon("an empty Space", everythingShown())
@@ -602,11 +595,11 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         val sheetClipped = clipped().filter { it.startsWith("route_sheet") && !it.startsWith("route_sheet_source") }
         assertTrue("sheet title / kind are not clipped: $sheetClipped", sheetClipped.isEmpty())
         tap(rule.onNodeWithTag("open_node_${current.nodeId}"))
-        waitFor("started") { has("route_prerequisite") }
+        waitFor("started") { has("explainer_stage") }
+        assertFalse(has("tutor_list"))
     }
 
-    @Ignore("BUG (cosmetic): at font scale 2.0 long step labels under the nodes are cut to 3 lines with an ellipsis ('Results, Variations and Generalization') and the sheet's source chip is cut to 2 lines; only the node sheet shows the full title (RouteMapView StepRow: maxLines = 3, widthIn(max = 176.dp))")
-    @Test fun journey7_bug_font_scale_two_step_labels_are_complete() {
+    @Test fun journey7_font_scale_two_step_labels_and_the_source_chip_wrap_in_full() {
         RuntimeEnvironment.setFontScale(2f)
         launch(); chooseLin()
         openSpaceCard(spaceIdOf(attention))
@@ -632,7 +625,7 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         val texts = clipped()
         assertTrue("clipped texts on the 200% allocation board: $texts", texts.isEmpty())
         placeTokens(2, 2)
-        tap(rule.onNodeWithTag("allocation_submit"))
+        deliver()
         waitFor("a result") { has("game_result") }
     }
 
@@ -683,31 +676,267 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         val position = cache(attention).session.conceptPosition
         val messages = cache(attention).session.messages.size
         restartProcess()
-        waitFor("after restart") { has("home_SPACES") || has("tutor_list") || has("explainer_stage") || has("route_prerequisite") }
+        waitFor("after restart") { has("home_SPACES") || has("explainer_stage") }
         if (has("home_SPACES")) {
             openSpaceCard(spaceId)
             tap(rule.onNodeWithTag("route_node_${current.nodeId}")); waitForTag("route_sheet")
             startFromSheet(current)
         }
-        waitFor("the explainer again") { has("explainer_stage") || has("route_follow") || has("start_tutor") }
+        waitFor("the explainer again") { has("explainer_stage") }
         assertEquals("the saved concept position is kept", position, cache(attention).session.conceptPosition)
         assertEquals("nothing was lost from the saved conversation", messages, cache(attention).session.messages.size)
     }
 
     private fun explainUntilReadingStarted() {
-        waitFor("prerequisite screen or explanation") { has("route_prerequisite") || has("tutor_list") || has("explainer_stage") }
-        tap(rule.onNodeWithTag("route_follow")); waitFor("focus") { has("focus_continue") || has("tutor_list") }
-        if (has("focus_continue")) chooseFocus()
-        val total = cache(attention).session.questions.size
-        for (i in 0 until total) {
-            val q = cache(attention).session.questions[i]
-            scrollTutorToText(q.prompt); answerCurrent(q, UNKNOWN_ANSWER)
-            if (i < total - 1) waitForText(str(R.string.tutor_question_count, i + 2, total))
-        }
-        waitFor("follow") { has("route_follow") }
-        tap(rule.onNodeWithTag("route_follow"))
-        waitFor("scene") { has("start_tutor") || has("explainer_stage") }
-        if (has("start_tutor")) tapTutor("start_tutor")
+        waitFor("the explanation, straight from the route step") { has("explainer_stage") }
+        assertFalse(has("tutor_list"))
         sceneReady()
+    }
+
+    // ---- Journey 9: the product decisions after the first QA pass ---------------------------------------------------
+
+    /** Credits everything before [node] the way a student who got that far would have, so the step can be tapped. */
+    private fun creditBefore(nodes: List<PathNode>, node: PathNode) = awaitIo {
+        nodes.takeWhile { it.nodeId != node.nodeId }.forEach { before ->
+            deps.learningProgress!!.record(before.activity, if (before.activity is ActivityRef.Tutor) ActivityOutcome.READ else ActivityOutcome.INDEPENDENT, 1_000_000L)
+        }
+    }
+
+    @Test fun journey9_start_on_the_first_step_of_a_fresh_route_opens_that_concept_without_any_diagnostic() {
+        launch(); chooseGuest()
+        val nodes = nodesOf(attention)
+        val first = nodes.first()
+        assertTrue(first.activity is ActivityRef.Tutor)
+        openSpaceCard(spaceIdOf(attention))
+        tap(rule.onNodeWithTag("route_node_${first.nodeId}")); waitForTag("route_sheet")
+        startFromSheet(first)
+        waitFor("the explanation") { has("explainer_stage") }
+        assertFalse("no focus step", has("focus_continue")); assertFalse("no diagnostic", has("tutor_list"))
+        assertFalse(textShown(str(R.string.tutor_assessment_title))); assertFalse(textShown(str(R.string.tutor_diagnostic_title)))
+        sceneReady()
+        val session = cache(attention).session
+        assertEquals(0, session.conceptPosition)
+        assertEquals((first.activity as ActivityRef.Tutor).activityId, session.questions[0].conceptId)
+        assertTrue(session.assessment.isNotEmpty() && session.assessment.all { it.evidence == Understanding.NOT_ASKED })
+        // A neutral lead-in, not "you got this right" or "you weren't sure": nobody was asked.
+        val message = lastTutorMessage(attention).text
+        assertEquals(TutorRules.leadIn(Understanding.NOT_ASKED, false), message.lines()[1])
+        assertEquals(first.title, message.lines()[0])
+    }
+
+    @Test fun journey9_in_chinese_start_on_a_route_step_opens_the_concept_with_a_chinese_lead_in() {
+        RuntimeEnvironment.setQualifiers("+zh")
+        launch(); chooseGuest()
+        val nodes = nodesOf(zhSpaced)
+        val first = nodes.first()
+        openSpaceCard(spaceIdOf(zhSpaced))
+        tap(rule.onNodeWithTag("route_node_${first.nodeId}")); waitForTag("route_sheet")
+        startFromSheet(first)
+        waitFor("the explanation") { has("explainer_stage") }
+        assertFalse(has("tutor_list")); assertFalse(has("focus_continue"))
+        sceneReady()
+        val message = lastTutorMessage(zhSpaced).text
+        assertEquals(TutorRules.leadIn(Understanding.NOT_ASKED, true), message.lines()[1])
+        assertTrue(cjk.containsMatchIn(message.lines()[1]))
+    }
+
+    private fun gameJourney(pkg: String, id: String, mechanic: String) {
+        launch(); chooseGuest()
+        val nodes = nodesOf(pkg)
+        val game = nodes.first { it.activity is ActivityRef.Game }
+        assertEquals(id, (game.activity as ActivityRef.Game).contentId)
+        creditBefore(nodes, game)
+        val spaceId = spaceIdOf(pkg)
+        val spaceTitle = awaitIo { deps.spaces!!.list().first { it.spaceId == spaceId }.title }
+        openSpaceCard(spaceId)
+        assertEquals(str(R.string.route_state_current), state(game.nodeId))
+        val doneBefore = doneCount(nodes)
+        tap(rule.onNodeWithTag("route_node_${game.nodeId}")); waitForTag("route_sheet")
+        assertEquals(game.title, textOf("route_sheet_title"))
+        assertTrue(textOf("route_sheet_kind").startsWith(str(R.string.route_kind_game)))
+        startFromSheet(game)
+        waitForTag("game_board"); waitForText(game.title)
+        assertFalse("no Back-to button before the game is finished", has("back_to_space"))
+        if (mechanic == "partition") {
+            playPartitionStage(id); waitForTag("game_stars"); tap(rule.onNodeWithTag("game_advance")); waitForTag("new_conditions")
+            playPartitionStage(id)
+        } else {
+            val (f1, s1) = allocationNeeds(id, 0); placeTokens(f1, s1)
+            deliver(); waitForTag("game_stars"); tap(rule.onNodeWithTag("game_advance")); waitForTag("new_conditions")
+            val (f2, s2) = allocationNeeds(id, 1); placeTokens(f2, s2)
+            deliver()
+        }
+        waitForText(str(R.string.games_complete))
+        // Finished from a route: the way back to that Space is named, and Play again is still there.
+        waitForTag("back_to_space")
+        assertTrue(textShown(str(R.string.games_back_to, spaceTitle)))
+        assertTrue(textShown(str(R.string.games_replay)))
+        tap(rule.onNodeWithTag("back_to_space"))
+        waitFor("the map of that Space") { has("space_route") }
+        waitFor("the game step to show done") { state(game.nodeId).let { it == str(R.string.route_state_done) || it == str(R.string.route_state_review) } }
+        assertRouteProgress(doneBefore + 1, nodes.size)
+        assertEquals(1, projectionNow().completed.count { it.activityKind == com.anything2game.contract.progress.ActivityKind.GAME })
+    }
+
+    @Test fun journey9_a_partition_game_step_in_the_resnet_route_is_played_credited_and_returns_to_its_space() = gameJourney(resnet, "layer-fault-en", "partition")
+
+    @Test fun journey9_an_allocation_game_step_in_the_attention_route_is_played_credited_and_returns_to_its_space() = gameJourney(attention, "gpu-budget-en", "allocation")
+
+    @Test fun journey9_a_game_opened_from_the_playground_has_no_back_to_space_button() {
+        playground(); shelfLoaded()
+        tap(rule.onNodeWithTag("game_allocation")); waitForTag("token_tray")
+        val id = "workshop-en"
+        val (f1, s1) = allocationNeeds(id, 0); placeTokens(f1, s1)
+        deliver(); waitForTag("game_stars"); tap(rule.onNodeWithTag("game_advance")); waitForTag("new_conditions")
+        val (f2, s2) = allocationNeeds(id, 1); placeTokens(f2, s2)
+        deliver()
+        waitForText(str(R.string.games_complete)); waitForTag("restart_game")
+        assertFalse(has("back_to_space"))
+    }
+
+    private fun spaceOrder(): List<String> {
+        val seen = linkedMapOf<String, Float>()
+        waitFor("the Space cards") { exists(tagPrefix("open_space_")) }
+        repeat(12) {
+            rule.onAllNodes(tagPrefix("open_space_")).fetchSemanticsNodes().forEach { n ->
+                seen.getOrPut(n.config[SemanticsProperties.TestTag].removePrefix("open_space_")) { 0f }
+            }
+            rule.onNodeWithTag("home_SPACES").performTouchInput { swipe(Offset(centerX, height * 0.8f), Offset(centerX, height * 0.2f), 150) }
+            rule.waitForIdle()
+        }
+        return seen.keys.toList()
+    }
+    private fun languageOf(spaceId: String): String = awaitIo<String> {
+        val inventory = deps.materials!!.materials(); val space = deps.spaces!!.list().first { it.spaceId == spaceId }
+        inventory.filter { it.member in space.members || it.localPack?.let { p -> p in space.members } == true }.map { it.language }.first()
+    }
+
+    @Test fun journey9_spaces_in_the_apps_language_come_first_and_the_others_carry_a_language_chip() {
+        launch(); chooseGuest()
+        val order = spaceOrder()
+        val languages = order.map(::languageOf)
+        assertTrue("both languages are present in the sample shelf: $languages", "en" in languages && "zh" in languages)
+        assertEquals("English Spaces first, then Chinese: $languages", languages.sortedBy { it != "en" }, languages)
+        order.forEach { id ->
+            val chip = rule.onAllNodes(hasTestTag("space_language_$id"), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() ||
+                runCatching { rule.onNodeWithTag("home_SPACES").performScrollToNode(hasTestTag("space_language_$id")); true }.getOrDefault(false)
+            assertEquals("only the other-language Spaces carry a chip ($id)", languageOf(id) == "zh", chip)
+        }
+        rule.onNodeWithTag("home_SPACES").performScrollToNode(hasTestTag("space_language_${order.first { languageOf(it) == "zh" }}"))
+        assertEquals("中文", textOf("space_language_${order.first { languageOf(it) == "zh" }}"))
+    }
+
+    @Test fun journey9_in_chinese_the_chinese_spaces_come_first_and_the_english_ones_say_English() {
+        RuntimeEnvironment.setQualifiers("+zh")
+        launch(); chooseGuest()
+        val order = spaceOrder()
+        val languages = order.map(::languageOf)
+        assertEquals(languages.sortedBy { it != "zh" }, languages)
+        val english = order.first { languageOf(it) == "en" }
+        rule.onNodeWithTag("home_SPACES").performScrollToNode(hasTestTag("space_language_$english"))
+        assertEquals("English", textOf("space_language_$english"))
+        assertFalse(exists(tagPrefix("space_language_${order.first()}")))
+    }
+
+    @Test fun journey9_counts_agree_with_their_numbers_in_both_languages() {
+        // One material, two materials, one activity, many: "1 material", "2 materials", "1 activity".
+        assertEquals("1 material", plural(R.plurals.spaces_material_count, 1, 1))
+        assertEquals("2 materials", plural(R.plurals.spaces_material_count, 2, 2))
+        assertEquals("0 / 1 activity complete", plural(R.plurals.spaces_activities_complete, 1, 0, 1))
+        assertEquals("1 / 2 activities complete", plural(R.plurals.spaces_activities_complete, 2, 1, 2))
+        assertEquals("1 completed activity · 1 learning day", completedDays(1, 1))
+        assertEquals("2 completed activities · 3 learning days", completedDays(2, 3))
+        assertEquals("1 character", plural(R.plurals.import_chars, 1, 1))
+        assertEquals("p. 1 · 1 page", plural(R.plurals.source_page_of, 1, "1", 1))
+        // On screen: a Space with exactly one material says "1 material", one with two says "2 materials".
+        val (one, two) = awaitIo {
+            deps.profiles.choose(com.anything2game.app.data.profile.LocalProfile.GUEST)
+            val spaces = deps.spaces!!
+            val a = spaces.create("One doc").spaceId; spaces.add(a, SpaceMember.ServerDocumentRef("doc-a", "1"))
+            val b = spaces.create("Two docs").spaceId
+            spaces.add(b, SpaceMember.ServerDocumentRef("doc-b", "1")); spaces.add(b, SpaceMember.ServerDocumentRef("doc-c", "1"))
+            a to b
+        }
+        launch()
+        scrollHomeTo("space_counts_$one")
+        assertEquals(spacesCounts(1, 0, 0), textOf("space_counts_$one")); assertTrue(textOf("space_counts_$one").startsWith("1 material · "))
+        scrollHomeTo("space_counts_$two")
+        assertTrue(textOf("space_counts_$two").startsWith("2 materials · "))
+    }
+
+    @Test fun journey9_the_chinese_counts_keep_their_form() {
+        RuntimeEnvironment.setQualifiers("+zh")
+        assertEquals("1 份资料", plural(R.plurals.spaces_material_count, 1, 1))
+        assertEquals("2 份资料", plural(R.plurals.spaces_material_count, 2, 2))
+        assertEquals("已完成 1 / 1 项活动", plural(R.plurals.spaces_activities_complete, 1, 1, 1))
+        assertEquals("已完成 1 个活动 · 学习 1 天", completedDays(1, 1))
+    }
+
+    @Test fun journey9_a_new_space_opens_on_its_route_tab_with_the_empty_state_and_its_primary_action() {
+        launch(); chooseGuest()
+        waitFor("create available") { runCatching { rule.onNodeWithTag("space_create").assertIsEnabled(); true }.getOrDefault(false) }
+        tap(rule.onNodeWithTag("space_create"))
+        rule.onNodeWithTag("space_name").performTextInput("Chemistry")
+        tap(rule.onNodeWithTag("save_space"))
+        waitForTag("route_empty"); waitForTag("route_add_materials")
+        assertFalse(has("space_materials"))
+        rule.onNodeWithTag("show_route").assertIsSelected(); rule.onNodeWithTag("show_materials").assertIsNotSelected()
+        tap(rule.onNodeWithTag("route_add_materials")); waitForTag("space_materials")
+    }
+
+    @Test fun journey9_the_progress_strip_stays_visible_while_the_map_scrolls() {
+        launch(); chooseLin()
+        val nodes = nodesOf(attention)
+        openSpaceCard(spaceIdOf(attention))
+        val done = doneCount(nodes)
+        rule.onNodeWithTag("space_route").performScrollToNode(hasTestTag("route_start_bubble")); rule.waitForIdle()
+        // Opened at the learner's unit, scrolled past the top of the page: the strip is still in view.
+        rule.onNodeWithTag("route_progress").assertIsDisplayed()
+        assertEquals(str(R.string.route_progress_done, done, nodes.size), rule.onNodeWithTag("route_progress_text", useUnmergedTree = true).fetchSemanticsNode().config[SemanticsProperties.Text].joinToString(""))
+        rule.onNodeWithTag("space_route").performScrollToNode(hasTestTag("route_node_${nodes.last().nodeId}")); rule.waitForIdle()
+        rule.onNodeWithTag("route_progress").assertIsDisplayed()
+        rule.onNodeWithTag("show_route").assertIsDisplayed()
+        assertTrue("the learning days are in the strip", exists(hasText(str(R.string.spaces_week, 0).substringBefore("·").trim(), substring = true)))
+    }
+
+    @Test fun journey9_playground_tiles_lead_with_the_concept_and_every_row_has_one_height() {
+        playground(); shelfLoaded()
+        fun tileTags() = rule.onAllNodes(SemanticsMatcher("tile") { n -> n.config.getOrNull(SemanticsProperties.TestTag)?.let { it.startsWith("game_") && it != "game_board" } == true }, useUnmergedTree = false).fetchSemanticsNodes()
+        val tiles = tileTags()
+        assertEquals(10, tiles.size)
+        for (row in tiles.groupBy { Math.round(it.boundsInRoot.top) }.values) assertEquals("one height per row", 1, row.map { Math.round(it.boundsInRoot.height) }.toSet().size)
+        // The concept is the primary chip; how it plays is small secondary text.
+        val chip = rule.onNode(hasTestTag("concept_chip") and hasAnyAncestor(hasTestTag("game_partition")), useUnmergedTree = true)
+        assertEquals("Binary search", chip.fetchSemanticsNode().config[SemanticsProperties.Text].joinToString(""))
+        val mechanism = rule.onNode(hasTestTag("mechanism_label") and hasAnyAncestor(hasTestTag("game_allocation")), useUnmergedTree = true)
+        assertEquals(str(R.string.mechanism_allocation), mechanism.fetchSemanticsNode().config[SemanticsProperties.Text].joinToString(""))
+        val allocationChip = rule.onNode(hasTestTag("concept_chip") and hasAnyAncestor(hasTestTag("game_allocation")), useUnmergedTree = true)
+        assertEquals("Opportunity cost", allocationChip.fetchSemanticsNode().config[SemanticsProperties.Text].joinToString(""))
+        assertTrue("the concept chip comes before the mechanism text", chip.fetchSemanticsNode().boundsInRoot.top < rule.onNode(hasTestTag("mechanism_label") and hasAnyAncestor(hasTestTag("game_partition")), useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.top)
+    }
+
+    @Test fun journey9_the_demo_badge_is_on_the_result_and_not_in_the_add_sheet_header() {
+        playground(); shelfLoaded()
+        tap(rule.onNodeWithTag("add_game")); waitForTag("add_topic")
+        assertFalse("no badge before anything was generated", textShown(str(R.string.games_demo_badge)))
+        rule.onNodeWithTag("add_topic").performTextInput("orbital dynamics")
+        tap(rule.onNodeWithTag("add_generate"))
+        waitForTag("chooser"); waitForTag("result_demo_badge")
+        assertTrue(textShown(str(R.string.games_demo_badge)))
+    }
+
+    @Test fun journey9_font_scale_two_keeps_the_nodes_of_the_map_apart() {
+        RuntimeEnvironment.setFontScale(2f)
+        launch(); chooseLin()
+        val nodes = nodesOf(attention)
+        openSpaceCard(spaceIdOf(attention))
+        nodes.forEach { n ->
+            desc(n.nodeId)
+            val boxes = rule.onAllNodes(tagPrefix("route_node_")).fetchSemanticsNodes().map { it.boundsInRoot }
+            for (i in boxes.indices) for (j in i + 1 until boxes.size) assertFalse("nodes overlap: ${boxes[i]} ${boxes[j]}", boxes[i].overlaps(boxes[j]))
+            val labels = rule.onAllNodes(tagPrefix("route_label_")).fetchSemanticsNodes().map { it.boundsInRoot }
+            for (i in labels.indices) for (j in i + 1 until labels.size) assertFalse("labels overlap: ${labels[i]} ${labels[j]}", labels[i].overlaps(labels[j]))
+            for (b in boxes) for (l in labels) assertFalse("a label sits on a node: $b $l", b.overlaps(l.copy(top = l.top + 1f, bottom = l.bottom - 1f)) && l.top > b.top + 1f && l.bottom < b.bottom)
+        }
     }
 }

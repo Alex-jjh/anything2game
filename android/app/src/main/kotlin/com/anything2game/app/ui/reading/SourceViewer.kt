@@ -41,6 +41,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -224,7 +225,7 @@ internal fun SourceFrame(label: String, count: Int, pager: PagerState, onDismiss
                 Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).background(Color(0xFF3C4043)).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp).testTag("source_close")) { Text(stringResource(R.string.tutor_close), color = Color.White) }
                     Text(stringResource(R.string.tutor_source_title), style = MaterialTheme.typography.titleMedium, color = Color.White, modifier = Modifier.weight(1f))
-                    Text(stringResource(R.string.source_page_of, label, count),
+                    Text(pluralStringResource(R.plurals.source_page_of, count, label, count),
                         style = MaterialTheme.typography.labelLarge, color = Color.White, modifier = Modifier.padding(end = 12.dp).testTag("source_page_label"))
                 }
                 content()

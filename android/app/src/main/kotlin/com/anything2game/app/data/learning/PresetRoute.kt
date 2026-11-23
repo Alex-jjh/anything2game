@@ -27,8 +27,20 @@ internal object PresetRoute {
         }
     }
 
-    /** [tutor] is aligned with [questions]; [practice] is aligned with the package's levels. */
-    fun arrange(pkg: LearningPackage, questions: List<TutorQuestion>, tutor: List<PathNode>, practice: List<PathNode>): List<PathNode> {
+    /** A Playground game a course's route offers: the reviewed game family, and the level whose unit it follows. */
+    data class PresetGame(val key: String, val afterLevel: Int)
+
+    /** One related game per course where one fits. The route puts it right after the practice of the level it relates to. */
+    val games: Map<String, PresetGame> = mapOf(
+        "demo_attention" to PresetGame("gpu-budget", 2),          // results and variations: what a compute budget buys
+        "demo_resnet" to PresetGame("layer-fault", 0),            // the degradation problem: finding the layer that fails
+        "pkg_demo_retrieval" to PresetGame("exam-revision", 0),   // testing beats re-reading: how to spend study time
+        "demo_zh_spaced" to PresetGame("exam-revision", 0),       // spaced repetition: planning revision time
+    )
+
+    /** [tutor] is aligned with [questions]; [practice] is aligned with the package's levels; [game] follows level [PresetGame.afterLevel]. */
+    fun arrange(pkg: LearningPackage, questions: List<TutorQuestion>, tutor: List<PathNode>, practice: List<PathNode>,
+        game: Pair<PresetGame, PathNode>? = null): List<PathNode> {
         require(tutor.size == questions.size && practice.size == pkg.levels.size)
         val levelOf = conceptLevels(pkg, questions)
         val result = mutableListOf<PathNode>()
@@ -36,6 +48,7 @@ internal object PresetRoute {
         pkg.levels.forEachIndexed { index, level ->
             tutor.filterIndexed { i, _ -> levelOf[i] == index }.forEach { add(it, level.title) }
             add(practice[index], level.title)
+            if (game != null && game.first.afterLevel == index) add(game.second, level.title)
         }
         return result
     }

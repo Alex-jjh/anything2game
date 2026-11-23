@@ -96,7 +96,13 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator) {
             }
         }
         is Route.Space -> tabsState.SaveableStateProvider("space:${r.id}") { SpaceScreen(deps, language, r, navigator, library) }
-        is Route.Game -> GameScreen(deps, ContentVersion(r.id, r.version), navigator::back)
+        is Route.Game -> {
+            val parentId = navigator.parentSpaceId
+            val parentTitle by androidx.compose.runtime.produceState<String?>(null, parentId, current.id) {
+                value = parentId?.let { id -> runCatching { deps.spaces?.list()?.firstOrNull { it.spaceId == id }?.title }.getOrNull() }
+            }
+            GameScreen(deps, ContentVersion(r.id, r.version), navigator::back, backTo = parentTitle)
+        }
         is Route.Source -> MaterialReader(deps.packages, r.packageId, r.version, navigator::back)
         is Route.Read -> {
             ReadingContent(deps, r.packageId, r.conceptId, r.sourcePackage ?: r.packageId, r.contentVersion, navigator::back)

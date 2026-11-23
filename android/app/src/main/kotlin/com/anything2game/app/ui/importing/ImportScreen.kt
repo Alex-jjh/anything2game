@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -66,7 +67,7 @@ fun ImportContent(request: ImportRequest, onCancel: () -> Unit, contentPadding: 
                     is ImportRequest.SharedText -> {
                         Badge(stringResource(R.string.import_kind_text), skin.action, skin.paper)
                         Text(request.title, style = MaterialTheme.typography.titleMedium, color = skin.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        Text(stringResource(R.string.import_chars, request.text.length), color = skin.inkMuted)
+                        Text(pluralStringResource(R.plurals.import_chars, request.text.length, request.text.length), color = skin.inkMuted)
                         Text(request.text, maxLines = 6, overflow = TextOverflow.Ellipsis, color = skin.ink)
                     }
                 }

@@ -68,7 +68,6 @@ internal fun AddGameSheet(presets: List<InstalledGame>, language: String, onClos
             PixelPanel(Modifier.fillMaxWidth(), fill = skin.paper) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(stringResource(R.string.add_title), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    PixelTag(stringResource(R.string.games_demo_badge), fill = skin.card, ink = skin.inkMuted)
                     PixelButton("×", onClose, Modifier.semantics { contentDescription = "close" }.testTag("add_close"))
                 }
                 when (phase) {
@@ -118,6 +117,8 @@ private fun Generating(topic: String, step: Int, reduced: Boolean) {
 private fun Chooser(topic: String, presets: List<InstalledGame>, language: String, onOpen: (ContentVersion) -> Unit) {
     val skin = A2g.skin
     Column(Modifier.testTag("chooser"), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        // The demo badge belongs to what was produced, not to the question: it appears on this result and on the opened game.
+        PixelTag(stringResource(R.string.games_demo_badge), Modifier.testTag("result_demo_badge"), fill = skin.card, ink = skin.inkMuted)
         Text(stringResource(R.string.add_no_match, topic), color = skin.inkMuted)
         Text(stringResource(R.string.add_choose), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         presets.forEach { game ->

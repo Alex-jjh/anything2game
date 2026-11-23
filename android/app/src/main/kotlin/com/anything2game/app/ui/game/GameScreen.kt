@@ -67,7 +67,7 @@ internal class GameViewModel(private val content: ContentLibrary, private val pr
 }
 
 @Composable
-internal fun GameScreen(deps: AppDependencies, version: ContentVersion, onBack: () -> Unit) {
+internal fun GameScreen(deps: AppDependencies, version: ContentVersion, onBack: () -> Unit, backTo: String? = null) {
     val profile by deps.profiles.active.collectAsStateWithLifecycle()
     val vm = viewModel(key = "game:${profile?.id}:$version") {
         GameViewModel(requireNotNull(deps.content), requireNotNull(deps.learningProgress), version)
@@ -90,7 +90,8 @@ internal fun GameScreen(deps: AppDependencies, version: ContentVersion, onBack: 
                 OutlinedButton({ vm.load() }) { Text(stringResource(R.string.home_retry)) }
             }
             if (run != null) {
-                GameBody(run, vm.origin, vm.busy, deps.homePreferences.bestStars(version), onMove = { vm.move(run, it) }, onRestart = { vm.load(true) }) {
+                GameBody(run, vm.origin, vm.busy, deps.homePreferences.bestStars(version), onMove = { vm.move(run, it) }, onRestart = { vm.load(true) },
+                    backTo = backTo, onBackTo = onBack) {
                     run.spec.evidenceRefs.filter { it.evidenceId in run.stage.evidenceIds }.forEach { ref ->
                         PixelButton(stringResource(R.string.source_open), { evidence = ref.evidenceId })
                         if (evidence == ref.evidenceId) ActivityEvidence(requireNotNull(deps.materials), ref) { evidence = null }
@@ -105,7 +106,7 @@ internal fun GameScreen(deps: AppDependencies, version: ContentVersion, onBack: 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun GameBody(run: GameRun, origin: PackOrigin?, busy: Boolean, bestStars: Int, onMove: (GameAction) -> Unit, onRestart: () -> Unit,
-    source: @Composable () -> Unit) {
+    backTo: String? = null, onBackTo: () -> Unit = {}, source: @Composable () -> Unit) {
     val skin = A2g.skin
     val playing = !busy && !run.actionLimitReached && run.status == StageStatus.PLAYING
     val stageScores = remember(run.checkpoint) { GameScore.stages(run.spec, run.checkpoint) }
@@ -143,7 +144,7 @@ internal fun GameBody(run: GameRun, origin: PackOrigin?, busy: Boolean, bestStar
             PixelButton(stringResource(R.string.games_help), { onMove(GameAction.Help) }, enabled = playing)
             PixelButton(stringResource(R.string.games_reset), { onMove(GameAction.Reset) }, enabled = !busy && run.checkpoint.actions.isNotEmpty())
         }
-        if (run.status != StageStatus.PLAYING) Result(run, busy, stars, bestStars, mood, onMove, onRestart)
+        if (run.status != StageStatus.PLAYING) Result(run, busy, stars, bestStars, mood, onMove, onRestart, backTo, onBackTo)
         else if (run.actionLimitReached) {
             Text(stringResource(R.string.games_limit), color = skin.inkMuted)
             PixelButton(stringResource(R.string.games_replay), onRestart, Modifier.testTag("restart_game"), enabled = !busy, primary = true)
@@ -210,7 +211,7 @@ private fun NewConditions(run: GameRun) {
 }
 
 @Composable
-private fun Result(run: GameRun, busy: Boolean, stars: Int?, best: Int, mood: Mood, onMove: (GameAction) -> Unit, onRestart: () -> Unit) {
+private fun Result(run: GameRun, busy: Boolean, stars: Int?, best: Int, mood: Mood, onMove: (GameAction) -> Unit, onRestart: () -> Unit, backTo: String?, onBackTo: () -> Unit) {
     val skin = A2g.skin
     val reduced = rememberReducedMotion()
     val won = run.status == StageStatus.WON
@@ -230,8 +231,13 @@ private fun Result(run: GameRun, busy: Boolean, stars: Int?, best: Int, mood: Mo
             if (run.completed && best > stars) Text(stringResource(R.string.games_best_stars, best), color = skin.inkMuted, style = MaterialTheme.typography.bodySmall)
         }
         when {
-            run.completed || run.actionLimitReached -> PixelButton(stringResource(R.string.games_replay), onRestart, Modifier.fillMaxWidth().testTag("restart_game"),
-                enabled = !busy, primary = true)
+            run.completed || run.actionLimitReached -> {
+                // Started from a route step: the way back to that Space comes first, and Play again stays one tap away.
+                val fromRoute = run.completed && backTo != null
+                if (fromRoute) PixelButton(stringResource(R.string.games_back_to, backTo!!), onBackTo, Modifier.fillMaxWidth().testTag("back_to_space"),
+                    enabled = !busy, primary = true)
+                PixelButton(stringResource(R.string.games_replay), onRestart, Modifier.fillMaxWidth().testTag("restart_game"), enabled = !busy, primary = !fromRoute)
+            }
             won -> PixelButton(stringResource(R.string.games_next), { onMove(GameAction.Advance) }, Modifier.fillMaxWidth().testTag("game_advance"), enabled = !busy, primary = true)
             else -> PixelButton(stringResource(R.string.games_retry), { onMove(GameAction.Reset) }, Modifier.fillMaxWidth().testTag("retry_round"), enabled = !busy, primary = true)
         }

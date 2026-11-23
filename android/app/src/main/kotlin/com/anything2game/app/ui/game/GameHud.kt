@@ -9,6 +9,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,10 +50,11 @@ internal fun pixelShape(cut: Dp = 6.dp) = CutCornerShape(cut)
 /** A panel with a thick ink outline and a hard offset shadow: no blur, so it reads as drawn rather than lifted. */
 @Composable
 internal fun PixelPanel(modifier: Modifier = Modifier, fill: Color = A2g.skin.card, outline: Color = A2g.skin.ink,
-    padding: PaddingValues = PaddingValues(14.dp), onClick: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
+    padding: PaddingValues = PaddingValues(14.dp), onClick: (() -> Unit)? = null, fillHeight: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
     Box(modifier.padding(end = 4.dp, bottom = 4.dp)) {
         Box(Modifier.matchParentSize().offset(4.dp, 4.dp).background(outline.copy(alpha = 0.85f), pixelShape()))
-        Column(Modifier.background(fill, pixelShape()).border(2.dp, outline, pixelShape())
+        // [fillHeight]: the panel takes the height its parent gives it (tiles of one row share the tallest tile's height).
+        Column(Modifier.then(if (fillHeight) Modifier.fillMaxHeight() else Modifier).background(fill, pixelShape()).border(2.dp, outline, pixelShape())
             .let { if (onClick != null) it.clip(pixelShape()).clickable(role = Role.Button, onClick = onClick) else it }.padding(padding),
             verticalArrangement = Arrangement.spacedBy(10.dp), content = content)
     }
@@ -86,9 +88,10 @@ internal fun PixelButton(text: String, onClick: () -> Unit, modifier: Modifier =
 
 /** A small label in a cut-corner pill: mechanism, stage, "New", "Demo". */
 @Composable
-internal fun PixelTag(text: String, modifier: Modifier = Modifier, fill: Color = A2g.skin.evidenceSoft, ink: Color = A2g.skin.ink) {
+internal fun PixelTag(text: String, modifier: Modifier = Modifier, fill: Color = A2g.skin.evidenceSoft, ink: Color = A2g.skin.ink, large: Boolean = false) {
     Text(text, modifier.background(fill, pixelShape(4.dp)).border(1.5.dp, ink.copy(alpha = 0.75f), pixelShape(4.dp))
-        .padding(horizontal = 7.dp, vertical = 2.dp), color = ink, fontSize = 11.sp, lineHeight = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.3.sp)
+        .padding(horizontal = if (large) 9.dp else 7.dp, vertical = if (large) 4.dp else 2.dp), color = ink, fontSize = if (large) 14.sp else 11.sp,
+        lineHeight = if (large) 18.sp else 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.3.sp)
 }
 
 /** [total] hearts, the first [left] full. A spent heart stays as a grey outline so the budget's size is always visible. */

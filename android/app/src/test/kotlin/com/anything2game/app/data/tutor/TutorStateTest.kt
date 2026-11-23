@@ -128,6 +128,26 @@ class TutorStateTest {
             assertFalse("the assessed session was saved with all three answers", repo.saved.any { it.session.assessment.isNotEmpty() && it.draftAnswers.size < 3 })
         } finally { Dispatchers.resetMain() }
     }
+    @Test fun `opening a route concept assesses nobody, starts at that concept and leaves a walk that is already there alone`() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        try {
+            val repo = ThreeRepo(three()); val vm = TutorViewModel(repo, "tut_test"); runCurrent()
+            vm.openAt("c3"); advanceUntilIdle()
+            val opened = vm.state.value.cache!!
+            assertNull(vm.state.value.problem)
+            // The reader was never asked: every answer is "not sure" for the server, the diagnostic never shows, the lesson starts.
+            assertEquals(setOf("q", "q2", "q3"), opened.session.answers.keys)
+            assertTrue(opened.session.answers.values.all { it == UNKNOWN_ANSWER })
+            assertEquals(1, opened.session.messages.size)
+            // A server session cannot skip ahead of what it has introduced: it opens where its own walk is.
+            assertEquals(0, opened.session.conceptPosition)
+            val saved = repo.saved.size
+            vm.openAt("c"); advanceUntilIdle()                                   // already teaching that concept: nothing is sent or saved
+            assertEquals(saved, repo.saved.size)
+            vm.openAt("unknown-concept"); advanceUntilIdle()
+            assertEquals(saved, repo.saved.size)
+        } finally { Dispatchers.resetMain() }
+    }
     @Test fun `import retry and process reconstruction reuse a completed upload`() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         try {

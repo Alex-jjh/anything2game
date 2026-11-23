@@ -46,7 +46,13 @@ fun ReadingContent(deps: AppDependencies, packageId: String, conceptId: String? 
     androidx.activity.compose.BackHandler { if (state.busy) vm.cancelPending(); onBack() }
     val c = state.cache
     val s = c?.session
-    if (conceptId != null && s != null && showRoutedTutorPrerequisite(conceptId, s, state, vm, onBack)) return
+    // A route step opens the explanation at its concept directly (no starting assessment). Once per visit: the saved flag keeps
+    // a rotation from jumping the reader back after they moved on.
+    val routedConcept = conceptId?.takeIf { id -> s?.questions?.any { it.conceptId == id } == true }
+    var opened by rememberSaveable(packageId, conceptId) { mutableStateOf(false) }
+    LaunchedEffect(routedConcept, state.busy, state.problem) {
+        if (routedConcept != null && !opened && !state.busy && state.problem == null) { opened = true; vm.openAt(routedConcept) }
+    }
     val skin = A2g.skin
     val list = rememberLazyListState()
     var input by rememberSaveable(packageId) { mutableStateOf("") }
@@ -77,8 +83,13 @@ fun ReadingContent(deps: AppDependencies, packageId: String, conceptId: String? 
     val compact = androidx.compose.ui.platform.LocalDensity.current.fontScale >= COMPACT_FONT_SCALE
     val phase = when { s == null -> 0; s.assessment.isEmpty() -> 1; s.messages.isEmpty() -> 2; else -> 3 }
     LaunchedEffect(phase, c?.questionIndex) { list.scrollToItem(0) }
+    val opening = conceptId != null && phase != 3 && state.problem == null && (s == null || (routedConcept != null && (!opened || state.busy)))
     Scaffold(containerColor = skin.paper) { padding ->
-        if (phase == 3 && s != null) ExplainerTheatre(
+        if (opening) Column(Modifier.fillMaxSize().padding(padding).padding(20.dp).testTag("route_opening"), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            TextButton(onClick = { if (state.busy) vm.cancelPending(); onBack() }) { Text(stringResource(R.string.action_back)) }
+            s?.let { Text(it.title, style = MaterialTheme.typography.titleMedium, color = skin.inkMuted) }
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+        } else if (phase == 3 && s != null) ExplainerTheatre(
             s, theme, busy = state.busy, enabled = !state.busy && state.problem == null, offline = state.offline, problem = state.problem,
             lastIntent = if (state.busy) requestedIntent else c.replyIntent, input = input, onInput = { input = it }, onTurn = turn, onSource = { sourceRefs = it; sourcePdf = pdf ?: presetDoc; sourceOnPage = sourcePdf != null; attachFlow.reset() },
             onRetry = vm::retry, onReload = vm::reload, onCancel = vm::cancelPending, onBack = { if (state.busy) vm.cancelPending(); onBack() },
@@ -155,7 +166,7 @@ fun ReadingContent(deps: AppDependencies, packageId: String, conceptId: String? 
                         val evidence = s.assessment.first { it.questionId == q.id }.evidence
                         PaperCard {
                             Text(q.concept, style = MaterialTheme.typography.titleMedium, color = skin.ink)
-                            Badge(stringResource(when (evidence) { Understanding.DEMONSTRATED -> R.string.tutor_correct; Understanding.NEEDS_CLARIFICATION -> R.string.tutor_clarify; Understanding.NOT_YET_ASSESSED -> R.string.tutor_not_assessed }), skin.action, skin.evidenceSoft)
+                            Badge(stringResource(when (evidence) { Understanding.DEMONSTRATED -> R.string.tutor_correct; Understanding.NEEDS_CLARIFICATION -> R.string.tutor_clarify; Understanding.NOT_YET_ASSESSED, Understanding.NOT_ASKED -> R.string.tutor_not_assessed }), skin.action, skin.evidenceSoft)
                         }
                     }
                     item { Button(onClick = { turn(TutorIntent.START, "", null) }, enabled = enabled, modifier = Modifier.fillMaxWidth().testTag("start_tutor")) { Text(stringResource(R.string.tutor_start)) } }

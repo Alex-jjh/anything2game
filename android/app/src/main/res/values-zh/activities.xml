@@ -2,8 +2,16 @@
     <string name="nav_playground">游乐场</string>
     <string name="nav_spaces">学习空间</string>
     <string name="study_record">学习记录</string>
-    <string name="completed_days">已完成 %1$d 个活动 · 学习 %2$d 天</string>
-    <string name="history_units">早期练习记录 · %1$d 个单元的内容版本未知</string>
+    <string name="completed_days">%1$s · %2$s</string>
+    <plurals name="completed_activities">
+        <item quantity="other">已完成 %d 个活动</item>
+    </plurals>
+    <plurals name="learning_days">
+        <item quantity="other">学习 %d 天</item>
+    </plurals>
+    <plurals name="history_units">
+        <item quantity="other">早期练习记录 · %d 个单元的内容版本未知</item>
+    </plurals>
     <string name="games_prompt">想探索哪个概念？</string>
     <string name="games_examples">试试二分查找或机会成本。</string>
     <string name="games_create">生成游戏</string>
@@ -52,7 +60,13 @@
     <string name="spaces_route">学习路线</string>
     <string name="spaces_materials">资料</string>
     <string name="spaces_next">下一项 · %1$s</string>
-    <string name="spaces_counts">%1$d 份资料 · 已完成 %2$d / %3$d 项活动</string>
+    <string name="spaces_counts">%1$s · %2$s</string>
+    <plurals name="spaces_material_count">
+        <item quantity="other">%d 份资料</item>
+    </plurals>
+    <plurals name="spaces_activities_complete">
+        <item quantity="other">已完成 %1$d / %2$d 项活动</item>
+    </plurals>
     <string name="spaces_week">本周学习 %1$d 天</string>
     <string name="spaces_empty">添加资料即可开始学习路线。</string>
     <string name="spaces_add">添加已有资料</string>
@@ -105,12 +119,6 @@
     <string name="games_provider_unknown">生成的游戏</string>
     <string name="material_read_all">阅读完整原文</string>
     <string name="share_space">为 %1$s 选择学习空间</string>
-    <string name="route_diagnostic">先完成起点测验，再学习「%1$s」。</string>
-    <string name="route_assess">开始起点测验</string>
-    <string name="route_prerequisite">你选择了「%1$s」。当前需要先学习「%2$s」。</string>
-    <string name="route_follow">学习「%1$s」</string>
-    <string name="route_revisit">打开所选讲解「%1$s」。</string>
-    <string name="route_unknown">此文档版本中没有该概念。</string>
     <string name="games_limit">本局已达到操作上限。可开始新一局继续挑战。</string>
     <string name="games_save_failed">未能保存此操作 · %1$s</string>
     <string name="job_regenerate">重新生成整个活动</string>

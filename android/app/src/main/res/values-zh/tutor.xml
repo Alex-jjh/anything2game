@@ -68,7 +68,9 @@
     <string name="tutor_card_continue">继续</string>
     <string name="tutor_card_continue_concept">继续 · 第 %1$d/%2$d 个概念</string>
     <string name="tutor_card_explained">已讲完</string>
-    <string name="source_page_of">第 %1$s 页 · 共 %2$d 页</string>
+    <plurals name="source_page_of">
+        <item quantity="other">第 %1$s 页 · 共 %2$d 页</item>
+    </plurals>
     <string name="source_prev_page">上一页</string>
     <string name="source_next_page">下一页</string>
     <string name="source_marker_note">讲解引用的原句</string>

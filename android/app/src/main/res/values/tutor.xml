@@ -68,7 +68,10 @@
     <string name="tutor_card_continue">Continue</string>
     <string name="tutor_card_continue_concept">Continue · concept %1$d/%2$d</string>
     <string name="tutor_card_explained">Explained</string>
-    <string name="source_page_of">p. %1$s · %2$d pages</string>
+    <plurals name="source_page_of">
+        <item quantity="one">p. %1$s · %2$d page</item>
+        <item quantity="other">p. %1$s · %2$d pages</item>
+    </plurals>
     <string name="source_prev_page">Prev</string>
     <string name="source_next_page">Next</string>
     <string name="source_marker_note">Quoted in the explanation</string>

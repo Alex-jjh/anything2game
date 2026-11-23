@@ -78,8 +78,9 @@ internal fun PlaygroundContent(games: List<InstalledGame>?, failure: String?, la
             if (games == null && failure == null) LinearProgressIndicator(Modifier.fillMaxWidth())
             failure?.let { Text(it); OutlinedButton(onRetry) { Text(stringResource(R.string.home_retry)) } }
             games.orEmpty().chunked(2).forEach { pair ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    pair.forEach { GameTile(it, language, Modifier.weight(1f)) { onOpen(it.version) } }
+                // One height per row: the tiles of a pair stretch to the taller one, so the grid has no ragged gaps.
+                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    pair.forEach { GameTile(it, language, Modifier.weight(1f).fillMaxHeight()) { onOpen(it.version) } }
                     if (pair.size == 1) Spacer(Modifier.weight(1f))
                 }
             }
@@ -92,7 +93,6 @@ internal fun PlaygroundContent(games: List<InstalledGame>?, failure: String?, la
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun GameTile(card: InstalledGame, language: String, modifier: Modifier, onClick: () -> Unit) {
     val skin = A2g.skin
@@ -104,7 +104,7 @@ internal fun GameTile(card: InstalledGame, language: String, modifier: Modifier,
         else -> "game_${spec.gameId}_${spec.gameVersion}"
     }
     val stars = stringResource(R.string.playground_stars_cd, card.stars)
-    PixelPanel(modifier.testTag(tag), padding = PaddingValues(0.dp), onClick = onClick) {
+    PixelPanel(modifier.testTag(tag), padding = PaddingValues(0.dp), onClick = onClick, fillHeight = true) {
         Box {
             GameIllustration(spec, Modifier.fillMaxWidth())
             Row(Modifier.padding(6.dp)) {
@@ -114,12 +114,12 @@ internal fun GameTile(card: InstalledGame, language: String, modifier: Modifier,
                 }
             }
         }
-        Column(Modifier.padding(start = 10.dp, end = 10.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(Modifier.weight(1f).padding(start = 10.dp, end = 10.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            // The concept leads (what the game teaches); how it plays is small secondary text.
+            card.entry?.let { PixelTag(it.conceptName(language), Modifier.testTag("concept_chip"), fill = if (partition) skin.evidenceSoft else skin.correctSoft, large = true) }
             Text(spec.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = skin.ink, maxLines = 2)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                PixelTag(stringResource(if (partition) R.string.mechanism_partition else R.string.mechanism_allocation), fill = if (partition) skin.evidenceSoft else skin.correctSoft)
-                card.entry?.let { PixelTag(it.conceptName(language), fill = skin.card) }
-            }
+            Text(stringResource(if (partition) R.string.mechanism_partition else R.string.mechanism_allocation), Modifier.testTag("mechanism_label"),
+                style = MaterialTheme.typography.labelSmall, color = skin.inkMuted)
             when (card.origin) {
                 PackOrigin.PRESET -> Unit
                 PackOrigin.IMPORT -> Text(stringResource(R.string.games_imported), color = skin.inkMuted, style = MaterialTheme.typography.labelMedium)
@@ -129,6 +129,7 @@ internal fun GameTile(card: InstalledGame, language: String, modifier: Modifier,
             }
             if (spec.language != language) Text(java.util.Locale.forLanguageTag(spec.language).getDisplayLanguage(LocalConfiguration.current.locales[0]),
                 style = MaterialTheme.typography.labelMedium)
+            Spacer(Modifier.weight(1f))
             StarsRow(card.stars, size = 22.dp, modifier = Modifier.semantics { contentDescription = stars })
         }
     }

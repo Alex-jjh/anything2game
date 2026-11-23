@@ -48,28 +48,29 @@ class ReviewedSpaceJourneysTest : LearnJourneyBase() {
         tap(rule.onNodeWithTag(tag))
     }
 
-    @Test fun requested_later_concept_survives_recreation_and_diagnostic_without_silently_crediting_another_lesson() {
+    @Test fun start_on_a_later_route_concept_opens_it_directly_and_survives_recreation() {
         launch(); chooseGuest(); waitForTag("space_create")
         selectLaterConcept()
-        waitFor("requested concept before diagnosis", 5000) { has("route_prerequisite") }
-        tap(rule.onNodeWithTag("route_follow"))
-        chooseFocus()
+        waitFor("the requested concept", 5000) { has("explainer_stage") }
+        // No starting assessment, no focus question, no diagnostic, and no stand-alone screen in front of the lesson.
+        assertFalse(has("tutor_list")); assertFalse(has("focus_continue")); assertFalse(has("start_tutor"))
+        sceneReady()
+        val session = cache(attention).session
+        val last = session.questions.lastIndex
+        assertEquals(last, session.conceptPosition)
+        assertEquals(session.questions.last().conceptId, TutorRules.orderedQuestions(session)[session.conceptPosition].conceptId)
+        assertTrue("nobody was asked, so nothing is claimed about what they know", session.assessment.all { it.evidence == Understanding.NOT_ASKED })
+        assertEquals(last + 1, session.conceptsIntroduced)
+        // Only the requested concept was read: the lessons the route credited before it are not read or credited again.
+        assertEquals(credited + 1, awaitIo { deps.learningProgress!!.projection().completed.size })
+        val messages = session.messages.size
         scenario!!.recreate()
-        val questions = cache(attention).session.questions
-        for ((i, q) in questions.withIndex()) {   // one tap per question that is actually on screen, never a second tap on the one just answered
-            waitForText(str(R.string.tutor_question_count, i + 1, questions.size))
-            answerCurrent(q, UNKNOWN_ANSWER)
-        }
-        waitForTag("route_prerequisite")
-        assertTrue(textOf("route_prerequisite").contains(questions.last().concept))
-        assertTrue(textOf("route_prerequisite").contains(questions.first().concept))
-        assertEquals(credited, awaitIo { deps.learningProgress!!.projection().completed.size })
-        tap(rule.onNodeWithTag("route_follow"))
-        waitForTag("dialogue_text")
-        assertEquals(questions.first().conceptId, TutorRules.orderedQuestions(cache(attention).session).first().conceptId)
+        waitFor("the same lesson after recreation", 5000) { has("explainer_stage") }
+        assertEquals(last, cache(attention).session.conceptPosition)
+        assertEquals("recreating the screen does not start the lesson again", messages, cache(attention).session.messages.size)
     }
 
-    @Test fun partially_read_route_explains_the_unintroduced_target_before_opening_its_prerequisite() {
+    @Test fun a_started_walk_goes_to_the_requested_later_concept_instead_of_asking_for_its_earlier_lessons() {
         launch(); chooseGuest()
         awaitIo {
             val repo = deps.tutors
@@ -79,14 +80,13 @@ class ReviewedSpaceJourneysTest : LearnJourneyBase() {
             repo.save(assessed.copy(session = repo.turn(assessed, TutorIntent.START, "", "first-lesson")))
         }
         selectLaterConcept()
-        waitFor("actual prerequisite", 5000) { has("route_prerequisite") }
+        waitFor("the requested concept", 5000) { has("explainer_stage") }
+        assertFalse(has("tutor_list"))
+        sceneReady()
         val session = cache(attention).session
-        assertTrue(textOf("route_prerequisite").contains(session.questions.last().concept))
-        assertTrue(textOf("route_prerequisite").contains(session.questions.first().concept))
-        assertFalse(has("dialogue_text"))
-        tap(rule.onNodeWithTag("route_follow"))
-        waitForTag("dialogue_text")
-        assertEquals(1, cache(attention).session.conceptsIntroduced)
+        assertEquals(session.questions.lastIndex, session.conceptPosition)
+        assertEquals(session.questions.size, session.conceptsIntroduced)
+        assertTrue("the first lesson was kept", session.messages.size > 2)
     }
 
     @Test fun shared_pdf_waits_for_a_selected_space_and_survives_rotation_before_confirmation() {

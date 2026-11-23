@@ -6,6 +6,7 @@
     <string name="playground_add">＋ 添加游戏</string>
     <string name="mechanism_partition">信息划分</string>
     <string name="mechanism_allocation">资源分配</string>
+    <string name="games_back_to">返回「%1$s」</string>
     <string name="games_demo_badge">演示 · 预生成</string>
     <string name="add_title">添加游戏</string>
     <string name="add_prompt">想学哪个概念？输入一个，或者从下面挑一个。</string>

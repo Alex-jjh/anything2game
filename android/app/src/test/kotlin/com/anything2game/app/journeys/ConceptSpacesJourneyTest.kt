@@ -75,8 +75,8 @@ class ConceptSpacesJourneyTest : JourneyTest() {
         tap(rule.onNodeWithTag("allocation_submit"))
         waitForText(str(R.string.games_complete))
         systemBack(); openMe()
-        scrollMeTo(str(R.string.completed_days, 1, 1))
-        assertTrue(textShown(str(R.string.completed_days, 1, 1)))
+        scrollMeTo(completedDays(1, 1))
+        assertTrue(textShown(completedDays(1, 1)))
     }
 
     @Test fun created_space_can_group_and_remove_a_source_without_losing_its_original_space() {
@@ -85,6 +85,8 @@ class ConceptSpacesJourneyTest : JourneyTest() {
         tap(rule.onNodeWithTag("space_create"))
         rule.onNodeWithTag("space_name").performTextInput("My two papers")
         tap(rule.onNodeWithTag("save_space"))
+        waitForTag("route_empty")                       // a new Space opens on its (empty) route; materials are one tab away
+        tap(rule.onNodeWithTag("show_materials"))
         waitForTag("add_existing")
         for (pkg in listOf("demo_attention", "demo_resnet")) {
             waitFor("ready for another attachment") { runCatching { rule.onNodeWithTag("add_existing").assertIsEnabled(); true }.getOrDefault(false) }

@@ -64,6 +64,8 @@ class Navigator(private val saved: SavedStateHandle) : ViewModel() {
         listOf("route.pkg", "route.level", "route.frame", "route.type", "route.pdf", "route.title", "route.size", "route.version", "route.resume", "route.concept", "route.source", "route.batch").forEach { saved.remove<Any>(it) }
     }
     fun selectTab(tab: HomeTab) { _tab.value = tab; saved["home.tab"] = tab.name; toHome() }
+    /** The Space a detail screen was opened from (a game started from a route step), so it can offer the way back by name. */
+    val parentSpaceId: String? get() = saved.get<String>("parent.space")
     private fun parent(): Route.Space? = saved.get<String>("parent.space")?.let { Route.Space(it, saved["parent.materials"] ?: false) }
     fun openSpace(id: String, materials: Boolean = false) {
         clearDetail()

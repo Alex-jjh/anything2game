@@ -155,6 +155,21 @@ class TutorRulesTest {
         assertNull(TutorRules.splitScripted("Recall explained in one paragraph.", names))
     }
 
+    @Test fun `a lesson opened without a diagnostic is neutral about what the reader knows and is still a scripted turn`() {
+        val q2 = q.copy(id = "q2", conceptId = "c2", concept = "Spacing")
+        val s = session(listOf(q, q2), assessment = TutorRules.unasked(listOf(q, q2))).copy(conceptPosition = 1, conceptsIntroduced = 2)
+        assertTrue(s.assessment.all { it.evidence == Understanding.NOT_ASKED })
+        // Nobody was asked, so no concept is "known": the order stays the course's own order.
+        assertEquals(listOf("q1", "q2"), TutorRules.orderedQuestions(s).map { it.id })
+        val b = bp.copy(concepts = bp.concepts + bp.concepts.single().copy(question = q2))
+        for (zh in listOf(false, true)) {
+            val lead = TutorRules.leadIn(Understanding.NOT_ASKED, zh)
+            assertTrue(Understanding.entries.filter { it != Understanding.NOT_ASKED }.none { TutorRules.leadIn(it, zh) == lead })
+            val parts = TutorRules.splitScripted(TutorRules.scriptedReply(s.copy(language = if (zh) "zh" else "en"), b, TutorIntent.START).text, s.questions.map { it.concept })!!
+            assertEquals("Spacing", parts.title); assertEquals(lead, parts.leadIn)
+        }
+    }
+
     @Test fun `focus note and duplicates are checked`() {
         TutorRules.checkFocus(listOf(Facet.METHOD), "x".repeat(MAX_FOCUS_NOTE))
         assertThrows(IllegalArgumentException::class.java) { TutorRules.checkFocus(emptyList(), "x".repeat(MAX_FOCUS_NOTE + 1)) }

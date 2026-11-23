@@ -62,11 +62,11 @@ class PlaygroundScreenshotTest {
         }
     }
 
-    private fun game(initial: GameRun, scale: Float = 1f, best: Int = 0): MutableState<GameRun> {
+    private fun game(initial: GameRun, scale: Float = 1f, best: Int = 0, backTo: String? = null): MutableState<GameRun> {
         val state = mutableStateOf(initial)
         host(scale) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 24.dp)) {
-                GameBody(state.value, PackOrigin.PRESET, false, best, onMove = { state.value = GameRuntime.apply(state.value, it) }, onRestart = {}) {}
+                GameBody(state.value, PackOrigin.PRESET, false, best, onMove = { state.value = GameRuntime.apply(state.value, it) }, onRestart = {}, backTo = backTo) {}
             }
         }
         return state
@@ -184,6 +184,12 @@ class PlaygroundScreenshotTest {
         var r = solve(GameRuntime.start(spec("exam-revision", "zh"), 7))
         r = solve(GameRuntime.apply(r, GameAction.Advance))
         game(r, best = 3); snap("p15_completed_zh")
+    }
+
+    @Test fun p20_completed_from_a_route_step_names_the_way_back_en() {
+        var r = solve(GameRuntime.start(spec("layer-fault", "en"), 7))
+        r = solve(GameRuntime.apply(r, GameAction.Advance))
+        game(r, best = 3, backTo = "Deep Residual Learning (ResNet)"); snap("p20_completed_from_route_en")
     }
 
     @Test fun p16_lost_round_en() {

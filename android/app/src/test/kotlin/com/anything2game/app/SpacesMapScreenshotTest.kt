@@ -107,6 +107,22 @@ class SpacesMapScreenshotTest {
     @Test @Config(qualifiers = "w852dp-h393dp-land-xxhdpi")
     fun landscape() { open(LocalProfile.SAMPLE, "demo_attention"); ready(); shot("s8_landscape_en") }
 
+    /** The Spaces tab as a first impression: the app's own language first, other-language Spaces with a language chip, counts that agree. */
+    private fun spacesList(profile: LocalProfile) {
+        val deps = AndroidAppContainer(app)
+        runBlocking { deps.profiles.choose(profile) }
+        val nav = Navigator(SavedStateHandle())
+        rule.setContent { A2gTheme { AppRoot(deps, nav) } }
+        rule.waitUntil(30000) { ShadowLooper.idleMainLooper(); rule.onAllNodes(hasTestTagPrefix("open_space_")).fetchSemanticsNodes().size >= 5 }
+        rule.waitForIdle()
+    }
+
+    @Test @Config(qualifiers = "w393dp-h1500dp-xxhdpi")
+    fun spaces_list_en() { spacesList(LocalProfile.SAMPLE); shot("s9_spaces_list_en") }
+
+    @Test @Config(qualifiers = "zh-w393dp-h1500dp-xxhdpi")
+    fun spaces_list_zh() { spacesList(LocalProfile.SAMPLE); shot("s10_spaces_list_zh") }
+
     private fun hasTestTagPrefix(prefix: String) = SemanticsMatcher("tag starts with $prefix") {
         it.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.TestTag)?.startsWith(prefix) == true
     }

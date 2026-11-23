@@ -5,6 +5,7 @@ import com.anything2game.app.AndroidAppContainer
 import com.anything2game.app.data.profile.LocalProfile
 import com.anything2game.app.ui.space.cleanTitle
 import com.anything2game.contract.space.ActivityRef
+import com.anything2game.engine.game.completionActivity
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
@@ -29,7 +30,8 @@ class PresetRouteTest {
             val levels = levels(pkg)
             assertEquals(pkg, levels.map { it.title }, nodes.mapNotNull { it.chapter }.distinct())
             levels.forEach { level ->
-                val chapter = nodes.filter { it.chapter == level.title }
+                // A related game, where the course has one, follows the level's practice inside the same chapter.
+                val chapter = nodes.filter { it.chapter == level.title && it.activity !is ActivityRef.Game }
                 val last = chapter.last().activity as ActivityRef.Practice
                 assertEquals(level.levelId, last.activityId)
                 assertTrue(chapter.dropLast(1).all { it.activity is ActivityRef.Tutor })
@@ -81,5 +83,44 @@ class PresetRouteTest {
         assertEquals(2, done)
         assertEquals(1, statuses.values.count { it == com.anything2game.engine.progress.NodeStatus.AVAILABLE })
         assertTrue(statuses.values.any { it == com.anything2game.engine.progress.NodeStatus.LOCKED })
+    }
+
+    @Test fun a_related_playground_game_follows_the_unit_it_relates_to() {
+        val expected = mapOf("demo_resnet" to ("layer-fault" to 0), "demo_attention" to ("gpu-budget" to 2),
+            "pkg_demo_retrieval" to ("exam-revision" to 0), "demo_zh_spaced" to ("exam-revision" to 0))
+        for ((pkg, want) in expected) {
+            val nodes = material(pkg).nodes
+            val games = nodes.filter { it.activity is ActivityRef.Game }
+            assertEquals("$pkg has exactly one game step", 1, games.size)
+            val game = games.single(); val ref = game.activity as ActivityRef.Game
+            assertTrue("$pkg: ${ref.contentId}", ref.contentId.startsWith(want.first + "-"))
+            assertEquals(levels(pkg).first().let { if (pkg == "demo_zh_spaced") "zh" else "en" }, ref.contentId.substringAfterLast('-'))
+            // Credited by the game's completion key, the one the Playground records, so finishing it there or here is the same.
+            val spec = com.anything2game.contract.game.ReviewedGames.all(ref.contentId.substringAfterLast('-')).single { it.gameId == ref.contentId }
+            assertEquals(spec.completionActivity(), ref)
+            assertEquals(spec.title, game.title)
+            // Right after the practice of the unit it relates to, in that unit's chapter, and the chain stays one line.
+            val at = nodes.indexOf(game)
+            assertEquals(levels(pkg)[want.second].title, game.chapter)
+            assertEquals(levels(pkg)[want.second].levelId, (nodes[at - 1].activity as ActivityRef.Practice).activityId)
+            assertEquals(listOf(nodes[at - 1].nodeId), game.prerequisites)
+            nodes.getOrNull(at + 1)?.let { assertEquals(listOf(game.nodeId), it.prerequisites) }
+        }
+        for (pkg in listOf("demo_mapreduce", "demo_cs231n_l1")) assertTrue("$pkg has no game that fits", material(pkg).nodes.none { it.activity is ActivityRef.Game })
+    }
+
+    @Test fun finishing_the_game_from_the_playground_credits_its_route_step_and_the_sample_map_still_opens_part_way() {
+        val progress = runBlocking {
+            deps.profiles.choose(LocalProfile.SAMPLE)
+            val material = deps.materials!!.materials().single { it.localPack?.packageId == "demo_resnet" }
+            val path = deps.spaces!!.route(deps.spaces!!.list().first { material.member in it.members }, "en", listOf(material))!!
+            val game = path.nodes.single { it.activity is ActivityRef.Game }
+            val before = deps.materials!!.nodeStatuses(path, deps.learningProgress!!, System.currentTimeMillis())
+            assertEquals("the map opens part-way: the game waits behind the half-played practice", com.anything2game.engine.progress.NodeStatus.LOCKED, before.getValue(game.nodeId))
+            assertEquals(1, before.values.count { it == com.anything2game.engine.progress.NodeStatus.AVAILABLE })
+            deps.learningProgress!!.record(game.activity, com.anything2game.contract.progress.ActivityOutcome.INDEPENDENT, System.currentTimeMillis())
+            deps.materials!!.nodeStatuses(path, deps.learningProgress!!, System.currentTimeMillis()).getValue(game.nodeId)
+        }
+        assertEquals(com.anything2game.engine.progress.NodeStatus.COMPLETE, progress)
     }
 }

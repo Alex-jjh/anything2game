@@ -14,4 +14,10 @@ Roborazzi captures from the unit-test renderer (393 × 852 dp at 3x, Robolectric
 |---|---|---|
 | <img src="t2_resnet_tall_zh.png" width="240" alt="Resnet map with a Case practice step as the current node"> | <img src="s7_font2_en.png" width="240" alt="Large text: banner and labels wrap, nodes keep their size"> | <img src="s8_landscape_en.png" width="480" alt="Landscape: the path stays centred in a 560 dp column"> |
 
+| Spaces list, English UI | Spaces list, Chinese UI |
+|---|---|
+| <img src="s9_spaces_list_en.png" width="240" alt="Cards with plural-correct counts, the app's language first"> | <img src="s10_spaces_list_zh.png" width="240" alt="Chinese Spaces first; English ones carry an English chip"> |
+
+The tabs and the progress strip are one sticky header: the strip stays in view while the map scrolls. Preset routes include one related Playground game step per Space (for example ResNet: "Which layer broke?"); finishing it from the route offers "Back to <Space>" ([p20](../playground/p20_completed_from_route_en.png)).
+
 Step titles are the course's own concept and level names. Test generators once put "(mock)" in every concept title; the map removes that suffix from old saved titles and shows a "Test content" badge on the unit instead.

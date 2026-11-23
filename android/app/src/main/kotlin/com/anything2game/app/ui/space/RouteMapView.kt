@@ -124,6 +124,8 @@ private fun StepPath(section: RouteSection, firstIndex: Int, accent: Color, onSt
     var origin by remember { mutableStateOf(Offset.Zero) }
     val density = androidx.compose.ui.platform.LocalDensity.current
     val lockedLine = skin.outline
+    // Labels wrap in full (no cut-off), and larger text makes them taller: the gap between nodes grows with the text so nothing crowds.
+    val rowGap = 26.dp + 14.dp * (density.fontScale - 1f).coerceIn(0f, 1f)
     Column(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 14.dp)
         .onGloballyPositioned { origin = it.positionInRoot() }
         .drawBehind {
@@ -142,7 +144,7 @@ private fun StepPath(section: RouteSection, firstIndex: Int, accent: Color, onSt
                     else -> drawPath(curve, lockedLine.copy(alpha = 0.45f), style = Stroke(width, cap = StrokeCap.Round, pathEffect = dash))
                 }
             }
-        }, verticalArrangement = Arrangement.spacedBy(26.dp)) {
+        }, verticalArrangement = Arrangement.spacedBy(rowGap)) {
         section.steps.forEachIndexed { i, step ->
             val wave = sin((firstIndex + i) * 0.95).toFloat()
             StepRow(step, accent, Amplitude * wave, onClick = { onStep(step) }) { centres[i] = it }
@@ -164,7 +166,7 @@ private fun StepRow(step: RouteStep, accent: Color, offset: Dp, onClick: () -> U
             StepNode(step, accent, size, avatarOnLeft = offset > (-8).dp, onClick, centre)
             Spacer(Modifier.height(Depth + 6.dp))
             Text(step.title, Modifier.widthIn(max = 176.dp).clip(RoundedCornerShape(12.dp)).background(skin.paper).padding(horizontal = 8.dp, vertical = 3.dp).testTag("route_label_${step.id}"), style = MaterialTheme.typography.labelLarge,
-                fontWeight = if (current) FontWeight.Bold else FontWeight.Medium, textAlign = TextAlign.Center, maxLines = 3, overflow = TextOverflow.Ellipsis,
+                fontWeight = if (current) FontWeight.Bold else FontWeight.Medium, textAlign = TextAlign.Center,
                 color = if (step.state == StepState.LOCKED || step.state == StepState.UPDATE) skin.inkMuted else skin.ink)
         }
     }

@@ -82,6 +82,13 @@ abstract class JourneyTest {
     @After fun closeActivity() { runCatching { scenario?.close() } }
 
     protected fun str(@StringRes id: Int, vararg args: Any): String = app.getString(id, *args)
+    protected fun plural(@androidx.annotation.PluralsRes id: Int, quantity: Int, vararg args: Any): String = app.resources.getQuantityString(id, quantity, *args)
+    /** "3 completed activities · 2 learning days" as the Me tab says it, with each noun agreeing with its own number. */
+    protected fun completedDays(activities: Int, days: Int) = str(R.string.completed_days,
+        plural(R.plurals.completed_activities, activities, activities), plural(R.plurals.learning_days, days, days))
+    /** The Spaces card line: "1 material · 3 / 12 activities complete". */
+    protected fun spacesCounts(materials: Int, done: Int, total: Int) = str(R.string.spaces_counts,
+        plural(R.plurals.spaces_material_count, materials, materials), plural(R.plurals.spaces_activities_complete, total, done, total))
 
     protected fun launch() { scenario = ActivityScenario.launch(MainActivity::class.java) }
 

@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -76,10 +77,10 @@ fun ProfileContent(
         if (state.hasError) item { TextButton(onClick = onRetry) { Text(stringResource(R.string.home_retry)) } }
         state.activityProgress?.let { progress -> item { PaperCard {
             Text(stringResource(R.string.study_record), style = MaterialTheme.typography.titleLarge)
-            Text(stringResource(R.string.completed_days, progress.completed.size, progress.days.size))
+            Text(stringResource(R.string.completed_days, pluralStringResource(R.plurals.completed_activities, progress.completed.size, progress.completed.size), pluralStringResource(R.plurals.learning_days, progress.days.size, progress.days.size)))
             if (progress.days.isNotEmpty()) Text(progress.days.sortedDescending().take(7).joinToString("  ·  "), color = skin.action)
         } } }
-        if (state.legacyUnits > 0) item { Text(stringResource(R.string.history_units, state.legacyUnits)) }
+        if (state.legacyUnits > 0) item { Text(pluralStringResource(R.plurals.history_units, state.legacyUnits, state.legacyUnits)) }
         if (!state.loading) item {
             PaperCard {
                 Text(stringResource(R.string.home_progress), style = MaterialTheme.typography.titleLarge, color = skin.ink)

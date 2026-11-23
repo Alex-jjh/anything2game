@@ -87,4 +87,10 @@ class ReviewedGamesTest {
         for (topic in listOf("orbital dynamics", "量子纠缠", "", "   ", "??", "digital twin", "an example of recursion", "default settings")) assertNull(topic, ReviewedGames.find(topic))
         assertEquals("git-bisect", ReviewedGames.find("my bugs")?.key)
     }
+
+    @Test fun `regression names the bug game only as a bug, never as statistics`() {
+        for (topic in listOf("regression bug", "a regression bug in my build", "回归缺陷")) assertEquals(topic, "git-bisect", ReviewedGames.find(topic)?.key)
+        for (topic in listOf("linear regression", "Linear Regression model", "logistic regression", "regression", "线性回归", "回归分析"))
+            assertNull(topic, ReviewedGames.find(topic))
+    }
 }

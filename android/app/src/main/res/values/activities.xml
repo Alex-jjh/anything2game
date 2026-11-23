@@ -2,8 +2,19 @@
     <string name="nav_playground">Playground</string>
     <string name="nav_spaces">Spaces</string>
     <string name="study_record">Learning record</string>
-    <string name="completed_days">%1$d completed activities · %2$d learning days</string>
-    <string name="history_units">Earlier practice history · %1$d units with unknown content version</string>
+    <string name="completed_days">%1$s · %2$s</string>
+    <plurals name="completed_activities">
+        <item quantity="one">%d completed activity</item>
+        <item quantity="other">%d completed activities</item>
+    </plurals>
+    <plurals name="learning_days">
+        <item quantity="one">%d learning day</item>
+        <item quantity="other">%d learning days</item>
+    </plurals>
+    <plurals name="history_units">
+        <item quantity="one">Earlier practice history · %d unit with unknown content version</item>
+        <item quantity="other">Earlier practice history · %d units with unknown content version</item>
+    </plurals>
     <string name="games_prompt">What would you like to explore?</string>
     <string name="games_examples">Try binary search or opportunity cost.</string>
     <string name="games_create">Create a game</string>
@@ -52,7 +63,15 @@
     <string name="spaces_route">Route</string>
     <string name="spaces_materials">Materials</string>
     <string name="spaces_next">Next · %1$s</string>
-    <string name="spaces_counts">%1$d materials · %2$d / %3$d activities complete</string>
+    <string name="spaces_counts">%1$s · %2$s</string>
+    <plurals name="spaces_material_count">
+        <item quantity="one">%d material</item>
+        <item quantity="other">%d materials</item>
+    </plurals>
+    <plurals name="spaces_activities_complete">
+        <item quantity="one">%1$d / %2$d activity complete</item>
+        <item quantity="other">%1$d / %2$d activities complete</item>
+    </plurals>
     <string name="spaces_week">Learning days this week · %1$d</string>
     <string name="spaces_empty">Add materials to start a route.</string>
     <string name="spaces_add">Add existing material</string>
@@ -105,12 +124,6 @@
     <string name="games_provider_unknown">Generated game</string>
     <string name="material_read_all">Read full source</string>
     <string name="share_space">Choose a Space for %1$s</string>
-    <string name="route_diagnostic">To reach %1$s, complete the starting assessment first.</string>
-    <string name="route_assess">Begin assessment</string>
-    <string name="route_prerequisite">You chose %1$s. The lesson sequence starts from %2$s.</string>
-    <string name="route_follow">Study %1$s</string>
-    <string name="route_revisit">Open the requested lesson, %1$s.</string>
-    <string name="route_unknown">This concept is unavailable in this document version.</string>
     <string name="games_limit">This attempt has used all its moves. Start a fresh attempt to play again.</string>
     <string name="games_save_failed">Could not save this move · %1$s</string>
     <string name="job_regenerate">Generate the whole activity again</string>

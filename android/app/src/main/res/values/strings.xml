@@ -62,7 +62,10 @@
     <string name="import_kind_pdf">PDF</string>
     <string name="import_kind_text">Text</string>
     <string name="import_size_unknown">Size unknown</string>
-    <string name="import_chars">%1$d characters</string>
+    <plurals name="import_chars">
+        <item quantity="one">%d character</item>
+        <item quantity="other">%d characters</item>
+    </plurals>
     <string name="import_cancel">Cancel</string>
     <string name="import_nothing">Nothing to import.</string>
     <string name="sim_title">Context simulator (debug)</string>

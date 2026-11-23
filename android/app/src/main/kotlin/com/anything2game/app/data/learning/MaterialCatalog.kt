@@ -90,7 +90,13 @@ class MaterialCatalog(private val content: ContentLibrary, private val tutors: T
                 val evidence = level.units.firstOrNull()?.item?.allSourceRefs?.firstOrNull()?.let { pkg.scopeEvidence(it, "e-$node") }
                 PathNode(node, level.title, ref, evidence = listOfNotNull(evidence))
             }
-            val nodes = PresetRoute.arrange(pkg, questions, tutorNodes(source, localTutorKey(pkg), questions, pkg.sources), practice)
+            val game = PresetRoute.games[pkg.packageId]?.takeIf { it.afterLevel in pkg.levels.indices }?.let { preset ->
+                ReviewedGames.catalog.firstOrNull { it.key == preset.key }?.spec(pkg.language)?.let { spec ->
+                    val ref = spec.completionActivity()
+                    preset to PathNode(nodeId(ref), spec.title, ref, minutes = 5)
+                }
+            }
+            val nodes = PresetRoute.arrange(pkg, questions, tutorNodes(source, localTutorKey(pkg), questions, pkg.sources), practice, game)
             result += Material(source, pkg.title, member, nodes, pkg.language, if (questions.isEmpty()) null else localTutorKey(pkg), pkg.sources,
                 SpaceMember.LocalPackRef(pkg.packageId, pkg.contentVersion), fixture = manifest.fixture)
         }

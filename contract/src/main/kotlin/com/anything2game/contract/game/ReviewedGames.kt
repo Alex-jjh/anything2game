@@ -37,14 +37,17 @@ object ReviewedGames {
             val score = when {
                 q == alias -> 100
                 alias.length >= 2 && mentions(q, alias) -> 50 + alias.length
-                q.length >= 3 && q in alias -> 30
-                alias.split(' ').any { it.length >= 3 && it in qTokens } -> 20
+                q.length >= 3 && q !in AMBIGUOUS && q in alias -> 30
+                alias.split(' ').any { it.length >= 3 && it !in AMBIGUOUS && it in qTokens } -> 20
                 else -> 0
             }
             if (score > bestScore) { best = entry; bestScore = score }
         }
         return best
     }
+
+    /** Words that mean something else in another field ("linear regression" is statistics, not a bug): never enough to pick a game on their own. */
+    private val AMBIGUOUS = setOf("regression")
 
     /** A Latin alias must be a whole word (or its plural): "git" is not in "digital", "exam" is not in "example". Chinese has no spaces, so it stays a substring test. */
     private fun mentions(query: String, alias: String) =
@@ -124,7 +127,7 @@ object ReviewedGames {
     // ---- information partition: four new themes --------------------------------------------------------------------------
 
     private val BISECT = ReviewedGameEntry("git-bisect", MechanicRegistry.PARTITION, "git bisect" to "git bisect 二分排错",
-        listOf("git bisect", "bisect", "debugging", "debug", "find the bug", "regression", "git", "bug", "二分排错", "调试", "排查", "回归", "提交")) { zh ->
+        listOf("git bisect", "bisect", "debugging", "debug", "find the bug", "regression bug", "git", "bug", "二分排错", "调试", "排查", "回归缺陷", "提交")) { zh ->
         fun t(en: String, cn: String) = if (zh) cn else en
         val card = card("bisect-halving", "git-bisect", "git-bisect · Git documentation", "https://git-scm.com/docs/git-bisect", "Description",
             t("git bisect runs a binary search over the commit history: given one known-good and one known-bad commit it picks a commit in between to test, and keeps narrowing the range until it reaches the first bad commit.",

@@ -24,15 +24,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import com.anything2game.app.ui.character.LocalAvatar
 import com.anything2game.app.ui.character.Mood
 import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -76,7 +77,7 @@ internal fun SpacesHome(deps: AppDependencies, language: String, padding: Paddin
         if (creating) item { NameEditor("", { creating = false }) { title ->
             creating = false
             vm.perform { val created = vm.spaces.create(title)
-                if (nav.route.value == Route.Home && nav.tab.value == com.anything2game.app.ui.home.HomeTab.SPACES && deps.profiles.active.value == profile) nav.openSpace(created.spaceId, true) }
+                if (nav.route.value == Route.Home && nav.tab.value == com.anything2game.app.ui.home.HomeTab.SPACES && deps.profiles.active.value == profile) nav.openSpace(created.spaceId) }
         } }
         item { SpaceFeedback(vm) }
         items(vm.cards, key = { it.space.spaceId }) { card ->
@@ -85,10 +86,19 @@ internal fun SpacesHome(deps: AppDependencies, language: String, padding: Paddin
                     Box(Modifier.size(48.dp).background(A2g.skin.evidenceSoft, RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
                         Icon(Icons.Outlined.Layers, null, tint = A2g.skin.evidence)
                     }
-                    Text(card.space.title, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(card.space.title, style = MaterialTheme.typography.titleLarge)
+                        // A Space in another language than the app's says so: its explanations and games are in that language.
+                        if (card.contentLanguage != null && card.contentLanguage != language.substringBefore('-').lowercase()) {
+                            val name = java.util.Locale.forLanguageTag(card.contentLanguage).let { it.getDisplayLanguage(it) }
+                            Text(name, Modifier.testTag("space_language_${card.space.spaceId}").clip(RoundedCornerShape(50)).background(A2g.skin.evidenceSoft)
+                                .padding(horizontal = 10.dp, vertical = 2.dp), style = MaterialTheme.typography.labelMedium, color = A2g.skin.evidence)
+                        }
+                    }
                 }
                 val count = card.path?.nodes?.size ?: 0
-                Text(stringResource(R.string.spaces_counts, card.space.members.size, card.completed, count))
+                Text(stringResource(R.string.spaces_counts, pluralStringResource(R.plurals.spaces_material_count, card.space.members.size, card.space.members.size),
+                    pluralStringResource(R.plurals.spaces_activities_complete, count, card.completed, count)), Modifier.testTag("space_counts_${card.space.spaceId}"))
                 LinearProgressIndicator(progress = { if (count == 0) 0f else card.completed.toFloat()/count }, modifier = Modifier.fillMaxWidth())
                 card.next?.let { Text(stringResource(R.string.spaces_next, it.title), color = A2g.skin.inkMuted) }
                 OutlinedButton({ nav.openSpace(card.space.spaceId) }, Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("open_space_${card.space.spaceId}")) {
@@ -100,8 +110,8 @@ internal fun SpacesHome(deps: AppDependencies, language: String, padding: Paddin
     }
 }
 
-/** Items above the first unit on the route tab: back row, title, tabs, feedback, progress strip, generation panel. */
-private const val ROUTE_HEADER_ITEMS = 6
+/** Items above the first unit on the route tab: back row, title, tabs with the progress strip (sticky), feedback, generation panel. */
+private const val ROUTE_HEADER_ITEMS = 5
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -135,11 +145,13 @@ internal fun SpaceScreen(deps: AppDependencies, language: String, route: Route.S
     // Like a course map, open where the learner is: at the unit of the next step, once per visit.
     var positioned by rememberSaveable(route.id) { mutableStateOf(false) }
     val density = androidx.compose.ui.platform.LocalDensity.current
-    LaunchedEffect(map != null, route.materials) {
-        if (map != null && !route.materials && !positioned) {
+    // The sticky header (tabs and progress) covers the top of the list; the unit is placed just below it.
+    var headerPx by remember { mutableIntStateOf(0) }
+    LaunchedEffect(map != null, route.materials, headerPx > 0) {
+        if (map != null && !route.materials && !positioned && headerPx > 0) {
             positioned = true
             val unit = map.sections.indexOfFirst { s -> s.steps.any { it.state == StepState.CURRENT } }
-            if (unit > 0) routeList.requestScrollToItem(ROUTE_HEADER_ITEMS + unit, -with(density) { 60.dp.roundToPx() })
+            if (unit > 0) routeList.requestScrollToItem(ROUTE_HEADER_ITEMS + unit, -(headerPx + with(density) { 12.dp.roundToPx() }))
         }
     }
     BackHandler { if (rename) rename = false else if (selectedStep != null) selectedStep = null else nav.back() }
@@ -179,10 +191,14 @@ internal fun SpaceScreen(deps: AppDependencies, language: String, route: Route.S
                         rename = false
                         vm.perform { vm.spaces.rename(route.id, name) }
                     } }
-                    // The tabs stay in reach while the map scrolls; the map opens at the learner's unit.
-                    stickyHeader { Row(Modifier.fillMaxWidth().background(A2g.skin.paper).padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(!route.materials, { nav.openSpace(route.id) }, { Text(stringResource(R.string.spaces_route)) }, Modifier.heightIn(min = 48.dp).testTag("show_route"))
-                        FilterChip(route.materials, { nav.openSpace(route.id, true) }, { Text(stringResource(R.string.spaces_materials)) }, Modifier.heightIn(min = 48.dp).testTag("show_materials"))
+                    // The tabs and the progress strip stay in reach while the map scrolls; the map opens at the learner's unit.
+                    stickyHeader { Column(Modifier.fillMaxWidth().background(A2g.skin.paper).onSizeChanged { headerPx = it.height }.padding(vertical = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilterChip(!route.materials, { nav.openSpace(route.id) }, { Text(stringResource(R.string.spaces_route)) }, Modifier.heightIn(min = 48.dp).testTag("show_route"))
+                            FilterChip(route.materials, { nav.openSpace(route.id, true) }, { Text(stringResource(R.string.spaces_materials)) }, Modifier.heightIn(min = 48.dp).testTag("show_materials"))
+                        }
+                        if (!route.materials && map != null) ProgressStrip(map, card.space.members.size, vm.weekDays)
                     } }
                 }
                 item { SpaceFeedback(vm) }
@@ -191,7 +207,6 @@ internal fun SpaceScreen(deps: AppDependencies, language: String, route: Route.S
                     if (map == null) item { EmptyRoute(card.space.members.isEmpty(), { nav.openSpace(route.id, true) }) {
                         RouteGenerator(vm, card.space, route.id, generate, { generate = it }, primary = true) } }
                     else {
-                        item { ProgressStrip(map, card.space.members.size, vm.weekDays) }
                         // Generation progress and its retry belong where the learner is looking; the button itself stays quiet.
                         item { RouteGenerator(vm, card.space, route.id, generate, { generate = it }, primary = false) }
                         var index = 0
@@ -276,23 +291,22 @@ private fun ProgressStrip(map: RouteMap, materials: Int, days: Int) {
     val skin = A2g.skin
     val fraction = if (map.total == 0) 0f else map.done.toFloat() / map.total
     val description = stringResource(R.string.route_progress_description, map.done, map.total)
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(skin.card).border(1.dp, skin.outline.copy(alpha = 0.25f), RoundedCornerShape(18.dp)).padding(14.dp)
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(skin.card).border(1.dp, skin.outline.copy(alpha = 0.25f), RoundedCornerShape(18.dp)).padding(horizontal = 12.dp, vertical = 8.dp)
         .semantics(mergeDescendants = true) { contentDescription = description }.testTag("route_progress"),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        Box(Modifier.size(56.dp), contentAlignment = Alignment.Center) {
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
             Canvas(Modifier.fillMaxSize()) {
-                val stroke = 8.dp.toPx()
+                val stroke = 6.dp.toPx()
                 val inset = stroke / 2
                 val arc = androidx.compose.ui.geometry.Size(size.width - stroke, size.height - stroke)
                 drawArc(skin.outline.copy(alpha = 0.2f), 0f, 360f, false, Offset(inset, inset), arc, style = Stroke(stroke))
                 if (fraction > 0f) drawArc(skin.correct, -90f, 360f * fraction, false, Offset(inset, inset), arc, style = Stroke(stroke, cap = StrokeCap.Round))
             }
-            Icon(if (map.current == null && map.total > 0) Icons.Filled.EmojiEvents else Icons.Filled.Flag, null, Modifier.size(24.dp), tint = skin.correct)
+            Icon(if (map.current == null && map.total > 0) Icons.Filled.EmojiEvents else Icons.Filled.Flag, null, Modifier.size(20.dp), tint = skin.correct)
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(stringResource(R.string.route_progress_done, map.done, map.total), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.testTag("route_progress_text"))
-            Text(stringResource(R.string.route_materials_count, materials), style = MaterialTheme.typography.bodySmall, color = skin.inkMuted)
-            Text(stringResource(R.string.spaces_week, days), style = MaterialTheme.typography.bodySmall, color = skin.inkMuted)
+            Text(stringResource(R.string.route_materials_count, materials) + " · " + stringResource(R.string.spaces_week, days), style = MaterialTheme.typography.bodySmall, color = skin.inkMuted)
         }
     }
 }
@@ -316,7 +330,7 @@ private fun StepSheet(step: RouteStep, accent: Color, resumable: Boolean, enable
             IconButton(onDismiss, Modifier.testTag("route_sheet_close")) { Icon(Icons.Filled.Close, stringResource(R.string.route_close)) }
         }
         step.source?.let { source ->
-            AssistChip(onSource, { Text(stringResource(R.string.spaces_source_page, source.material ?: source.evidence.documentId, source.page), maxLines = 2, overflow = TextOverflow.Ellipsis) },
+            AssistChip(onSource, { Text(stringResource(R.string.spaces_source_page, source.material ?: source.evidence.documentId, source.page)) },
                 Modifier.heightIn(min = 48.dp).testTag("route_sheet_source"), leadingIcon = { Icon(Icons.Filled.Description, null, Modifier.size(18.dp)) })
         }
         Button(onStart, Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("open_node_${step.id}"), enabled = enabled,

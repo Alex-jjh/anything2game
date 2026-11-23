@@ -62,7 +62,9 @@
     <string name="import_kind_pdf">PDF</string>
     <string name="import_kind_text">文字</string>
     <string name="import_size_unknown">大小未知</string>
-    <string name="import_chars">%1$d 个字符</string>
+    <plurals name="import_chars">
+        <item quantity="other">%d 个字符</item>
+    </plurals>
     <string name="import_cancel">取消</string>
     <string name="import_nothing">没有可导入的内容。</string>
     <string name="sim_title">情境模拟（调试）</string>

@@ -47,9 +47,9 @@ class HomeFlowTest : LearnJourneyBase() {
         java.io.File(directory, "demo_attention.json").writeText(com.anything2game.engine.session.SessionCodec.encodeMastery(listOf(record)))
         // Existing installations with history reopen as their guest profile.
         launch(); waitForTag("tab_PROFILE"); openMe()
-        scrollMeTo(str(R.string.history_units, 1))
-        assertTrue(textShown(str(R.string.history_units, 1)))
-        scrollMeTo(str(R.string.completed_days, 0, 0))
-        assertTrue(textShown(str(R.string.completed_days, 0, 0)))
+        scrollMeTo(plural(R.plurals.history_units, 1, 1))
+        assertTrue(textShown(plural(R.plurals.history_units, 1, 1)))
+        scrollMeTo(completedDays(0, 0))
+        assertTrue(textShown(completedDays(0, 0)))
     }
 }

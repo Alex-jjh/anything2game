@@ -68,12 +68,47 @@ class TutorViewModel(private val repository: TutorRepository, private val id: St
         // A move the rules refuse (a concept not introduced yet) is not a request to send.
         val session0 = mutable.value.cache?.session ?: return
         if (runCatching { TutorRules.positionAfter(session0, intent, targetPosition) }.isFailure) return
-        execute { c, requestId ->
-            val session = repository.turn(c, intent, question.trim(), requestId, targetPosition)
-            val reply = session.messages.lastOrNull { it.role == "tutor" }
-            val presentation = reply?.takeIf { it.id != c.session.messages.lastOrNull { m -> m.role == "tutor" }?.id }
-                ?.let { TutorReplyPresentation(it.id, intent) } ?: c.lastReply
-            c.copy(session = session, lastReply = presentation)
+        execute { c, requestId -> turned(c, intent, question.trim(), requestId, targetPosition) }
+    }
+    private suspend fun turned(c: TutorCache, intent: TutorIntent, question: String, requestId: String, targetPosition: Int?): TutorCache {
+        val session = repository.turn(c, intent, question, requestId, targetPosition)
+        val reply = session.messages.lastOrNull { it.role == "tutor" }
+        val presentation = reply?.takeIf { it.id != c.session.messages.lastOrNull { m -> m.role == "tutor" }?.id }
+            ?.let { TutorReplyPresentation(it.id, intent) } ?: c.lastReply
+        return c.copy(session = session, lastReply = presentation)
+    }
+
+    /**
+     * A route step names a concept and the reader goes straight to it: no starting assessment and no focus question (nobody was
+     * asked, so nothing is claimed about what they know). Concepts before it stay reachable in the concept list. A walk that is
+     * already at the concept is left alone; one that has been there goes back to it.
+     * A server session cannot jump forward past what it has introduced, so it opens where its own walk is.
+     */
+    fun openAt(conceptId: String) {
+        val c = mutable.value.cache ?: return
+        if (c.session.questions.none { it.conceptId == conceptId }) return
+        val s = c.session
+        // Already teaching that very concept: nothing to ask, send or save.
+        if (s.assessment.isNotEmpty() && s.messages.any { it.role == "tutor" } && TutorRules.orderedQuestions(s)[s.conceptPosition].conceptId == conceptId) return
+        execute { old, requestId ->
+            var cache = old
+            val scripted = cache.session.mode == "local-mock"
+            if (cache.session.assessment.isEmpty()) {
+                val unknown = cache.copy(draftAnswers = cache.session.questions.associate { it.id to UNKNOWN_ANSWER })
+                val assessed = repository.assess(unknown, "$requestId-open")
+                cache = unknown.copy(session = if (scripted) assessed.copy(assessment = TutorRules.unasked(assessed.questions)) else assessed)
+            }
+            val session = cache.session
+            val target = TutorRules.orderedQuestions(session).indexOfFirst { it.conceptId == conceptId }
+            val teaching = session.messages.any { it.role == "tutor" }
+            when {
+                teaching && target == session.conceptPosition -> cache
+                teaching && target < TutorRules.introduced(session) -> turned(cache, TutorIntent.REVISIT, "", requestId, target)
+                scripted -> turned(cache.copy(session = session.copy(conceptPosition = target,
+                    conceptsIntroduced = maxOf(TutorRules.introduced(session), target + 1))), TutorIntent.START, "", requestId, null)
+                teaching -> cache
+                else -> turned(cache, TutorIntent.START, "", requestId, null)
+            }
         }
     }
     fun retry() {

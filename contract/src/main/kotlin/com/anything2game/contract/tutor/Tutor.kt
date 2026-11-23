@@ -64,7 +64,11 @@ const val SPEAKER_PLAYER = "player"
         return this
     }
 }
-@Serializable enum class Understanding { DEMONSTRATED, NEEDS_CLARIFICATION, NOT_YET_ASSESSED }
+@Serializable enum class Understanding {
+    DEMONSTRATED, NEEDS_CLARIFICATION, NOT_YET_ASSESSED,
+    /** The reader was never asked: a lesson opened from a route step skips the diagnostic. */
+    NOT_ASKED,
+}
 @Serializable data class ConceptAssessment(val questionId: String, val conceptId: String, val evidence: Understanding)
 @Serializable enum class TutorIntent {
     START, REPHRASE, EXAMPLE, CONTINUE, QUESTION,
@@ -149,6 +153,9 @@ object TutorRules {
         }
     }
 
+    /** The assessment of a session that skipped the diagnostic: nobody was asked, so nothing is claimed. */
+    fun unasked(questions: List<TutorQuestion>): List<ConceptAssessment> = questions.map { ConceptAssessment(it.id, it.conceptId, Understanding.NOT_ASKED) }
+
     /** Chosen facets first, everything else after (stable; nothing is dropped). No focus, or no facets on the questions: unchanged. */
     fun orderByFocus(questions: List<TutorQuestion>, focus: List<Facet>): List<TutorQuestion> = questions.sortedBy { focusRank(it, focus) }
 
@@ -204,10 +211,12 @@ object TutorRules {
         Understanding.DEMONSTRATED -> "这题你答对了，我们把它和原文连起来："
         Understanding.NEEDS_CLARIFICATION -> "这题有个地方容易混，我们先把它分清："
         Understanding.NOT_YET_ASSESSED -> "你选了不知道，那就从这里开始："
+        Understanding.NOT_ASKED -> "我们来看这个概念："
     } else when (evidence) {
         Understanding.DEMONSTRATED -> "You got this one right. Here is how it fits the reading:"
         Understanding.NEEDS_CLARIFICATION -> "Your answer mixed something up, so let's clear that first:"
         Understanding.NOT_YET_ASSESSED -> "You weren't sure, so let's start here:"
+        Understanding.NOT_ASKED -> "Let's look at this one:"
     }
 
     private val knownLeadIns: Set<String> = listOf(false, true).flatMap { zh -> Understanding.entries.map { leadIn(it, zh) } }.toSet()

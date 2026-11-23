@@ -121,8 +121,8 @@ internal fun WrapUp(
                             }
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(q.concept, style = MaterialTheme.typography.titleSmall, color = skin.ink, fontWeight = FontWeight.SemiBold)
-                                if (evidence != null) Badge(stringResource(R.string.wrapup_start, stringResource(when (evidence) {
-                                    Understanding.DEMONSTRATED -> R.string.tutor_correct; Understanding.NEEDS_CLARIFICATION -> R.string.tutor_clarify; Understanding.NOT_YET_ASSESSED -> R.string.tutor_not_assessed
+                                if (evidence != null && evidence != Understanding.NOT_ASKED) Badge(stringResource(R.string.wrapup_start, stringResource(when (evidence) {
+                                    Understanding.DEMONSTRATED -> R.string.tutor_correct; Understanding.NEEDS_CLARIFICATION -> R.string.tutor_clarify; Understanding.NOT_YET_ASSESSED, Understanding.NOT_ASKED -> R.string.tutor_not_assessed
                                 })), skin.action, skin.evidenceSoft)
                             }
                             if (page != null) TextButton(onClick = { onSource(q.sourceRefs) }, modifier = Modifier.heightIn(min = 48.dp).testTag("wrapup_source")) {

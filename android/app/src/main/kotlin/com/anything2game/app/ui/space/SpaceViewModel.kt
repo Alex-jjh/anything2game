@@ -19,7 +19,8 @@ import java.time.LocalDate
 import java.time.DayOfWeek
 import java.time.temporal.TemporalAdjusters
 
-internal data class SpaceCard(val space: Space, val path: LearningPath?, val status: Map<String, NodeStatus>) {
+/** [contentLanguage] is the language of the Space's materials ("en", "zh"), or null when they do not say. */
+internal data class SpaceCard(val space: Space, val path: LearningPath?, val status: Map<String, NodeStatus>, val contentLanguage: String? = null) {
     val next get() = path?.nodes?.firstOrNull { status[it.nodeId] == NodeStatus.AVAILABLE }
         ?: path?.nodes?.firstOrNull { status[it.nodeId] == NodeStatus.REVIEW }
     val completed get() = status.values.count { it == NodeStatus.COMPLETE || it == NodeStatus.REVIEW }
@@ -59,8 +60,12 @@ internal class SpaceViewModel(deps: AppDependencies, private val language: Strin
         val now = clock.now()
         cards = all.filter { detail == null || it.spaceId == detail }.map { space ->
             val path = spaces.route(space, language, inventory.materials)
-            SpaceCard(space, path, path?.let { inventory.statuses(it, progress.profileId, projection, now) }.orEmpty())
-        }
+            val own = inventory.materials.filter { it.member in space.members || it.localPack?.let(space.members::contains) == true }
+            SpaceCard(space, path, path?.let { inventory.statuses(it, progress.profileId, projection, now) }.orEmpty(),
+                own.map { it.language.substringBefore('-').lowercase() }.filter { it.isNotBlank() }.groupingBy { it }.eachCount().maxByOrNull { it.value }?.key)
+        }.let { list -> if (detail != null) list else
+            // First impression: Spaces in the reader's own language first; stable, so the saved order holds within each group.
+            list.sortedBy { it.contentLanguage != null && it.contentLanguage != language.substringBefore('-').lowercase() } }
         if (detail != null) {
             remote = spaces.serverState(detail)
             rejected = spaces.rejectedEdits(detail)
@@ -105,7 +110,7 @@ internal class SpaceViewModel(deps: AppDependencies, private val language: Strin
         return materials.firstOrNull { m -> when (activity) {
             is ActivityRef.Tutor -> activity.sessionId != null && m.tutorKey == activity.sessionId
             is ActivityRef.Practice -> m.localPack?.version() == ContentVersion(activity.contentId, activity.contentVersion)
-            is ActivityRef.Game -> false
+            is ActivityRef.Game -> m.nodes.any { it.nodeId == node.nodeId }
         } } ?: node.evidence.filterIsInstance<EvidenceRef.Pdf>().firstOrNull()?.let { ref -> materials.firstOrNull { it.source == ContentVersion(ref.documentId, ref.documentVersion) } }
     }
     fun materialInfo(node: PathNode): MaterialInfo? = materialOf(node)?.let { MaterialInfo(it.title, it.fixture) }
