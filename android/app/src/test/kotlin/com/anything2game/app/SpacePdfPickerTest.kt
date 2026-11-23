@@ -14,7 +14,6 @@ import com.anything2game.app.data.profile.LocalProfile
 import com.anything2game.app.ui.AppRoot
 import com.anything2game.app.ui.Navigator
 import com.anything2game.app.ui.theme.A2gTheme
-import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -35,7 +34,7 @@ class SpacePdfPickerTest {
 
     @Test fun two_selected_files_wait_for_confirmation_and_report_their_own_errors() {
         val deps = AndroidAppContainer(RuntimeEnvironment.getApplication())
-        val id = runBlocking { deps.profiles.choose(LocalProfile.GUEST); deps.spaces.create("Imports").spaceId }
+        val id = awaitIo { deps.profiles.choose(LocalProfile.GUEST); deps.spaces.create("Imports").spaceId }
         val nav = Navigator(SavedStateHandle()).apply { openSpace(id, true) }
         val uris = listOf("first.pdf", "second.pdf").map { Uri.fromFile(files.newFile(it).apply { writeText("Not a PDF") }) }
         val picker = object : ActivityResultRegistryOwner {
@@ -55,15 +54,15 @@ class SpacePdfPickerTest {
         ready("pick_pdfs")
         rule.onNodeWithTag("pick_pdfs").performClick()
         ready("confirm_pdfs")
-        assertTrue(runBlocking { deps.pdfImports.list().isEmpty() })
+        assertTrue(awaitIo { deps.pdfImports.list().isEmpty() })
         rule.onNodeWithText("first.pdf").assertExists()
         rule.onNodeWithText("second.pdf").assertExists()
         rule.onNodeWithTag("confirm_pdfs").performClick()
         rule.waitUntil(20000) {
             ShadowLooper.idleMainLooper()
-            runBlocking { deps.pdfImports.list().count { it.error != null } == 2 }
+            awaitIo { deps.pdfImports.list().count { it.error != null } == 2 }
         }
-        val rows = runBlocking { deps.pdfImports.list() }
+        val rows = awaitIo { deps.pdfImports.list() }
         assertEquals(setOf("first.pdf", "second.pdf"), rows.map { it.title }.toSet())
         assertTrue(rows.all { it.spaceId == id && it.sessionId == null })
         for (row in rows) {
@@ -76,12 +75,12 @@ class SpacePdfPickerTest {
             assertTrue(rule.onAllNodes(hasText("PDF", substring = true) and hasText("choose", substring = true, ignoreCase = true))
                 .fetchSemanticsNodes().isNotEmpty())
         }
-        assertTrue(runBlocking { deps.spaces.list().first { it.spaceId == id }.members.isEmpty() })
+        assertTrue(awaitIo { deps.spaces.list().first { it.spaceId == id }.members.isEmpty() })
     }
 
     @Test fun ambiguous_upload_needs_a_separate_confirmation_before_another_copy_can_be_sent() {
         val base = AndroidAppContainer(RuntimeEnvironment.getApplication())
-        val id = runBlocking { base.profiles.choose(LocalProfile.GUEST); base.spaces.create("One PDF").spaceId }
+        val id = awaitIo { base.profiles.choose(LocalProfile.GUEST); base.spaces.create("One PDF").spaceId }
         val attempts = java.util.concurrent.atomic.AtomicInteger()
         val tutor = object : com.anything2game.app.data.tutor.TutorRepository by base.tutors {
             override suspend fun upload(request: com.anything2game.app.importing.ImportRequest): com.anything2game.contract.DocumentResponse {
@@ -90,7 +89,7 @@ class SpacePdfPickerTest {
             }
         }
         val queue = com.anything2game.app.data.learning.PdfImportQueue(files.newFolder(), { "%PDF-first".toByteArray() }, tutor, base.spaces)
-        val row = runBlocking {
+        val row = awaitIo {
             val request = com.anything2game.app.importing.ImportRequest.PdfFile("unknown.pdf", Uri.parse("content://pdf/unknown"), null)
             queue.process(queue.enqueue(id, listOf(request)).single().id)
         }
@@ -108,6 +107,6 @@ class SpacePdfPickerTest {
         assertEquals(1, attempts.get())
         rule.onNode(hasText(again) and hasAnyAncestor(isDialog())).performClick()
         rule.waitUntil(20000) { ShadowLooper.idleMainLooper(); attempts.get() == 2 }
-        assertEquals(row.id, runBlocking { queue.list().single().id })
+        assertEquals(row.id, awaitIo { queue.list().single().id })
     }
 }

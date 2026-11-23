@@ -50,7 +50,7 @@ import com.anything2game.engine.session.LevelSession
 import com.anything2game.engine.session.Phase
 import com.anything2game.engine.session.SessionState
 import com.anything2game.engine.session.SlotKind
-import kotlinx.coroutines.runBlocking
+import com.anything2game.app.awaitIo
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -155,7 +155,7 @@ abstract class JourneyTest {
     protected fun openMaterial(courseTitle: String) {
         if (exists(hasTestTag("space_materials")) && openCourse == courseTitle) return
         openPractice()
-        val id = runBlocking { requireNotNull(deps.spaces).list().first { it.title == courseTitle }.spaceId }
+        val id = awaitIo { requireNotNull(deps.spaces).list().first { it.title == courseTitle }.spaceId }
         val tag = "open_space_$id"
         waitFor("Space for $courseTitle") { runCatching { rule.onNodeWithTag("home_SPACES").performScrollToNode(hasTestTag(tag)); true }.getOrDefault(false) }
         tap(rule.onNodeWithTag(tag))
@@ -206,7 +206,7 @@ abstract class JourneyTest {
     protected fun scrollMeTo(text: String) = scrollListTo("home_PROFILE", text)
 
     /** The button of one level in Practice: the first "Start practice" / "Continue your session" below the level's title. */
-    private fun levelTag(courseTitle: String, levelTitle: String): String = runBlocking {
+    private fun levelTag(courseTitle: String, levelTitle: String): String = awaitIo {
         val summary = deps.packages.list().single { it.title == courseTitle }
         val level = deps.packages.load(summary.packageId).getOrThrow().levels.single { it.title == levelTitle }
         "${summary.packageId}_${level.levelId}"
@@ -264,13 +264,13 @@ abstract class JourneyTest {
 
     /** One level of one course in one frame, played with real gestures; progress is read back from the session file. */
     protected inner class Level(val packageId: String, val frame: FrameId) {
-        val pkg: LearningPackage = runBlocking { deps.packages.load(packageId).getOrThrow() }
-        val overlay = runBlocking { deps.frames.load(packageId, frame) }
+        val pkg: LearningPackage = awaitIo { deps.packages.load(packageId).getOrThrow() }
+        val overlay = awaitIo { deps.frames.load(packageId, frame) }
         val engine = LevelSession(pkg, deps.grading, deps.masteryPolicy, deps.clock, frame = Frames.of(frame), overlay = overlay)
 
         init { activeLevel = this }
-        fun session(): SessionState? = runBlocking { deps.sessions.load(packageId) }
-        fun mastery(): Map<String, MasteryRecord> = runBlocking { deps.mastery.all(packageId) }
+        fun session(): SessionState? = awaitIo { deps.sessions.load(packageId) }
+        fun mastery(): Map<String, MasteryRecord> = awaitIo { deps.mastery.all(packageId) }
         fun item(s: SessionState): Item? = engine.item(s)
 
         /** The same step the student is looking at now. */

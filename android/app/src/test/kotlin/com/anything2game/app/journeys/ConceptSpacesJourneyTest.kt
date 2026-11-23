@@ -31,7 +31,7 @@ class ConceptSpacesJourneyTest : JourneyTest() {
         scenario!!.recreate()
         // Hold the real durable-store lock to exercise the interval between a tap and its committed checkpoint.
         val ledger = java.io.File(app.filesDir, "learning.json").mutex()
-        kotlinx.coroutines.runBlocking { ledger.lock() }
+        com.anything2game.app.awaitIo { ledger.lock() }
         try {
             tap(rule.onNodeWithTag("split_submit"))
             rule.onNode(hasText(str(R.string.action_back)) and hasClickAction()).assertIsNotEnabled()
@@ -66,7 +66,7 @@ class ConceptSpacesJourneyTest : JourneyTest() {
         waitForText("0 tokens left")
         tap(rule.onNodeWithTag("allocation_submit"))
         waitForTag("game_advance")
-        assertTrue(kotlinx.coroutines.runBlocking { deps.learningProgress!!.projection().days.isEmpty() })
+        assertTrue(com.anything2game.app.awaitIo { deps.learningProgress!!.projection().days.isEmpty() })
         tap(rule.onNodeWithTag("game_advance"))
         waitForText(str(R.string.games_transfer))
         waitForText("4 tokens left")
@@ -91,12 +91,12 @@ class ConceptSpacesJourneyTest : JourneyTest() {
             tap(rule.onNodeWithTag("add_existing"))
             val title = Level(pkg, com.anything2game.contract.FrameId.CLASSIC).pkg.title
             tap(rule.onNode(hasText(title) and hasClickAction()))
-            waitFor("membership saved") { kotlinx.coroutines.runBlocking { deps.spaces!!.list().first { it.title == "My two papers" }.members.any { it.version().contentId == pkg } } }
+            waitFor("membership saved") { com.anything2game.app.awaitIo { deps.spaces!!.list().first { it.title == "My two papers" }.members.any { it.version().contentId == pkg } } }
         }
         scenario!!.recreate()
         waitForTag("space_materials")
         tap(rule.onNodeWithTag("show_route"))
-        waitForText(str(R.string.spaces_counts, 2, 0, kotlinx.coroutines.runBlocking {
+        waitForText(str(R.string.spaces_counts, 2, 0, com.anything2game.app.awaitIo {
             val space = deps.spaces!!.list().first { it.title == "My two papers" }
             deps.spaces!!.route(space.spaceId, "en")!!.nodes.size
         }))
@@ -105,7 +105,7 @@ class ConceptSpacesJourneyTest : JourneyTest() {
         val remove = rule.onAllNodes(hasText(str(R.string.spaces_remove)) and hasClickAction())[0]
         waitFor("remove available") { runCatching { remove.assertIsEnabled(); true }.getOrDefault(false) }
         tap(remove)
-        waitFor("one remaining member") { kotlinx.coroutines.runBlocking { deps.spaces!!.list().first { it.title == "My two papers" }.members.size == 1 } }
+        waitFor("one remaining member") { com.anything2game.app.awaitIo { deps.spaces!!.list().first { it.title == "My two papers" }.members.size == 1 } }
         systemBack()
         openMaterial(Level("demo_attention", com.anything2game.contract.FrameId.CLASSIC).pkg.title)
         rule.onNodeWithTag("space_materials").performScrollToNode(hasTestTag("start_explanation_demo_attention"))

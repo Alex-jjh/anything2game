@@ -23,7 +23,7 @@ import com.anything2game.contract.tutor.TutorRules
 import com.anything2game.contract.tutor.TutorScript
 import com.anything2game.contract.tutor.UNKNOWN_ANSWER
 import com.anything2game.contract.tutor.Understanding
-import kotlinx.coroutines.runBlocking
+import com.anything2game.app.awaitIo
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 
@@ -37,12 +37,12 @@ abstract class LearnJourneyBase : JourneyTest() {
     protected val zhSpaced = "demo_zh_spaced"
     protected val retrieval = "pkg_demo_retrieval"
 
-    protected fun script(pkgId: String): TutorScript = runBlocking { deps.tutorScripts.scriptFor(pkgId)!! }
+    protected fun script(pkgId: String): TutorScript = awaitIo { deps.tutorScripts.scriptFor(pkgId)!! }
     protected fun concept(pkgId: String, questionId: String): TutorConcept = script(pkgId).blueprint.concepts.first { it.question.id == questionId }
-    protected fun title(pkgId: String): String = runBlocking { deps.packages.load(pkgId).getOrThrow().title }
-    protected fun cache(pkgId: String): TutorCache = runBlocking { deps.tutors.open(pkgId) }.cache
+    protected fun title(pkgId: String): String = awaitIo { deps.packages.load(pkgId).getOrThrow().title }
+    protected fun cache(pkgId: String): TutorCache = awaitIo { deps.tutors.open(pkgId) }.cache
     protected fun pageLabelOf(pkgId: String, chunkId: String): String =
-        runBlocking { deps.packages.load(pkgId).getOrThrow().sources.first { it.chunkId == chunkId } }.let { it.pageLabel ?: (it.pageIndex + 1).toString() }
+        awaitIo { deps.packages.load(pkgId).getOrThrow().sources.first { it.chunkId == chunkId } }.let { it.pageLabel ?: (it.pageIndex + 1).toString() }
 
     // ---- reading what is on screen ----------------------------------------------------------------------
 
@@ -221,8 +221,8 @@ abstract class LearnJourneyBase : JourneyTest() {
     protected fun latinLeaks(pkgId: String): List<String> {
         val s = script(pkgId).blueprint.concepts
         val content = (s.flatMap { c -> listOf(c.explanation, c.simpler, c.example, c.question.prompt, c.question.concept) + c.question.options.map { it.text } } +
-            runBlocking { deps.packages.load(pkgId).getOrThrow().sources.map { it.text } } + title(pkgId) +
-            runBlocking { deps.packages.list().map { it.title } }).joinToString(" ")   // the shelf lists every course by its own (maybe English) title
+            awaitIo { deps.packages.load(pkgId).getOrThrow().sources.map { it.text } } + title(pkgId) +
+            awaitIo { deps.packages.list().map { it.title } }).joinToString(" ")   // the shelf lists every course by its own (maybe English) title
         return everythingShown().flatMap { t -> Regex("[A-Za-z]{3,}").findAll(t).map { it.value }.toList() }.filter { it != "PDF" && it !in content }.distinct()
     }
 

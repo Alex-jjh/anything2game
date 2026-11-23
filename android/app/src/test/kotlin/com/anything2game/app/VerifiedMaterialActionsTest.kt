@@ -10,7 +10,6 @@ import com.anything2game.app.ui.*
 import com.anything2game.app.ui.theme.A2gTheme
 import com.anything2game.contract.pack.*
 import com.anything2game.contract.space.SpaceMember
-import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -33,7 +32,7 @@ class VerifiedMaterialActionsTest {
     @Test fun a_missing_restored_space_offers_retry_and_a_return_to_spaces() {
         val app = RuntimeEnvironment.getApplication()
         val deps = AndroidAppContainer(app)
-        runBlocking { deps.profiles.choose(LocalProfile.GUEST) }
+        awaitIo { deps.profiles.choose(LocalProfile.GUEST) }
         val nav = Navigator(SavedStateHandle()).apply { openSpace("missing") }
         rule.setContent { A2gTheme { AppRoot(deps, nav) } }
         fun waitUntilUnavailable() = rule.waitUntil(15000) {
@@ -50,10 +49,10 @@ class VerifiedMaterialActionsTest {
     @Test fun an_unreadable_space_store_keeps_the_load_error_and_can_recover_on_retry() {
         val app = RuntimeEnvironment.getApplication()
         val base = AndroidAppContainer(app)
-        runBlocking { base.profiles.choose(LocalProfile.GUEST) }
+        awaitIo { base.profiles.choose(LocalProfile.GUEST) }
         val store = File(tmp.root, "space-store")
         val spaces = SpaceRepository(store, base.materials::materials)
-        val valid = runBlocking { spaces.create("Seminar") }
+        val valid = awaitIo { spaces.create("Seminar") }
         val workingCopy = store.readBytes()
         store.writeText("broken")
         val deps = object : AppDependencies by base { override val spaces = spaces }
@@ -75,14 +74,14 @@ class VerifiedMaterialActionsTest {
 
     @Test fun one_verified_document_offers_its_uploaded_tutor_and_compiled_practice_without_the_unrelated_sideload() {
         val base = AndroidAppContainer(RuntimeEnvironment.getApplication())
-        runBlocking { base.profiles.choose(LocalProfile.GUEST) }
+        awaitIo { base.profiles.choose(LocalProfile.GUEST) }
         val catalog = MaterialCatalog(base.content, base.tutors, authenticated = { it.pkg.packageId == "owned-course" })
         val spaces = SpaceRepository(File(tmp.root, "spaces"), catalog::materials)
         val deps = object : AppDependencies by base {
             override val materials = catalog
             override val spaces = spaces
         }
-        val space = runBlocking {
+        val space = awaitIo {
             val pkg = base.packages.load(EXAMPLE_TUTOR_PACKAGE).getOrThrow()
             val session = base.tutors.open(pkg.packageId).cache.session.copy(sessionId = "tut_verified", mode = "mock")
             base.tutors.save(TutorCache(session))
@@ -106,7 +105,7 @@ class VerifiedMaterialActionsTest {
 
     @Test fun materials_allows_switching_from_rookie_back_to_classic_with_overlay_only_manifest() {
         val deps = AndroidAppContainer(RuntimeEnvironment.getApplication())
-        val space = runBlocking {
+        val space = awaitIo {
             deps.profiles.choose(LocalProfile.GUEST)
             val pack = deps.materials.materials().single { it.localPack?.packageId == "demo_attention" }.localPack!!
             assertFalse(com.anything2game.contract.FrameId.CLASSIC in deps.content.manifests().single { it.packageId == pack.packageId }.frames)
@@ -126,7 +125,7 @@ class VerifiedMaterialActionsTest {
 
     @Test fun a_local_lesson_citation_names_its_own_material_when_an_uploaded_tutor_uses_the_same_document_labels() {
         val deps = AndroidAppContainer(RuntimeEnvironment.getApplication())
-        val (space, material) = runBlocking {
+        val (space, material) = awaitIo {
             deps.profiles.choose(LocalProfile.GUEST)
             val pkg = deps.packages.load(EXAMPLE_TUTOR_PACKAGE).getOrThrow()
             val other = deps.tutors.open(pkg.packageId).cache.session.copy(sessionId = "tut_other", mode = "mock", title = "Separate uploaded lesson")
@@ -136,7 +135,7 @@ class VerifiedMaterialActionsTest {
         }
         val node = material.nodes.first { it.activity is com.anything2game.contract.space.ActivityRef.Tutor }
         val source = node.evidence.single() as com.anything2game.contract.game.EvidenceRef.Pdf
-        runBlocking {
+        awaitIo {
             val store = SourceDocumentStore(File(RuntimeEnvironment.getApplication().filesDir, "source-documents"))
             store.save(source.documentId, source.documentVersion, 1,
                 com.anything2game.contract.DocumentLayout(listOf(com.anything2game.contract.PageBox(0, 200f, 400f))), "%PDF-separate-upload".toByteArray())

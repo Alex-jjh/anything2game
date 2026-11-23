@@ -7,7 +7,6 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import com.anything2game.app.ui.game.GenerationPanel
 import com.anything2game.app.ui.theme.A2gTheme
 import com.anything2game.contract.game.GenerationInput
-import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -24,8 +23,8 @@ class GenerationPanelRestoreTest {
     @Test fun a_restored_space_job_appears_when_its_acknowledged_server_identity_finishes_loading() {
         val app = RuntimeEnvironment.getApplication()
         val deps = AndroidAppContainer(app)
-        runBlocking { val known = deps.generation.enqueue(GenerationInput.ConceptGame("Earlier job")); deps.generation.cancel(known.id) }
-        val id = runBlocking { val job = deps.generation.enqueue(GenerationInput.SpacePath("remote", 1)); deps.generation.cancel(job.id).id }
+        awaitIo { val known = deps.generation.enqueue(GenerationInput.ConceptGame("Earlier job")); deps.generation.cancel(known.id) }
+        val id = awaitIo { val job = deps.generation.enqueue(GenerationInput.SpacePath("remote", 1)); deps.generation.cancel(job.id).id }
         val remote = mutableStateOf<String?>(null)
         rule.setContent { A2gTheme {
             val serverId = remote.value
@@ -38,6 +37,6 @@ class GenerationPanelRestoreTest {
             ShadowLooper.idleMainLooper()
             rule.onAllNodesWithText(app.getString(R.string.job_cancelled)).fetchSemanticsNodes().size == 2
         }
-        org.junit.Assert.assertTrue(runBlocking { deps.generation.list().any { it.id == id } })
+        org.junit.Assert.assertTrue(awaitIo { deps.generation.list().any { it.id == id } })
     }
 }

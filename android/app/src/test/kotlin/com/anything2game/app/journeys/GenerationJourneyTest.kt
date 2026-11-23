@@ -11,7 +11,7 @@ import com.anything2game.app.R
 import com.anything2game.app.data.profile.LocalProfile
 import java.util.concurrent.CopyOnWriteArrayList
 import com.sun.net.httpserver.HttpServer
-import kotlinx.coroutines.runBlocking
+import com.anything2game.app.awaitIo
 import org.junit.Assert.*
 import org.junit.Test
 import java.net.InetSocketAddress
@@ -53,7 +53,7 @@ class GenerationJourneyTest : JourneyTest() {
         server.start()
         try {
             val container = useServer(server)
-            val (space, ticket, local) = runBlocking {
+            val (space, ticket, local) = awaitIo {
                 container.profiles.choose(LocalProfile.GUEST)
                 val space = container.spaces.create("Seminar")
                 val request = container.generation.enqueue(container.spaces.pathRequest(space.spaceId, "en"))
@@ -100,7 +100,7 @@ class GenerationJourneyTest : JourneyTest() {
         server.start()
         try {
             val container = useServer(server)
-            runBlocking {
+            awaitIo {
                 container.profiles.choose(LocalProfile.GUEST)
                 container.generation.enqueue(GenerationInput.ConceptGame("binary search", "en"))
             }
@@ -131,7 +131,7 @@ class GenerationJourneyTest : JourneyTest() {
             tap(rule.onNodeWithTag("generate_game"))
             waitForText(str(com.anything2game.app.R.string.job_unsupported))
             rule.onNodeWithTag("concept_input").assertTextContains("orbital dynamics")
-            assertTrue(runBlocking { deps.generation!!.list().single().admissionError?.code == "UNSUPPORTED_TOPIC" })
+            assertTrue(awaitIo { deps.generation!!.list().single().admissionError?.code == "UNSUPPORTED_TOPIC" })
             tap(rule.onNodeWithTag("tab_PLAYGROUND"))
             waitForTag("game_partition"); tap(rule.onNodeWithTag("game_partition"))
             waitForTag("cut_8")
@@ -182,7 +182,7 @@ class GenerationJourneyTest : JourneyTest() {
             ready.set(true)
             Thread.sleep(1600)
             assertEquals(before, polls.get())
-            assertNull(runBlocking { container.content.game(version) })
+            assertNull(awaitIo { container.content.game(version) })
             scenario!!.moveToState(Lifecycle.State.RESUMED)
             waitForTag("game_board"); waitForText("Generated lockers")
             tap(rule.onNodeWithTag("cut_8")); tap(rule.onNodeWithTag("split_submit"))
@@ -190,8 +190,8 @@ class GenerationJourneyTest : JourneyTest() {
             systemBack()
             tap(rule.onNodeWithTag("tab_PLAYGROUND"))
             waitForText("Test provider · fixture-game")
-            assertTrue(runBlocking { container.generation.list().single().installed })
-            val checkpoint = runBlocking { requireNotNull(container.learningProgress.checkpoint(version)) }
+            assertTrue(awaitIo { container.generation.list().single().installed })
+            val checkpoint = awaitIo { requireNotNull(container.learningProgress.checkpoint(version)) }
             org.robolectric.RuntimeEnvironment.setQualifiers("+zh")
             scenario!!.recreate()
             waitForTag("tab_PLAYGROUND"); tap(rule.onNodeWithTag("tab_PLAYGROUND"))
@@ -200,7 +200,7 @@ class GenerationJourneyTest : JourneyTest() {
                 tap(rule.onNodeWithTag(tag))
                 waitForText("Generated lockers")
                 waitForTag("game_board")
-                assertEquals(checkpoint, runBlocking { container.learningProgress.checkpoint(version) })
+                assertEquals(checkpoint, awaitIo { container.learningProgress.checkpoint(version) })
                 systemBack()
             }
         } finally { server.stop(0) }
@@ -209,7 +209,7 @@ class GenerationJourneyTest : JourneyTest() {
     @Test fun an_imported_archive_claiming_a_server_model_displays_import_provenance() {
         val pkg = ReviewedGames.partition("en").copy(gameId = "independent-game", gameVersion = "1", title = "Imported lockers")
         val pack = PackCodec.build(pkg, PackOrigin.SERVER)
-        runBlocking {
+        awaitIo {
             deps.content!!.install(PackCodec.toBytes(pack.copy(manifest = pack.manifest.copy(modelId = "fixture-game", fixture = true))).inputStream())
         }
         launch(); chooseGuest(); tap(rule.onNodeWithTag("tab_PLAYGROUND"))

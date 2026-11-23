@@ -17,7 +17,6 @@ import com.anything2game.app.ui.library.LibraryUiState
 import com.anything2game.app.ui.library.libraryEntry
 import com.anything2game.app.ui.theme.A2gTheme
 import com.github.takahirom.roborazzi.captureRoboImage
-import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -49,7 +48,7 @@ class ProfileScreenshotTest {
 
     private fun sampleHome(tab: HomeTab, name: String) {
         val deps = AndroidAppContainer(app)
-        runBlocking { deps.profiles.choose(LocalProfile.SAMPLE) }
+        awaitIo { deps.profiles.choose(LocalProfile.SAMPLE) }
         val nav = Navigator(SavedStateHandle())
         nav.selectTab(tab)
         rule.setContent { A2gTheme { AppRoot(deps, nav) } }

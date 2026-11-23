@@ -30,7 +30,7 @@ import com.anything2game.contract.tutor.TutorRules
 import com.anything2game.contract.tutor.UNKNOWN_ANSWER
 import com.anything2game.contract.tutor.Understanding
 import com.anything2game.engine.context.ContextSignals
-import kotlinx.coroutines.runBlocking
+import com.anything2game.app.awaitIo
 import org.junit.Assert.*
 import org.junit.Test
 import org.robolectric.RuntimeEnvironment
@@ -43,7 +43,7 @@ class LearnJourneysTest : LearnJourneyBase() {
     private val cjk = Regex("[\\u4e00-\\u9fff]")
 
     /** Gets the saved session of [pkgId] (guest) to the last concept without the UI, the way the view model would. */
-    private fun seedUntilLastConcept(pkgId: String) = runBlocking {
+    private fun seedUntilLastConcept(pkgId: String) = awaitIo {
         val repo = deps.tutors
         var c = repo.open(pkgId).cache
         c = repo.setFocus(c, emptyList(), "")

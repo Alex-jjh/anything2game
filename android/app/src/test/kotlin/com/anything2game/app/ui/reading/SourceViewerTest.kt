@@ -11,7 +11,7 @@ import com.anything2game.app.data.tutor.SourceDocument
 import com.anything2game.app.data.tutor.SourceDocumentStore
 import com.anything2game.app.ui.theme.A2gTheme
 import com.anything2game.contract.*
-import kotlinx.coroutines.runBlocking
+import com.anything2game.app.awaitIo
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -139,7 +139,7 @@ class SourceViewerTest {
         assertTrue(captions[1], captions[1].startsWith("Quoted on this page") && captions[1].contains(lost))
     }
 
-    @Test fun `the store keeps the PDF with its layout for exactly that document version`() = runBlocking {
+    @Test fun `the store keeps the PDF with its layout for exactly that document version`() = awaitIo {
         val store = SourceDocumentStore(File(tmp.root, "source-documents"))
         assertNull(store.load("doc", "v1"))
         val bytes = "%PDF-1.7 test".toByteArray()

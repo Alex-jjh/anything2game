@@ -11,18 +11,19 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.ui.test.*
 import androidx.test.core.app.ActivityScenario
+import com.anything2game.app.R
 import com.anything2game.app.MainActivity
 import com.anything2game.app.data.profile.LocalProfile
 import com.anything2game.contract.space.*
 import com.anything2game.contract.tutor.*
-import kotlinx.coroutines.runBlocking
+import com.anything2game.app.awaitIo
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.File
 
 class ReviewedSpaceJourneysTest : LearnJourneyBase() {
     private fun selectLaterConcept() {
-        val (space, node) = runBlocking {
+        val (space, node) = awaitIo {
             val mat = deps.materials!!.materials().single { it.localPack?.packageId == attention }
             val parent = deps.spaces!!.list().first { mat.member in it.members }
             parent to mat.nodes.filter { it.activity is ActivityRef.Tutor }.last()
@@ -44,11 +45,14 @@ class ReviewedSpaceJourneysTest : LearnJourneyBase() {
         chooseFocus()
         scenario!!.recreate()
         val questions = cache(attention).session.questions
-        for (q in questions) answerCurrent(q, UNKNOWN_ANSWER)
+        for ((i, q) in questions.withIndex()) {   // one tap per question that is actually on screen, never a second tap on the one just answered
+            waitForText(str(R.string.tutor_question_count, i + 1, questions.size))
+            answerCurrent(q, UNKNOWN_ANSWER)
+        }
         waitForTag("route_prerequisite")
         assertTrue(textOf("route_prerequisite").contains(questions.last().concept))
         assertTrue(textOf("route_prerequisite").contains(questions.first().concept))
-        assertTrue(runBlocking { deps.learningProgress!!.projection().completed.isEmpty() })
+        assertTrue(awaitIo { deps.learningProgress!!.projection().completed.isEmpty() })
         tap(rule.onNodeWithTag("route_follow"))
         waitForTag("dialogue_text")
         assertEquals(questions.first().conceptId, TutorRules.orderedQuestions(cache(attention).session).first().conceptId)
@@ -56,7 +60,7 @@ class ReviewedSpaceJourneysTest : LearnJourneyBase() {
 
     @Test fun partially_read_route_explains_the_unintroduced_target_before_opening_its_prerequisite() {
         launch(); chooseGuest()
-        runBlocking {
+        awaitIo {
             val repo = deps.tutors
             val c = repo.open(attention).cache
             val draft = c.copy(draftAnswers = c.session.questions.associate { it.id to UNKNOWN_ANSWER }, focusChosen = true)
@@ -75,7 +79,7 @@ class ReviewedSpaceJourneysTest : LearnJourneyBase() {
     }
 
     @Test fun shared_pdf_waits_for_a_selected_space_and_survives_rotation_before_confirmation() {
-        val id = runBlocking { deps.profiles.choose(LocalProfile.GUEST); deps.spaces!!.create("Selected Space").spaceId }
+        val id = awaitIo { deps.profiles.choose(LocalProfile.GUEST); deps.spaces!!.create("Selected Space").spaceId }
         val file = File(app.cacheDir, "shared.pdf").apply { writeText("invalid PDF") }
         val intent = Intent(app, MainActivity::class.java).setAction(Intent.ACTION_SEND)
             .setType("application/pdf").putExtra(Intent.EXTRA_STREAM, Uri.fromFile(file))
@@ -86,15 +90,15 @@ class ReviewedSpaceJourneysTest : LearnJourneyBase() {
         waitForTag("confirm_pdfs")
         scenario!!.recreate()
         waitForTag("confirm_pdfs")
-        assertTrue(runBlocking { deps.pdfImports!!.list().isEmpty() })
+        assertTrue(awaitIo { deps.pdfImports!!.list().isEmpty() })
         waitFor("restored confirmation enabled") { runCatching { rule.onNodeWithTag("confirm_pdfs").assertIsEnabled(); true }.getOrDefault(false) }
         tap(rule.onNodeWithTag("confirm_pdfs"))
-        waitFor("one row owned by selected space") { runBlocking { deps.pdfImports!!.list().singleOrNull()?.spaceId == id } }
+        waitFor("one row owned by selected space") { awaitIo { deps.pdfImports!!.list().singleOrNull()?.spaceId == id } }
     }
 
     @Test fun shared_pdf_confirmation_stays_visible_in_a_previously_scrolled_space_and_after_rotation() {
         val title = "Research notes"
-        val id = runBlocking {
+        val id = awaitIo {
             deps.profiles.choose(LocalProfile.GUEST)
             val spaces = requireNotNull(deps.spaces)
             val id = spaces.create(title).spaceId
@@ -122,7 +126,7 @@ class ReviewedSpaceJourneysTest : LearnJourneyBase() {
             rule.onAllNodes(isDialog()).assertCountEquals(1)
             rule.onNodeWithTag("confirm_pdfs").assertIsDisplayed()
             rule.onNodeWithText(file.name).assertIsDisplayed()
-            assertTrue(runBlocking { deps.pdfImports!!.list().isEmpty() })
+            assertTrue(awaitIo { deps.pdfImports!!.list().isEmpty() })
         }
         assertOnePendingConfirmation()
         scenario!!.recreate()
@@ -130,7 +134,7 @@ class ReviewedSpaceJourneysTest : LearnJourneyBase() {
         waitFor("confirmed destination ready") { runCatching { rule.onNodeWithTag("confirm_pdfs").assertIsEnabled(); true }.getOrDefault(false) }
         tap(rule.onNodeWithTag("confirm_pdfs"))
         waitFor("one imported row in the chosen Space") {
-            runBlocking { deps.pdfImports!!.list().singleOrNull()?.let { it.spaceId == id && it.title == file.name } == true }
+            awaitIo { deps.pdfImports!!.list().singleOrNull()?.let { it.spaceId == id && it.title == file.name } == true }
         }
     }
 
@@ -160,7 +164,7 @@ class ReviewedSpaceJourneysTest : LearnJourneyBase() {
     }
 
     @Test fun exhausted_saved_game_can_start_a_fresh_attempt_without_claiming_a_transfer() {
-        runBlocking {
+        awaitIo {
             deps.profiles.choose(LocalProfile.GUEST)
             val spec = ReviewedGames.partition("en")
             val original = deps.learningProgress!!.start(spec, 52).checkpoint
@@ -174,7 +178,7 @@ class ReviewedSpaceJourneysTest : LearnJourneyBase() {
         waitForTag("game_partition"); tap(rule.onNodeWithTag("game_partition"))
         waitFor("new attempt offered on exhausted checkpoint", 5000) { has("restart_game") }
         tap(rule.onNodeWithTag("restart_game"))
-        waitFor("new attempt with no actions") { runBlocking { deps.learningProgress!!.checkpoint(ContentVersion("locker-search-en","1"))?.let { it.seed != 52L && it.actions.isEmpty() } == true } }
-        assertTrue(runBlocking { deps.learningProgress!!.projection().days.isEmpty() })
+        waitFor("new attempt with no actions") { awaitIo { deps.learningProgress!!.checkpoint(ContentVersion("locker-search-en","1"))?.let { it.seed != 52L && it.actions.isEmpty() } == true } }
+        assertTrue(awaitIo { deps.learningProgress!!.projection().days.isEmpty() })
     }
 }

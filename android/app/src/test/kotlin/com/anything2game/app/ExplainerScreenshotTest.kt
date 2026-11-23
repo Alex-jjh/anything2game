@@ -20,7 +20,6 @@ import com.anything2game.contract.tutor.TutorIntent
 import com.anything2game.contract.tutor.UNKNOWN_ANSWER
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.github.takahirom.roborazzi.captureScreenRoboImage
-import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -49,11 +48,11 @@ class ExplainerScreenshotTest {
     private fun seed(stage: Stage, pkg: String = EXAMPLE_TUTOR_PACKAGE): AppDependencies {
         val deps = AndroidAppContainer(app)
         if (stage == Stage.FOCUS) return deps
-        runBlocking {
+        awaitIo {
             val repo = deps.tutors
             var cache = repo.open(pkg).cache
             cache = repo.setFocus(cache, emptyList(), "")
-            if (stage == Stage.FRESH) { repo.save(cache); return@runBlocking }
+            if (stage == Stage.FRESH) { repo.save(cache); return@awaitIo }
             cache = cache.copy(draftAnswers = cache.session.questions.associate { it.id to UNKNOWN_ANSWER }, questionIndex = cache.session.questions.lastIndex)
             cache = cache.copy(session = repo.assess(cache, "a"))
             cache = cache.copy(session = repo.turn(cache, TutorIntent.START, "", "s"))
@@ -144,7 +143,7 @@ class ExplainerScreenshotTest {
     @Test fun zh_spaced_concept_list() {
         RuntimeEnvironment.setQualifiers("+zh")
         val deps = seed(Stage.STARTED, "demo_zh_spaced")
-        runBlocking {
+        awaitIo {
             var cache = deps.tutors.open("demo_zh_spaced").cache
             cache = cache.copy(session = deps.tutors.turn(cache, TutorIntent.CONTINUE, "", "c0"))
             deps.tutors.save(cache)
@@ -168,7 +167,7 @@ class ExplainerScreenshotTest {
     @Test fun zh_spaced_wrap_up() {
         RuntimeEnvironment.setQualifiers("+zh")
         val deps = seed(Stage.STARTED, "demo_zh_spaced")
-        runBlocking {
+        awaitIo {
             var cache = deps.tutors.open("demo_zh_spaced").cache
             repeat(cache.session.questions.size - 1) { n -> cache = cache.copy(session = deps.tutors.turn(cache, TutorIntent.CONTINUE, "", "c$n")) }
             deps.tutors.save(cache)

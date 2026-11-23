@@ -7,7 +7,7 @@ import com.anything2game.contract.game.ContentVersion
 import com.anything2game.contract.game.GameAction
 import com.anything2game.contract.game.ReviewedGames
 import com.anything2game.contract.game.Zone
-import kotlinx.coroutines.runBlocking
+import com.anything2game.app.awaitIo
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -101,7 +101,7 @@ class PlaygroundJourneyTest : JourneyTest() {
         tray.performTouchInput { down(Offset(20f, 20f)); moveTo(Offset(50f, 40f)); moveTo(Offset(90f, 80f)); moveTo(zone); up() }
         waitForText("5 tokens left")
         rule.onNodeWithTag("cost_line").assertExists()
-        val actions = runBlocking { deps.learningProgress!!.checkpoint(ContentVersion("workshop-en", "1"))!!.actions }
+        val actions = awaitIo { deps.learningProgress!!.checkpoint(ContentVersion("workshop-en", "1"))!!.actions }
         assertEquals(listOf<GameAction>(GameAction.Place(Zone.SECOND)), actions)
         rule.onNodeWithTag("dragged_token").assertDoesNotExist()
     }
@@ -114,7 +114,7 @@ class PlaygroundJourneyTest : JourneyTest() {
         tray.performTouchInput { down(Offset(20f, 20f)); moveTo(Offset(60f, 10f)); moveTo(Offset(200f, -40f)); up() }
         rule.waitForIdle()
         rule.onNodeWithText("6 tokens left").assertExists()
-        assertNull(runBlocking { deps.learningProgress!!.checkpoint(ContentVersion("workshop-en", "1")) }?.actions?.firstOrNull { it is GameAction.Place })
+        assertNull(awaitIo { deps.learningProgress!!.checkpoint(ContentVersion("workshop-en", "1")) }?.actions?.firstOrNull { it is GameAction.Place })
     }
 
     @Test fun clearing_both_rounds_shows_the_new_conditions_a_celebration_and_keeps_the_stars() {
