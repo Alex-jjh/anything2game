@@ -12,9 +12,13 @@ import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URI
 
-class ApiException(val code: String, val retryable: Boolean, val detail: String? = null) : Exception(detail ?: code)
+class ApiException(val code: String, val retryable: Boolean, val detail: String? = null, val httpStatus: Int? = null) : Exception(detail ?: code) {
+    val definiteRejection get() = httpStatus != null && httpStatus in 400..499 && httpStatus != 408
+    fun error() = ApiError(code, detail ?: code, retryable)
+}
 
-class ApiTransport(context: Context, private val baseUrl: String = BuildConfig.TUTOR_API, prefsName: String = "tutor_connection") {
+class ApiTransport(context: Context, private val baseUrl: String = BuildConfig.TUTOR_API, prefsName: String = "tutor_connection",
+    private val openConnection: (java.net.URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection }) {
     // One install token per local profile: the server sees each profile as a separate owner.
     private val auth = context.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
     private val tokenMutex = File(context.filesDir, "install-token-$prefsName").mutex()
@@ -47,7 +51,7 @@ class ApiTransport(context: Context, private val baseUrl: String = BuildConfig.T
 
     private suspend fun raw(method: String, path: String, type: String, body: ByteArray?, token: String?, limit: Int = MAX_RESPONSE): ByteArray = withContext(Dispatchers.IO) {
         validateUrl()
-        val connection = URI(baseUrl.trimEnd('/') + path).toURL().openConnection() as HttpURLConnection
+        val connection = openConnection(URI(baseUrl.trimEnd('/') + path).toURL())
         try {
             connection.requestMethod = method
             connection.instanceFollowRedirects = false
@@ -67,7 +71,7 @@ class ApiTransport(context: Context, private val baseUrl: String = BuildConfig.T
             if (data.size > limit) throw ApiException("RESPONSE_TOO_LARGE", false)
             if (status !in 200..299) {
                 val error = runCatching { ContractJson.json.decodeFromString(ErrorBody.serializer(), data.decodeToString()).error }.getOrNull()
-                throw ApiException(error?.code ?: "HTTP_$status", error?.retryable ?: (status >= 500), error?.message)
+                throw ApiException(error?.code ?: "HTTP_$status", error?.retryable ?: (status >= 500), error?.message, status)
             }
             data
         } finally { connection.disconnect() }

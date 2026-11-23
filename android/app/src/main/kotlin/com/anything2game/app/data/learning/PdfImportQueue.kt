@@ -28,6 +28,7 @@ class PdfImportQueue(private val dir: File, private val read: suspend (ImportReq
         rows.update { all -> all.map { if (it.id == row.id) row else it } }
         return row
     }
+    private fun lock(id: String) = File(dir, "row-${stableId(id)}").mutex()
     private fun bytes(row: PdfImportItem) = File(dir, stableId(row.id) + ".pdf")
     private suspend fun stage(row: PdfImportItem): PdfImportItem {
         val file = bytes(row)
@@ -45,18 +46,37 @@ class PdfImportQueue(private val dir: File, private val read: suspend (ImportReq
     suspend fun enqueue(spaceId: String, requests: List<ImportRequest.PdfFile>): List<PdfImportItem> =
         requests.map { request ->
             val row = PdfImportItem(UUID.randomUUID().toString(), spaceId, request.title, request.uri.toString(), request.sizeBytes)
-            rows.update { it + row }
-            try { stage(row) } catch (e: CancellationException) { throw e } catch (e: Exception) { save(row.copy(error = errorCode(e))) }
+            lock(row.id).withLock {
+                rows.update { it + row }
+                try { stage(row) } catch (e: CancellationException) { throw e } catch (e: Exception) { save(row.copy(error = errorCode(e))) }
+            }
         }
 
-    suspend fun process(id: String): PdfImportItem = File(dir, "row-${stableId(id)}").mutex().withLock {
-        var row = list().single { it.id == id }
-        if (row.sessionId != null) return@withLock row
-        try {
+    suspend fun process(id: String): PdfImportItem = lock(id).withLock {
+        val row = list().single { it.id == id }
+        if (row.error == UPLOAD_OUTCOME_UNKNOWN || row.sessionId != null) row else process(row)
+    }
+
+    /** A new POST is deliberate because the old upload may already exist on the server. */
+    suspend fun retryUnknownUpload(id: String): PdfImportItem = lock(id).withLock {
+        val old = list().single { it.id == id }
+        require(old.error == UPLOAD_OUTCOME_UNKNOWN && old.document == null)
+        process(old)
+    }
+
+    private suspend fun process(initial: PdfImportItem): PdfImportItem {
+        var row = initial
+        return try {
             val document = row.document ?: run {
                 if (!row.staged) row = stage(row)
                 val file = bytes(row)
-                val doc = tutors.upload(ImportRequest.PdfFile(row.title, Uri.fromFile(file), file.length()))
+                row = save(row.copy(error = UPLOAD_OUTCOME_UNKNOWN))
+                val doc = try {
+                    tutors.upload(ImportRequest.PdfFile(row.title, Uri.fromFile(file), file.length()))
+                } catch (e: TutorApiException) {
+                    if (e.definiteRejection) return save(row.copy(error = e.code))
+                    throw e
+                }
                 row = save(row.copy(document = doc, error = null))
                 doc
             }
@@ -67,6 +87,10 @@ class PdfImportQueue(private val dir: File, private val read: suspend (ImportReq
             val complete = save(row.copy(sessionId = session.sessionId, error = null))
             withContext(Dispatchers.IO) { bytes(row).delete() }
             complete
-        } catch (e: CancellationException) { throw e } catch (e: Exception) { save(row.copy(error = errorCode(e))) }
+        } catch (e: CancellationException) { throw e } catch (e: Exception) {
+            if (row.error == UPLOAD_OUTCOME_UNKNOWN && row.document == null) row else save(row.copy(error = errorCode(e)))
+        }
     }
+
+    companion object { const val UPLOAD_OUTCOME_UNKNOWN = "UPLOAD_OUTCOME_UNKNOWN" }
 }

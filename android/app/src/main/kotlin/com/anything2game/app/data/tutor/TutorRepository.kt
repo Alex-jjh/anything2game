@@ -54,9 +54,9 @@ class AndroidTutorRepository(
     connectionPrefs: String = "tutor_connection",
     sourceDocumentsDir: File = File(context.applicationContext.filesDir, "source-documents"),
     private val http: TutorHttpClient = TutorHttpClient(context.applicationContext, prefsName = connectionPrefs),
-    private val onRead: suspend (TutorSession) -> Unit = {},
+    onRead: (suspend (TutorSession, Long, String) -> Unit)? = null,
 ) : TutorRepository {
-    private val files = TutorCacheStore(sessionsDir)
+    private val files = TutorCacheStore(sessionsDir, onRead)
     private val sourceFiles = SourceDocumentStore(sourceDocumentsDir)
     private val json = ContractJson.json
     override val endpoint get() = http.endpoint
@@ -102,11 +102,9 @@ class AndroidTutorRepository(
         } catch (e: CancellationException) { throw e }
         catch (e: IOException) { cached?.let { OpenTutor(it, true) } ?: throw e }
     }
-    override suspend fun save(cache: TutorCache) {
-        files.write(cache)
-        if (cache.session.messages.lastOrNull()?.role == "tutor") onRead(cache.session)
-    }
+    override suspend fun save(cache: TutorCache) = files.write(cache)
     override suspend fun list() = files.list()
+    internal suspend fun recoverPendingReads() = files.recoverPendingReads()
     override suspend fun progressFor(packageId: String): TutorProgress? {
         val pkg = packages.load(packageId).getOrNull() ?: return null
         val saved = try { files.read(localTutorKey(pkg)) } catch (e: CancellationException) { throw e } catch (e: Exception) { null } ?: return null

@@ -92,6 +92,7 @@ class ContentLibraryTest {
         install(first)
         install(pkg)
         assertEquals(pkg.levels, library.load(pkg.packageId, "shared").getOrThrow().levels)
+        assertTrue("existing level numbers must stay stable", runCatching { install(pkg.copy(levels = pkg.levels.reversed())) }.isFailure)
         assertTrue(runCatching { install(first) }.isFailure)
         assertEquals(pkg.levels.first(), library.load(pkg.packageId, "shared").getOrThrow().levels.first())
     }

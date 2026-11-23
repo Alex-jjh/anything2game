@@ -21,15 +21,18 @@ private data class LearningLedger(val checkpoints: List<GameCheckpoint> = emptyL
 
 /** One committed snapshot is the source of truth for checkpoints, completion, mastery and historical days. */
 class LearningProgress(file: File, val profileId: String, private val clock: Clock = Clock.SYSTEM,
-    private val zone: () -> ZoneId = ZoneId::systemDefault) {
+    private val zone: () -> ZoneId = ZoneId::systemDefault, private val beforeProjection: suspend () -> Unit = {}) {
     private val store = AtomicSnapshot(file, LearningLedger.serializer(), ::LearningLedger)
-    suspend fun projection() = ProgressProjection.from(profileId, store.read().events)
+    suspend fun projection(): com.anything2game.engine.progress.ActivityProgress {
+        beforeProjection()
+        return ProgressProjection.from(profileId, store.read().events)
+    }
     suspend fun checkpoint(version: ContentVersion) = store.read().checkpoints.singleOrNull {
         it.gameId == version.contentId && it.gameVersion == version.contentVersion
     }
     private fun GameCheckpoint.matches(spec: GameSpec) = gameId == spec.gameId && gameVersion == spec.gameVersion
-    private fun event(id: String, ref: ActivityRef, outcome: ActivityOutcome, time: Long = clock.now()) =
-        CompletionRecord.at(id, ref.key(profileId), outcome, time, zone().id)
+    private fun event(id: String, ref: ActivityRef, outcome: ActivityOutcome, time: Long = clock.now(), zoneId: String = zone().id) =
+        CompletionRecord.at(id, ref.key(profileId), outcome, time, zoneId)
     private fun LearningLedger.add(record: CompletionRecord) =
         if (events.any { it.completionId == record.completionId }) this else copy(events = events + record)
 
@@ -70,14 +73,14 @@ class LearningProgress(file: File, val profileId: String, private val clock: Clo
         return next
     }
 
-    suspend fun tutorRead(session: TutorSession) {
+    suspend fun tutorRead(session: TutorSession, time: Long = clock.now(), zoneId: String = zone().id) {
         val message = session.messages.lastOrNull { it.role == "tutor" } ?: return
-        val ref = ActivityRef.Tutor(session.documentId, session.documentVersion, session.questions[session.conceptPosition].conceptId)
+        val ref = ActivityRef.Tutor(session.documentId, session.documentVersion, com.anything2game.contract.tutor.TutorRules.orderedQuestions(session)[session.conceptPosition].conceptId)
         val id = stableId("read", session.sessionId, message.id, ref.contentId, ref.contentVersion)
-        store.update { it.add(event(id, ref, ActivityOutcome.READ)) }
+        store.update { it.add(event(id, ref, ActivityOutcome.READ, time, zoneId)) }
     }
 
-    suspend fun practice(state: SessionState, time: Long = clock.now()) {
+    suspend fun practice(state: SessionState, time: Long = clock.now(), zoneId: String = zone().id) {
         if (!state.isFinished) return
         val results = state.results.filter { it.slot.kind == SlotKind.UNIT }
         val outcome = when {
@@ -87,6 +90,6 @@ class LearningProgress(file: File, val profileId: String, private val clock: Clo
         }
         val ref = ActivityRef.Practice(state.packageId, state.contentVersion, state.levelId, state.frameId)
         val id = stableId("practice", state.attemptId, ref.contentId, ref.contentVersion, ref.activityId)
-        store.update { it.add(event(id, ref, outcome, time)) }
+        store.update { it.add(event(id, ref, outcome, time, zoneId)) }
     }
 }

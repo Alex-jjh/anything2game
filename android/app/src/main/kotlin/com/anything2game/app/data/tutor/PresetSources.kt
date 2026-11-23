@@ -9,6 +9,7 @@ import java.io.InputStream
 /** Port: the page geometry a preset course's pack carries (`layout.json`, ADR-019), or null. ContentLibrary implements it. */
 fun interface SourceLayouts {
     suspend fun sourceLayoutFor(packageId: String): PresetSourceLayout?
+    suspend fun sourceLayoutFor(packageId: String, contentVersion: String): PresetSourceLayout? = sourceLayoutFor(packageId)
 }
 
 /** What a reader can be told about the one PDF file a preset's geometry was measured on. */
@@ -36,28 +37,21 @@ class PresetSources(
     /** The paper the build bundled for this course (fetched and hash-checked at build time), or null. */
     private val bundled: (packageId: String) -> InputStream? = { null },
 ) {
-    private suspend fun layout(packageId: String): PresetSourceLayout? =
-        try { layouts.sourceLayoutFor(packageId) } catch (e: CancellationException) { throw e } catch (e: Exception) { null }
+    private suspend fun layout(packageId: String, version: String? = null): PresetSourceLayout? =
+        try { if (version == null) layouts.sourceLayoutFor(packageId) else layouts.sourceLayoutFor(packageId, version) } catch (e: CancellationException) { throw e } catch (e: Exception) { null }
 
     /** The file this course can show pages of, or null when it has no packed geometry (then nothing is offered). */
     suspend fun available(packageId: String): PresetPdf? = layout(packageId)?.let(::describe)
 
     /** The attached PDF for the session with these ids, if one was attached here and is still the file the pack's geometry is for. */
-    suspend fun load(packageId: String, documentId: String, documentVersion: String): SourceDocument? =
-        kept(packageId, documentId, documentVersion) ?: fromBundle(packageId, documentId, documentVersion)
-
-    /**
-     * A demo build carries the papers: the first lookup copies the bundled one into the store (PdfRenderer needs a real
-     * file) through the same check as a reader's own file, so a bundled copy that does not match is never shown either.
-     */
-    private suspend fun fromBundle(packageId: String, documentId: String, documentVersion: String): SourceDocument? {
-        val l = layout(packageId)?.takeIf { it.documentId == documentId && it.documentVersion == documentVersion } ?: return null
-        val accepted = attach(packageId) { bundled(l.packageId) } as? AttachResult.Accepted
-        return accepted?.document
+    suspend fun load(packageId: String, documentId: String, documentVersion: String, contentVersion: String? = null): SourceDocument? {
+        val l = layout(packageId, contentVersion)?.takeIf { it.documentId == documentId && it.documentVersion == documentVersion } ?: return null
+        return kept(l) ?: (attach(l) { bundled(l.packageId) } as? AttachResult.Accepted)?.document
     }
 
-    private suspend fun kept(packageId: String, documentId: String, documentVersion: String): SourceDocument? {
-        val l = layout(packageId)?.takeIf { it.documentId == documentId && it.documentVersion == documentVersion } ?: return null
+    private suspend fun kept(l: PresetSourceLayout): SourceDocument? {
+        val documentId = l.documentId
+        val documentVersion = l.documentVersion
         // A damaged record is "not attached", never a crash on opening a course.
         val kept = try { store.load(documentId, documentVersion) } catch (e: CancellationException) { throw e } catch (e: Exception) { null } ?: return null
         // The pack's geometry, not the record's copy: a newer measurement of the same bytes wins; other bytes never match.
@@ -66,7 +60,11 @@ class PresetSources(
 
     /** Reads the picked file once (bounded), checks it is a PDF and is the exact file measured, then keeps it. */
     suspend fun attach(packageId: String, open: () -> InputStream?): AttachResult {
-        val l = layout(packageId) ?: return AttachResult.NoLayout
+        val layout = layout(packageId) ?: return AttachResult.NoLayout
+        return attach(layout, open)
+    }
+
+    private suspend fun attach(l: PresetSourceLayout, open: () -> InputStream?): AttachResult {
         val bytes = withContext(Dispatchers.IO) {
             try { open()?.use { PdfBytes.readBounded(it, PdfBytes.MAX + 1) } } catch (e: CancellationException) { throw e } catch (e: Exception) { null }
         } ?: return AttachResult.Unreadable
@@ -75,7 +73,7 @@ class PresetSources(
         val sha = withContext(Dispatchers.Default) { PdfBytes.sha256(bytes) }
         if (sha != l.pdfSha256 || bytes.size.toLong() != l.pdfBytes) return AttachResult.Mismatch(describe(l), bytes.size.toLong())
         try { store.save(l.documentId, l.documentVersion, l.pageCount, l.layout, bytes, sha) } catch (e: CancellationException) { throw e } catch (e: Exception) { return AttachResult.Unreadable }
-        return kept(packageId, l.documentId, l.documentVersion)?.let { AttachResult.Accepted(it) } ?: AttachResult.Unreadable
+        return kept(l)?.let { AttachResult.Accepted(it) } ?: AttachResult.Unreadable
     }
 
     private fun describe(l: PresetSourceLayout) = PresetPdf(l.packageId, l.documentId, l.documentVersion, l.pdfBytes, l.pdfSource)

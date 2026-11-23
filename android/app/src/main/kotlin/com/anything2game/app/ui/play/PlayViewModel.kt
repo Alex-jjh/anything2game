@@ -60,6 +60,7 @@ class PlayViewModel(
     private val levelId: String,
     private val frameId: FrameId,
     private val contentVersion: String? = null,
+    private val resumeSavedFrame: Boolean = contentVersion != null,
 ) : ViewModel() {
     private val _state = MutableStateFlow<PlayUiState>(PlayUiState.Loading)
     val state: StateFlow<PlayUiState> = _state.asStateFlow()
@@ -67,6 +68,7 @@ class PlayViewModel(
     private val sessions = deps.sessions
     private val masteryStore = deps.mastery
     private val progress = deps.learningProgress
+    private val practiceCommits = deps.practiceCommits
     private val mutex = Mutex()
     private var engine: LevelSession? = null
     private val mastery = mutableMapOf<String, MasteryRecord>()
@@ -104,12 +106,14 @@ class PlayViewModel(
             return@withLock
         }
         // A frame whose overlay is missing falls back to Classic, so the level always plays.
-        val overlay = deps.frames.load(packageId, pkg.contentVersion, frameId)
-        val frame = Frames.of(frameId).takeIf { it.isPlayable(overlay) } ?: Frames.CLASSIC
-        val e = LevelSession(pkg, deps.grading, deps.masteryPolicy, deps.clock, frame = frame, overlay = overlay?.takeIf { frame.id == frameId })
-            .also { engine = it; this.overlay = overlay?.takeIf { frame.id == frameId }; activeFrame = frame.id }
+        val checkpoint = sessions.load(packageId, pkg.contentVersion)?.takeIf { it.levelId == levelId && !it.isFinished }
+        val requestedFrame = if (resumeSavedFrame) checkpoint?.frameId ?: frameId else frameId
+        val overlay = deps.frames.load(packageId, pkg.contentVersion, requestedFrame)
+        val frame = Frames.of(requestedFrame).takeIf { it.isPlayable(overlay) } ?: Frames.CLASSIC
+        val e = LevelSession(pkg, deps.grading, deps.masteryPolicy, deps.clock, frame = frame, overlay = overlay?.takeIf { frame.id == requestedFrame })
+            .also { engine = it; this.overlay = overlay?.takeIf { frame.id == requestedFrame }; activeFrame = frame.id }
         mastery.clear(); mastery.putAll(masteryStore.all(packageId, pkg.contentVersion))
-        val saved = sessions.load(packageId, pkg.contentVersion)?.takeIf { it.levelId == levelId && !it.isFinished && e.canResume(it) }
+        val saved = checkpoint?.takeIf(e::canResume)
         var session = saved ?: e.start(levelId)
         if (session.attemptId.isEmpty()) session = session.copy(attemptId = java.util.UUID.randomUUID().toString())
         val reason = context.pauseReason
@@ -126,16 +130,20 @@ class PlayViewModel(
                 val e = engine ?: return@withLock
                 val t = e.reduce(ready.session, action, mastery)
                 if (t.state == ready.session && t.effects.isEmpty()) return@withLock
-                t.effects.forEach { effect ->
-                    when (effect) {
-                        is Effect.MasteryChanged -> {
-                            mastery[effect.record.unitId] = effect.record
-                            masteryStore.put(packageId, ready.pkg.contentVersion, effect.record)
-                        }
+                val changed = t.effects.filterIsInstance<Effect.MasteryChanged>().map { it.record }
+                try {
+                    if (practiceCommits != null) practiceCommits.commit(ready.session, t.state, changed)
+                    else {
+                        for (record in changed) masteryStore.put(packageId, ready.pkg.contentVersion, record)
+                        progress?.practice(t.state)
+                        sessions.save(t.state)
                     }
+                } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                catch (e: Exception) {
+                    _state.value = PlayUiState.Failed(e.message ?: "Could not save practice")
+                    return@withLock
                 }
-                progress?.practice(t.state)
-                sessions.save(t.state)
+                for (record in changed) mastery[record.unitId] = record
                 publish(ready.pkg, e, t.state)
             }
         }

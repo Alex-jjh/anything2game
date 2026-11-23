@@ -117,6 +117,11 @@ class ContentLibrary(private val sources: List<PackSource>) : PackageRepository,
         return latestCourses()[packageId]?.open()?.getOrNull()?.sourceLayout
     }
 
+    override suspend fun sourceLayoutFor(packageId: String, contentVersion: String): PresetSourceLayout? {
+        val ref = refs()[ContentVersion(packageId, contentVersion)] ?: return null
+        return ref.takeIf { it.manifest.entries.any { entry -> entry.path == PackCodec.LAYOUT } }?.open()?.getOrNull()?.sourceLayout
+    }
+
     override suspend fun savedScript(key: String): Pair<LearningPackage, TutorScript>? {
         for (ref in refs().values.filter { it.manifest.entries.any { entry -> entry.path == PackCodec.TUTOR } }) {
             val pack = course(ref.version) ?: continue

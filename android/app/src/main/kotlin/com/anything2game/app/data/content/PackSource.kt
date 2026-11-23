@@ -74,7 +74,7 @@ class DirectoryPackSource(private val dir: File, override val name: String = "in
                         if (old != null) {
                             val previous = old.open().getOrThrow()
                             require(next.pkg.copy(levels = previous.pkg.levels) == previous.pkg &&
-                                previous.pkg.levels.all { next.pkg.level(it.levelId) == it } &&
+                                next.pkg.levels.take(previous.pkg.levels.size) == previous.pkg.levels &&
                                 previous.frames.all { next.frames[it.key] == it.value } &&
                                 (previous.tutor == null || next.tutor == previous.tutor) &&
                                 (previous.sourceLayout == null || next.sourceLayout == previous.sourceLayout)) { "Changed existing course content" }

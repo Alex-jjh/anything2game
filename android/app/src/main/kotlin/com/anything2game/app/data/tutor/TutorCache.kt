@@ -1,6 +1,8 @@
 package com.anything2game.app.data.tutor
 
 import android.util.AtomicFile
+import com.anything2game.app.data.mutex
+import kotlinx.coroutines.sync.withLock
 import com.anything2game.contract.ContractJson
 import com.anything2game.contract.tutor.*
 import kotlinx.coroutines.Dispatchers
@@ -12,11 +14,14 @@ import java.security.MessageDigest
 /** Local display metadata, bound to a reply so a refreshed server message cannot inherit the wrong label. */
 @Serializable data class TutorReplyPresentation(val messageId: String, val intent: TutorIntent)
 
+@Serializable data class PendingTutorRead(val timeMillis: Long, val zoneId: String)
+
 @Serializable data class TutorCache(
     val session: TutorSession, val draftAnswers: Map<String, String> = emptyMap(), val questionIndex: Int = 0,
     /** The reader has been asked what they want out of the reading (even if they let the explainer decide). */
     val focusChosen: Boolean = false,
     val lastReply: TutorReplyPresentation? = null,
+    val pendingRead: PendingTutorRead? = null,
 ) {
     // Older caches have no presentation metadata; show no specific mode rather than guessing from prose.
     val replyIntent: TutorIntent?
@@ -62,18 +67,18 @@ import java.security.MessageDigest
 }
 
 /** A separate namespace; never reads, migrates, clears or rewrites game/mastery/old self-report data. */
-class TutorCacheStore(private val directory: File) {
+class TutorCacheStore(private val directory: File,
+    private val onRead: (suspend (TutorSession, Long, String) -> Unit)? = null) {
+    private val lock = directory.mutex()
     private fun file(key: String): File {
         val hash = MessageDigest.getInstance("SHA-256").digest(key.toByteArray()).joinToString("") { "%02x".format(it) }
         return File(directory, "$hash.json")
     }
-    suspend fun read(key: String): TutorCache? = withContext(Dispatchers.IO) {
-        val target = file(key)
+    private fun load(target: File): TutorCache? =
         if (!target.exists() && !File(target.path + ".bak").exists()) null
         else AtomicFile(target).openRead().bufferedReader().use { ContractJson.json.decodeFromString(TutorCache.serializer(), it.readText()).validate() }
-    }
-    suspend fun write(cache: TutorCache) = withContext(Dispatchers.IO) {
-        cache.validate()
+
+    private fun store(cache: TutorCache) {
         check(directory.isDirectory || directory.mkdirs())
         val atomic = AtomicFile(file(cache.session.sessionId))
         val output = atomic.startWrite()
@@ -82,9 +87,50 @@ class TutorCacheStore(private val directory: File) {
             atomic.finishWrite(output)
         } catch (e: Exception) { atomic.failWrite(output); throw e }
     }
+
+    private suspend fun recover(cache: TutorCache): TutorCache {
+        val pending = cache.pendingRead ?: return cache
+        val record = onRead ?: return cache
+        record(cache.session, pending.timeMillis, pending.zoneId)
+        return cache.copy(pendingRead = null).also(::store)
+    }
+
+    suspend fun read(key: String): TutorCache? = withContext(Dispatchers.IO) {
+        lock.withLock { load(file(key))?.let { recover(it) } }
+    }
+
+    suspend fun write(cache: TutorCache) = withContext(Dispatchers.IO) {
+        cache.validate()
+        lock.withLock {
+            val prior = load(file(cache.session.sessionId))?.let { recover(it) }
+            val reply = cache.session.messages.lastOrNull()?.takeIf { it.role == "tutor" }
+            val pending = if (onRead != null && reply != null && prior?.session?.messages?.lastOrNull()?.id != reply.id)
+                PendingTutorRead(System.currentTimeMillis(), java.time.ZoneId.systemDefault().id) else null
+            val saved = cache.copy(pendingRead = pending)
+            if (pending != null) checkedPending = false
+            store(saved)
+            recover(saved)
+            Unit
+        }
+    }
+    private fun targets() = directory.listFiles().orEmpty().mapNotNull { f -> when {
+        f.name.endsWith(".json.bak") -> File(f.path.removeSuffix(".bak"))
+        f.extension == "json" -> f
+        else -> null
+    } }.distinct()
+    private var checkedPending = false
+    suspend fun recoverPendingReads() = withContext(Dispatchers.IO) {
+        lock.withLock {
+            if (!checkedPending) {
+                for (file in targets()) load(file)?.let { recover(it) }
+                checkedPending = true
+            }
+        }
+    }
     suspend fun list(): List<TutorSession> = withContext(Dispatchers.IO) {
-        directory.listFiles { f -> f.extension == "json" }.orEmpty().map { f ->
-            AtomicFile(f).openRead().bufferedReader().use { ContractJson.json.decodeFromString(TutorCache.serializer(), it.readText()).validate().session }
-        }.filter { it.mode != "local-mock" }.sortedBy { it.title }
+        lock.withLock {
+            targets().mapNotNull { load(it)?.let { cache -> recover(cache).session } }
+                .filter { it.mode != "local-mock" }.sortedBy { it.title }
+        }
     }
 }

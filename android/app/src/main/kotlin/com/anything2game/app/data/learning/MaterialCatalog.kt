@@ -25,7 +25,8 @@ sealed interface SourceTarget {
     data class External(val evidence: EvidenceRef.External) : SourceTarget
 }
 
-class MaterialCatalog(private val content: ContentLibrary, private val tutors: TutorRepository, private val presets: PresetSources? = null) {
+class MaterialCatalog(private val content: ContentLibrary, private val tutors: TutorRepository, private val presets: PresetSources? = null,
+    private val sessions: com.anything2game.engine.ports.SessionStore? = null) {
     suspend fun materials(): List<Material> {
         val saved = tutors.list()
         val result = mutableListOf<Material>()
@@ -40,11 +41,21 @@ class MaterialCatalog(private val content: ContentLibrary, private val tutors: T
             val pkg = pack.pkg
             val source = ContentVersion(pkg.documentId, pkg.documentVersion)
             // An owned cached tutor confirms this server document identity. A package alone never proves ownership.
-            val member = if (manifest.origin == PackOrigin.SERVER && saved.any { it.documentId == pkg.documentId && it.documentVersion == pkg.documentVersion })
-                SpaceMember.ServerDocumentRef(pkg.documentId, pkg.documentVersion) else SpaceMember.LocalPackRef(pkg.packageId, pkg.contentVersion)
+            val owned = manifest.origin == PackOrigin.SERVER && saved.any { session ->
+                session.documentId == pkg.documentId && session.documentVersion == pkg.documentVersion &&
+                    session.sources.isNotEmpty() && session.sources.all { excerpt ->
+                        val full = pkg.chunk(excerpt.chunkId)
+                        full != null && full.pageIndex == excerpt.pageIndex && full.pageLabel == excerpt.pageLabel &&
+                            full.text.startsWith(excerpt.text)
+                    }
+            }
+            val member = if (owned) SpaceMember.ServerDocumentRef(pkg.documentId, pkg.documentVersion)
+                else SpaceMember.LocalPackRef(pkg.packageId, pkg.contentVersion)
             val questions = pack.tutor?.blueprint?.concepts.orEmpty().map { it.question }
+            val checkpoint = sessions?.load(pkg.packageId, pkg.contentVersion)?.takeUnless { it.isFinished }
             val nodes = tutorNodes(source, questions, pkg.sources) + pkg.levels.map { level ->
-                val ref = ActivityRef.Practice(pkg.packageId, pkg.contentVersion, level.levelId)
+                val frame = checkpoint?.takeIf { it.levelId == level.levelId }?.frameId ?: FrameId.CLASSIC
+                val ref = ActivityRef.Practice(pkg.packageId, pkg.contentVersion, level.levelId, frame)
                 val node = nodeId(ref)
                 val evidence = level.units.firstOrNull()?.item?.allSourceRefs?.firstOrNull()?.let { pkg.scopeEvidence(it, "e-$node") }
                 PathNode(node, level.title, ref, evidence = listOfNotNull(evidence))
@@ -89,7 +100,10 @@ class MaterialCatalog(private val content: ContentLibrary, private val tutors: T
         is ActivityRef.Tutor -> materials().sortedByDescending { it.language == language }.firstOrNull { m ->
             m.tutorKey != null && m.nodes.any { it.activity == ref }
         }?.tutorKey?.let { OpenActivity.Tutor(it, ref.activityId) }
-        is ActivityRef.Practice -> content.load(ref.contentId, ref.contentVersion).getOrNull()?.level(ref.activityId)?.let { OpenActivity.Practice(ref) }
+        is ActivityRef.Practice -> content.load(ref.contentId, ref.contentVersion).getOrNull()?.level(ref.activityId)?.let {
+            val saved = sessions?.load(ref.contentId, ref.contentVersion)?.takeIf { s -> !s.isFinished && s.levelId == ref.activityId }
+            OpenActivity.Practice(if (saved == null) ref else ref.copy(frame = saved.frameId))
+        }
         is ActivityRef.Game -> content.game(ContentVersion(ref.contentId, ref.contentVersion))?.takeIf { game ->
             game.stages.any { it.stageId == ref.activityId && ref.rulesVersion == it.rulesVersion }
         }?.let { OpenActivity.Game(ref, it) }
@@ -116,7 +130,7 @@ class MaterialCatalog(private val content: ContentLibrary, private val tutors: T
                 val material = materials().firstOrNull { it.matches(evidence) } ?: return null
                 val local = material.member as? SpaceMember.LocalPackRef
                 val document = tutors.sourceDocument(evidence.documentId, evidence.documentVersion) ?:
-                    local?.let { presets?.load(it.packageId, evidence.documentId, evidence.documentVersion) }
+                    local?.let { presets?.load(it.packageId, evidence.documentId, evidence.documentVersion, it.contentVersion) }
                 SourceTarget.Pdf(material.chunks, SourceRef(evidence.chunkId, evidence.quote), document)
             }
         }

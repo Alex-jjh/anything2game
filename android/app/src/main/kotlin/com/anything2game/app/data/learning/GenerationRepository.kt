@@ -2,6 +2,8 @@ package com.anything2game.app.data.learning
 
 import com.anything2game.app.data.*
 import com.anything2game.app.data.api.ActivityApi
+import com.anything2game.app.data.api.ApiException
+import com.anything2game.contract.ApiError
 import com.anything2game.app.data.content.ContentLibrary
 import com.anything2game.contract.CompileJobState
 import com.anything2game.contract.game.*
@@ -16,9 +18,14 @@ import java.util.UUID
 
 @Serializable
 data class GenerationTicket(val request: GenerationRequest, val status: GenerationStatus? = null,
-    val cancelRequested: Boolean = false, val installed: Boolean = false, val submissionStarted: Boolean = false) {
+    val cancelRequested: Boolean = false, val installed: Boolean = false, val submissionStarted: Boolean = false,
+    val admissionError: ApiError? = null) {
     val id get() = request.clientRequestId
-    val state get() = if (cancelRequested && !submissionStarted && status == null) CompileJobState.CANCELLED else status?.state
+    val state get() = when {
+        admissionError != null -> CompileJobState.FAILED
+        cancelRequested && !submissionStarted && status == null -> CompileJobState.CANCELLED
+        else -> status?.state
+    }
 }
 
 /** Foreground polling is driven by the caller. The saved request survives a lost submit response. */
@@ -42,7 +49,12 @@ class GenerationRepository(private val file: File, private val api: ActivityApi,
         var ticket = get(id)
         if (ticket.state?.isTerminal == true) return@withLock ticket
         if (!ticket.submissionStarted) ticket = save(ticket.copy(submissionStarted = true))
-        val status = ticket.status ?: api.submit(ticket.request)
+        val status = ticket.status ?: try {
+            api.submit(ticket.request)
+        } catch (e: ApiException) {
+            if (!e.definiteRejection) throw e
+            return@withLock save(ticket.copy(admissionError = e.error()))
+        }
         val next = when {
             status.state.isTerminal -> status
             ticket.cancelRequested -> api.cancel(status.jobId)
@@ -54,7 +66,7 @@ class GenerationRepository(private val file: File, private val api: ActivityApi,
     suspend fun cancel(id: String): GenerationTicket {
         lock(id).withLock {
             val ticket = get(id)
-            if (ticket.status?.state?.isTerminal != true) save(ticket.copy(cancelRequested = true))
+            if (ticket.state?.isTerminal != true) save(ticket.copy(cancelRequested = true))
         }
         return refresh(id)
     }

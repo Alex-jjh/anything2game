@@ -50,6 +50,7 @@ import java.io.File
 interface AppDependencies {
     val content: ContentLibrary? get() = null
     val learningProgress: LearningProgress? get() = null
+    val practiceCommits: PracticeStore? get() = null
     val materials: MaterialCatalog? get() = null
     val spaces: SpaceRepository? get() = null
     val generation: GenerationRepository? get() = null
@@ -96,9 +97,15 @@ class AndroidAppContainer(context: Context) : AppDependencies {
     /** Everything that belongs to one person on this phone, built from the same store classes for every profile. */
     private inner class UserScope(val profile: LocalProfile) {
         private val dir = profile.dir(app)
-        val sessions: SessionStore = FileSessionStore(File(dir, "sessions"))
-        val mastery: MasteryStore = FileMasteryStore(File(dir, "mastery")) { content.load(it).getOrNull()?.contentVersion }
-        val progress = LearningProgress(File(dir, "learning.json"), profile.id, clock)
+        val progress: LearningProgress = LearningProgress(File(dir, "learning.json"), profile.id, clock, beforeProjection = ::recoverProgress)
+        private suspend fun recoverProgress() {
+            practice.recover()
+            tutors.recoverPendingReads()
+        }
+        val practice = PracticeStore(File(dir, "practice-write.json"), FileSessionStore(File(dir, "sessions")),
+            FileMasteryStore(File(dir, "mastery")) { content.load(it).getOrNull()?.contentVersion }, progress, clock)
+        val sessions: SessionStore = practice
+        val mastery: MasteryStore = practice
         private val transport = ApiTransport(app, prefsName = profile.prefs("tutor_connection"))
         private val http = TutorHttpClient(app, transport)
         private val api = ActivityApi(transport)
@@ -113,7 +120,7 @@ class AndroidAppContainer(context: Context) : AppDependencies {
         val presetSources = PresetSources(content, SourceDocumentStore(File(dir, "source-documents"))) { id ->
             if (System.getProperty("a2g.bundledPdfs") == "off") null else runCatching { app.assets.open("sample-pdfs/$id.pdf") }.getOrNull()
         }
-        val materials = MaterialCatalog(content, tutors, presetSources)
+        val materials = MaterialCatalog(content, tutors, presetSources, sessions)
         val spaces = SpaceRepository(File(dir, "spaces.json"), materials::materials, api, content::path)
         val generation = GenerationRepository(File(dir, "generation.json"), api, content, materials, spaces)
         val imports = PdfImportQueue(File(dir, "pdf-imports"), http::readPdf, tutors, spaces)
@@ -136,6 +143,7 @@ class AndroidAppContainer(context: Context) : AppDependencies {
     override val materials get() = scope.materials
     override val spaces get() = scope.spaces
     override val generation get() = scope.generation
+    override val practiceCommits get() = scope.practice
     override val learningProgress get() = scope.progress
     override val pdfImports get() = scope.imports
     override val tutors: TutorRepository get() = scope.tutors
