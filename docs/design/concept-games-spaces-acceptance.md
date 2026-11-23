@@ -1,6 +1,6 @@
 # Concept games and Spaces — acceptance record
 
-**Scope:** Verification of the API edition's 2026-11-23 update. This record distinguishes automated behavior, Android device observations and untested provider quality. **Final verification in progress:** device scenarios below have run; the Classic selector finding and final branch review are still pending.
+**Scope:** Verification of the API edition's 2026-11-23 update. This record distinguishes automated behavior, Android device observations and untested provider quality. **Verification complete:** final runtime `f54fe7d` passed the automated suites, scoped review and affected device checks. Non-blocking status-cache issues are documented below.
 
 Design: [approved user journeys and repository research](../superpowers/specs/2026-11-23-concept-games-spaces-design.md). Implementation: [shared architecture and API](../architecture/concept-games-spaces.md).
 
@@ -23,7 +23,8 @@ Design: [approved user journeys and repository research](../superpowers/specs/20
 | `f9a6740`, Android data and shared modules | 257 Android + 58 engine + 68 contract tests passed, zero skips. One existing Compose source-reader journey had a transient missing-button failure on the first full run, then passed in a focused run and the unchanged full repeat. |
 | `9180838`, server against final shared runtime | 222 server tests passed, zero failures/errors/skips, including the 42 PostgreSQL cases; fresh run in 29s. |
 | `09c4b74`, final Space migration corrections | 32 recovery/integration/data tests passed, zero skips; normal removal and explicit dismissal both discard unsent membership changes derived from a rejected ADD, and lost acknowledgements preserve the original request. |
-| `9180838`, UI recovery round 1 | 286 Android + 58 engine + 68 contract tests passed, zero failures/errors/skips. Debug APK assembly and direct-AI-access guard passed; lint has zero errors and 66 warnings. The controller independently counted the XML results. Task review approved after the focused sharing correction below; device/final-branch gate pending. |
+| `9180838`, UI recovery round 1 | 286 Android + 58 engine + 68 contract tests passed, zero failures/errors/skips. Debug APK assembly and direct-AI-access guard passed; lint has zero errors and 66 warnings. The controller independently counted the XML results. Task review approved after the focused sharing correction below; device/final-branch gate pending at that revision. |
+| `f54fe7d`, consolidated final corrections | Fresh execution: 303 Android + 228 server + 68 contract + 58 engine = **657 passed**, zero failures/errors/skips, including **45 real PostgreSQL** tests. Lint: zero errors, 66 warnings; direct-AI guard and assembly passed. Controller independently counted all XML reports. |
 
 The UI full run initially exposed two fixture timing races (profile switch after refresh and tapping Start after a diagnostic transition). Their waits were corrected without removing the avatar/profile or source attachment assertions; the fresh complete run passed in 4m 21s. Existing Compose test API deprecation and JDK/Robolectric native-access warnings remain.
 
@@ -35,7 +36,9 @@ The data regressions exercise interrupted practice and tutor writes, concurrent 
 
 ## Device acceptance and screenshots
 
-The real APK was upgraded in place at `a5c204d`. [Screenshot gallery](screens/2026-11-23-concept-games-spaces/) contains unaltered emulator captures, visually inspected; the earlier HTML prototype is not acceptance evidence.
+The dedicated emulator crash buffer was empty after the initial scenarios and again after the final affected checks. This is scoped observation, not a claim about all devices.
+
+The real APK was upgraded in place at `a5c204d` and again at final runtime `f54fe7d`. The final PDF-enabled APK is 23,537,382 bytes, SHA-256 `7952c167d2f4b2f6f810b005a6622fac78eb948f32a30770bf5f4ed5acdab9fc`. [Screenshot gallery](screens/2026-11-23-concept-games-spaces/) contains unaltered emulator captures, visually inspected; the earlier HTML prototype is not acceptance evidence.
 
 | Scenario | Observed result |
 |---|---|
@@ -48,7 +51,8 @@ The real APK was upgraded in place at `a5c204d`. [Screenshot gallery](screens/20
 | Citation / Tutor | The own-notes citation opens original PDF page 1 of 1 with the quoted sentence highlighted. Three diagnostic answers lead into the actual Tutor explanation, visibly labeled as a test provider. |
 | Generation cancellation | During an actual request to a loopback-only provider deliberately delaying its response, tapping Cancel persisted `cancelled` and installed no artifact. The API was then restored to fake mode. |
 | External PDF share | System Files → share the own-notes PDF → choose the existing, deeply scrolled Learning Lab. Exactly one confirmation survives rotation; cancelling leaves the queue unchanged. |
-| Legacy practice | MapReduce full source reader and Rookie, and Attention Escape open. Classic availability is a known final-fix item. |
+| Legacy practice | MapReduce full source reader and Rookie, Attention Escape and the original bundled spaced-repetition Tutor (focus → diagnostic → explanation) open. On the final APK, selecting Rookie then Classic opens actual Classic practice and saves frame `classic`. |
+| Final language regressions | The old three-PDF Space now installs an English path using its existing Chinese tutors. A fresh English PDF import persists language `en`, creates an English server Tutor and generates a new route. Both Continue and the installed-game card reopen the identical saved Chinese checkpoint under English UI. |
 | Concept generation | Binary search produces an installed native game through the local API; a real split action creates its versioned checkpoint. Unsupported quantum gravity fails with a useful message; explicit retry creates a new request and preserves the installed game. |
 
 Reproduce the scripted portion on a dedicated emulator with an installed APK and an initially unplayed sample profile:
@@ -76,6 +80,10 @@ For the share regression, leave the target Space Materials scrolled below its to
 
 Use an English IME for ASCII adb text fixtures and verify the committed field text. Pinyin composition is not equivalent to saved text. UI actions use current hierarchy bounds; dialog text can appear twice (title and action), and separate dialog windows do not expose all Compose test tags.
 
+## Final review
+
+The independent whole-branch review at `450662f` identified six Important corrections: source-deletion revocation, tutor language fallback/import language, intrinsic Classic availability, independent local Tutor identity, immutable PDF editions, and game access after locale changes. Five smaller findings concern localized errors, repeated/lazy catalog reads, repair of damaged content and imported-game attribution. All eleven findings were addressed in `f54fe7d`. Focused regressions passed (72 Android and 34 server), followed by the fresh 657-test run above. The scoped independent re-review confirmed all eleven addressed, with no new Critical or Important regression. Final affected device checks passed: locale-switched game continuation, both English route scenarios, Classic selection and play, localized import error, old PDF source access, retained Case progress and unchanged legacy mastery/avatar files.
+
 ## Decisions made during implementation
 
 - The user's explicit approval covers implementation, tests, screenshots and a feature-branch push. Historical proposal wording does not reopen approval. An incorrect interpretation would cost reversible feature rework; the branch is not merged into main automatically.
@@ -86,6 +94,14 @@ Use an English IME for ASCII adb text fixtures and verify the committed field te
 - The Space list shows one clearly labeled profile-wide weekly learning-day summary. Each card has its own material count, node completion and next activity. Per-Space calendars would need filtering through the same progress implementation; global days are not relabeled as a particular Space's days.
 - A game route node must reference the final transfer activity that the engine can credit. Intermediate practice-stage references are rejected before activation. Supporting separate stage completion later would require explicit progress semantics, not fabricated credit.
 - New game and Space-path results are published as one validated archive. They do not support regenerating just failed parts. An unexpected partial result needs an explicit whole-request regeneration, including the current Space exclusions. Per-file PDF retries and the legacy compile flow remain separate existing capabilities.
+
+- The final review explicitly sets aside arbitrary-topic/script generation, additional mechanisms, personalized course controls/favorites, cross-device progress sync and remote erasure of downloaded offline files. These follow the approved release boundary; their cost is future implementation or separate evaluation. Server-side source deletion remains within the release contract.
+
+- Tutor references use an explicit optional session identity in the shared contract. V1 remains compatible; v2 is introduced by this release. Old interim v2 references migrate only when a verified match is unique, otherwise the route needs refresh. This avoids implicit identity encoded in opaque node IDs; the cost is a refresh for an ambiguous interim path.
+
+- The scoped re-review found one non-blocking status defect: a path cached as Ready before its source is deleted can retain its Install button. The server rejects that download; reopening does not yet refresh the terminal ticket. Generating a new route remains available. This is deferred status handling, with the cost of a repeated 404 and stale card; deleted content remains inaccessible.
+
+- Device QA also observed a Ready/Install card remaining in memory immediately after automatic path installation; the installation is durable and reopening the screen clears that card. This presentation-only cache issue is deferred alongside the terminal-status refresh issue above; its cost is a redundant action until re-entry, without lost progress or repeated generation.
 
 ## Limits
 

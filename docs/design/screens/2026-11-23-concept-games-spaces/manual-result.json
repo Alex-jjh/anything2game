@@ -1,0 +1,46 @@
+{
+  "testedRevision": "a5c204d",
+  "device": "dedicated API 37.1 arm64 emulator, 1080x2400",
+  "provider": "fake compile/frame/flash; loopback delay for cancellation only",
+  "passed": [
+    "ResNet v1 Case retains question 3/5 and credibility 3",
+    "Bundled spaced-repetition Tutor focus, diagnostic and explanation",
+    "Legacy full source reader, Rookie and Escape entries",
+    "Three valid PDF imports and one malformed independent failure",
+    "Retry malformed import preserves all three successful rows",
+    "Space rename and local material exclusion before generation",
+    "Generated path installation and membership-only removal",
+    "Correct self-authored PDF page 1 and quote highlight",
+    "Uploaded PDF Tutor diagnostic and actual explanation",
+    "API concept game installation and actual native split checkpoint",
+    "Unsupported topic and new-request retry preserve installed game",
+    "Cancel an in-flight generation without installing its result",
+    "System Files share into scrolled Space, rotate confirmation, cancel without queue mutation",
+    "Crash buffer empty after scenarios"
+  ],
+  "pendingFixVerification": [],
+  "limits": [
+    "No physical device",
+    "No live-model quality evaluation",
+    "Docker unavailable; SDK-free server distribution verified separately"
+  ],
+  "finalRevision": "f54fe7d55a7f24e104078886127db8478dff3ca7",
+  "status": "passed with documented non-blocking status-cache issues",
+  "finalPassed": [
+    "Same Chinese generated-game checkpoint through English Continue and installed card",
+    "Existing three-PDF Space installs English route using its Chinese tutors",
+    "Rookie to Classic selection opens actual Classic practice and persists classic",
+    "Known PDF errors display localized remedy",
+    "Fresh English import persists en and real server Tutor language is en",
+    "Fresh English route generated, installed and shown after re-entry",
+    "Original PDF page with highlight opens after source-store upgrade",
+    "Original ResNet Case resumes question 3/5",
+    "Original raw mastery and avatar bytes unchanged",
+    "Final crash buffer empty"
+  ],
+  "knownLimitations": [
+    "A cached READY ticket may retain Install after revocation; server denies deleted content and new route generation remains available",
+    "An automatically installed path may retain the in-memory Install card until screen re-entry"
+  ],
+  "finalApkSha256": "7952c167d2f4b2f6f810b005a6622fac78eb948f32a30770bf5f4ed5acdab9fc"
+}

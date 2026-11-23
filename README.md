@@ -6,7 +6,7 @@ CSI301 Mobile Computing group project. Everything is due **2026-12-07** (ad + de
 
 ## Concept games and learning Spaces (2026-11-23)
 
-The API edition is being updated around three entrances. Implementation and device acceptance are tracked in the [acceptance record](docs/design/concept-games-spaces-acceptance.md).
+The API edition now has three entrances. Implementation, test results, screenshots and known limits are recorded in the [acceptance record](docs/design/concept-games-spaces-acceptance.md).
 
 | Tab | What happens |
 |---|---|

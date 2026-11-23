@@ -17,7 +17,7 @@ This is the line that separates us from a summariser or a chat-with-PDF app (Not
 
 ## 2. The current update
 
-The user approved [concept games and multi-PDF Spaces](../superpowers/specs/2026-11-23-concept-games-spaces-design.md). The [acceptance record](../design/concept-games-spaces-acceptance.md) states what has actually passed; device acceptance is still in progress.
+The user approved [concept games and multi-PDF Spaces](../superpowers/specs/2026-11-23-concept-games-spaces-design.md). The [acceptance record](../design/concept-games-spaces-acceptance.md) records the completed automated and emulator checks, screenshots and known limits.
 
 | Entrance | User's next action | Shared foundation |
 |---|---|---|

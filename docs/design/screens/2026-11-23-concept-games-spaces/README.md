@@ -1,6 +1,6 @@
 # Actual Android screenshots — 2026-11-23
 
-Unaltered captures from the debug APK on the dedicated API 37 arm64 emulator (1080 × 2400). The sample profile was upgraded in place from the original APK. These are application screens, not design mockups. See the [acceptance record](../../concept-games-spaces-acceptance.md) for scenarios and limits.
+Unaltered captures from the debug APK on the dedicated API 37 arm64 emulator (1080 × 2400). The sample profile was upgraded in place from the original APK. Initial captures use `a5c204d`; final-fix captures use `f54fe7d` (08, 13, 18, 26 and 28–31). The debug APK includes the cached verified sample PDFs. These are application screens, not design mockups. See the [acceptance record](../../concept-games-spaces-acceptance.md) for scenarios and limits.
 
 | Playground | Partition game | Resource allocation |
 |---|---|---|
@@ -25,3 +25,13 @@ The route uses the explicit fake provider: `mock` labels are visible. The source
 [PDF Tutor explanation](20-notes-tutor.png) uses the repository-authored notes. Successful generation uses explicit fake fixtures; cancellation used a controlled loopback delay endpoint. Neither establishes live-model educational quality.
 
 [External PDF sharing confirmation](24-external-share-confirmation.png) remains visible above a previously scrolled Materials list after rotation.
+
+[Upgraded ResNet Case](08-legacy-resnet-case.png) resumes the original question 3 of 5 with credibility 3 and the retained Pip character.
+
+[Bundled offline Tutor](25-legacy-offline-tutor.png) still completes focus and diagnostic steps and opens its original explanation.
+
+| Resume after locale change | Classic restored | Fresh English route |
+|---|---|---|
+| <img src="26-locale-game-resumed.png" width="240" alt="The same saved Chinese game resumed with English UI"> | <img src="28-classic-restored.png" width="240" alt="Classic selected after Rookie in migrated Materials"> | <img src="31-fresh-english-route.png" width="240" alt="A newly imported English PDF with an installed English route"> |
+
+[Actual Classic practice](29-classic-player.png), [fresh English import](30-fresh-english-pdf.png), and the recaptured [localized PDF error](13-import-results.png) are from the final implementation. [Manual results](manual-result.json) distinguish the initial scenarios and post-fix verification. The retained three-PDF Space also generated and installed an English route after the fix; its earlier failed request remains in its history.

@@ -24,7 +24,7 @@ Language: documents are in English. Some teammate design docs are in Chinese (ma
 | `design/` | *zh* Three-tab home (Practice / Learn / Me) and local profile; evidence | [home-navigation.md](design/home-navigation.md) · [acceptance](design/home-navigation-acceptance.md) | historical release; navigation superseded by Spaces |
 | `design/` | *zh* Document diagnostic → concept starting point → grounded chat tutor; draft API; local run; evidence | [document-tutor.md](design/document-tutor.md) · [acceptance](design/document-tutor-acceptance.md) | built against fake models; draft schema |
 | `superpowers/specs/` | *zh* General-knowledge mobile games + multi-PDF Spaces: repository research, user journeys, prompt drafts, shared architecture and migration | [concept-games-spaces-design](superpowers/specs/2026-11-23-concept-games-spaces-design.md) | approved, 2026-11-23; implementation acceptance below |
-| `design/` | Concept games and multi-PDF Spaces: automated and Android device evidence | [acceptance](design/concept-games-spaces-acceptance.md) | verification in progress |
+| `design/` | Concept games and multi-PDF Spaces: automated and Android device evidence | [acceptance](design/concept-games-spaces-acceptance.md) | verified; known limits recorded |
 | `architecture/` | Shared native runtime, versioned content, Space/generation APIs and recovery | [concept-games-spaces](architecture/concept-games-spaces.md) | implementation reference |
 | `design/research/` | Research: mobile game feel, learning & narrative games, visual identity & a11y | [research/](design/research/) | 2026-11-19 |
 | `architecture/` | Solution architecture: components, contract, state machines, generation pipeline | [ARCHITECTURE.md](architecture/ARCHITECTURE.md) | draft |
