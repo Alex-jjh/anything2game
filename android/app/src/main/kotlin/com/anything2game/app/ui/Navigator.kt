@@ -3,6 +3,7 @@ package com.anything2game.app.ui
 import androidx.core.net.toUri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import com.anything2game.app.data.learning.ImportedDestination
 import com.anything2game.app.importing.ImportRequest
 import com.anything2game.app.ui.home.HomeTab
 import com.anything2game.contract.FrameId
@@ -105,6 +106,13 @@ class Navigator(private val saved: SavedStateHandle) : ViewModel() {
         clearDetail(); saved["route.type"] = "read"; saved["route.pkg"] = packageId
         saved["route.concept"] = conceptId; saved["route.source"] = sourcePackage; saved["route.version"] = version
         _route.value = Route.Read(packageId, conceptId, sourcePackage, version)
+    }
+    /** After an import: the Spaces tab, and, when a Space already holds the new lesson, that Space's files and the lesson open. */
+    fun showImported(destination: ImportedDestination?) {
+        selectTab(HomeTab.SPACES)
+        if (destination == null) return
+        openSpace(destination.spaceId, true)
+        openRead(destination.sessionKey, sourcePackage = destination.sourcePackage, version = destination.version)
     }
     fun openPlay(packageId: String, levelId: String, frameId: FrameId, version: String? = null, resumeFrame: Boolean = version != null) {
         clearDetail(); saved["route.pkg"] = packageId; saved["route.level"] = levelId; saved["route.frame"] = frameId.name

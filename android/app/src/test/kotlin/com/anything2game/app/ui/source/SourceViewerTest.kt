@@ -87,6 +87,15 @@ class SourceViewerTest {
         assertTrue(has("source_text"))
     }
 
+    @Test fun `a wiki-style heading in the extracted text shows as a heading without its equals signs`() {
+        val chunks = listOf(SourceChunk("c1", 0, "1", "Intro line.\n== 研究和应用 ==\nBody text that follows."))
+        rule.setContent { A2gTheme { SourceViewer(SourceFile("Wiki page", chunks, null), listOf(SourceRef("c1", "Body text that follows")), null, onDismiss = {}) } }
+        rule.waitUntil(5000) { has("source_highlighted") }
+        val shown = textOf("source_highlighted")
+        assertEquals("Intro line.\n研究和应用\nBody text that follows.", shown)
+        assertTrue("no marks are left on the screen", !shown.contains("=="))
+    }
+
     @Test fun `a caller's start page wins over the cited one`() {
         show(null, startPage = 0) { FakePages(3) }
         rule.waitUntil(5000) { has("source_text_heading") }

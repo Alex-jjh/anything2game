@@ -19,6 +19,7 @@ import com.anything2game.app.data.FramePreferences
 import com.anything2game.app.data.SharedPrefsFramePreferences
 import com.anything2game.app.data.FileMasteryStore
 import com.anything2game.app.data.FileSessionStore
+import com.anything2game.app.platform.ContextSimulatorControls
 import com.anything2game.app.platform.ContextSource
 import com.anything2game.app.platform.SimulatedContextSource
 import com.anything2game.engine.context.ContextPolicy
@@ -71,6 +72,8 @@ interface AppDependencies {
     val grading: Grading
     val masteryPolicy: MasteryPolicy
     val contextSource: ContextSource
+    /** The demo controls for [contextSource], or null when it is a real sensor and nobody can drive it by hand. */
+    val contextSimulator: ContextSimulatorControls?
     val contextPolicy: ContextPolicy
     val clock: Clock
     /** Who is playing (guest / sample student). Per-user stores above follow the active profile. */
@@ -93,7 +96,9 @@ class AndroidAppContainer(context: Context, private val apiBaseUrl: String = Bui
     override val grading: Grading = GraderRegistry.default()
     override val masteryPolicy: MasteryPolicy = LeitnerPolicy()
     // Real sensors (Activity Recognition, ConnectivityManager) replace this adapter later; nothing else changes.
-    override val contextSource: ContextSource = SimulatedContextSource()
+    private val simulatedSource = SimulatedContextSource()
+    override val contextSource: ContextSource = simulatedSource
+    override val contextSimulator: ContextSimulatorControls? = simulatedSource
     override val contextPolicy: ContextPolicy = com.anything2game.engine.context.StandardContextPolicy { scope.homePreferences.pauseWhenWalking }
     override val clock: Clock = Clock.SYSTEM
 

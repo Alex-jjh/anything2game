@@ -27,7 +27,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.dp
 import com.anything2game.app.R
 import com.anything2game.app.ui.theme.A2g
@@ -90,20 +90,44 @@ private fun TextPage(page: SourcePage, refs: List<SourceRef>, current: Boolean, 
     }
 }
 
-/** The chunk text with each quote marked; [first] is the start of the earliest mark, or -1 when no quote was found. */
+/** The chunk text as shown, with each quote marked; [first] is where the earliest mark starts in [text], or -1 when no quote was found. */
 internal class Marked(val text: AnnotatedString, val first: Int)
 
+/** A wiki-style heading on a line of its own, "== Research and use ==": the same number of marks on both sides. */
+private val HeadingLine = Regex("^(={2,6})(?!=)[ \\t]*([^=\\s].*?)[ \\t]*(?<!=)\\1$")
+private val HeadingStyle = SpanStyle(fontWeight = FontWeight.Bold, fontSize = 1.2.em)
+
+/**
+ * The chunk text with each quote marked, and each wiki-style heading line shown as a heading: its words, in bold and larger, with
+ * the "==" marks left out. Quotes are found in the text as the file gave it, then placed in the text as shown.
+ */
 internal fun marked(text: String, quotes: List<String>): Marked {
-    val ranges = quotes.mapNotNull { SourceLayout.find(text, it) }.sortedBy { it.first }
-    val annotated = buildAnnotatedString {
-        var at = 0
-        ranges.forEach { r ->
-            if (r.first < at) return@forEach
-            append(text.substring(at, r.first))
-            withStyle(SpanStyle(background = Marker, color = MarkedInk)) { append(text.substring(r.first, r.last + 1)) }
-            at = r.last + 1
+    val found = quotes.mapNotNull { SourceLayout.find(text, it) }.sortedBy { it.first }
+    // Which characters are the marks around a heading (not shown), and which are its words (shown large).
+    val hidden = BooleanArray(text.length)
+    val words = mutableListOf<IntRange>()
+    var lineStart = 0
+    for (line in text.split('\n')) {
+        HeadingLine.matchEntire(line.trim())?.let { heading ->
+            val label = heading.groupValues[2]
+            val at = lineStart + line.indexOf(label, line.indexOf(heading.groupValues[1]) + heading.groupValues[1].length)
+            for (i in lineStart until at) hidden[i] = true
+            for (i in at + label.length until lineStart + line.length) hidden[i] = true
+            words += at until at + label.length
         }
-        append(text.substring(at))
+        lineStart += line.length + 1
     }
-    return Marked(annotated, ranges.firstOrNull()?.first ?: -1)
+    // Where each original character lands in the shown text.
+    val shown = IntArray(text.length + 1)
+    val visible = StringBuilder()
+    for (i in text.indices) { shown[i] = visible.length; if (!hidden[i]) visible.append(text[i]) }
+    shown[text.length] = visible.length
+    var taken = 0
+    val ranges = found.filter { r -> (r.first >= taken).also { if (it) taken = r.last + 1 } }
+    val annotated = buildAnnotatedString {
+        append(visible.toString())
+        words.forEach { addStyle(HeadingStyle, shown[it.first], shown[it.last + 1]) }
+        ranges.forEach { addStyle(SpanStyle(background = Marker, color = MarkedInk), shown[it.first], shown[it.last + 1]) }
+    }
+    return Marked(annotated, ranges.firstOrNull()?.let { shown[it.first] } ?: -1)
 }

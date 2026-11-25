@@ -2,16 +2,10 @@
 <resources>
     <string name="app_name">万物成关</string>
     <string name="share_target_label">变成游戏</string>
-    <string name="library_title">你的练习</string>
     <string name="library_subtitle">要读的东西，五分钟就能练一遍。</string>
     <string name="badge_pre_generated">现成示例</string>
     <string name="language_en">英文</string>
     <string name="language_zh">中文</string>
-    <string name="level_label">第 %1$d 关</string>
-    <string name="import_title">导入你的资料</string>
-    <string name="import_body">在任意 App 里点「分享」发送 PDF 或文字，或者直接选文件。</string>
-    <string name="import_pick_pdf">选择 PDF</string>
-    <string name="empty_library">这里还没有内容。</string>
     <string name="load_failed">打不开这份练习。%1$s</string>
     <string name="play_progress">第 %1$d / %2$d 题</string>
     <string name="action_back">返回</string>
@@ -71,7 +65,6 @@
     <string name="sim_online">在线</string>
     <string name="sim_offline">离线</string>
     <string name="one_handed_badge">单手模式</string>
-    <string name="frame_label">玩法</string>
     <string name="frame_classic">经典</string>
     <string name="frame_case">破案</string>
     <string name="frame_escape">密室</string>

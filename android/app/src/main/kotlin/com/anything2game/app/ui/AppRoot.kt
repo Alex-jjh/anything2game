@@ -12,6 +12,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import com.anything2game.app.ui.character.Avatars
 import com.anything2game.app.ui.character.LocalAvatar
 import androidx.compose.ui.Alignment
@@ -26,10 +27,10 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.anything2game.app.ui.importing.ImportViewModel
 import com.anything2game.app.AppDependencies
 import com.anything2game.app.R
+import com.anything2game.app.data.learning.OpenImported
 import com.anything2game.app.importing.ImportRequest
 import com.anything2game.app.ui.source.SourceRoute
 import com.anything2game.app.ui.space.SharedPdfDestination
-import com.anything2game.app.platform.SimulatedContextSource
 import com.anything2game.app.ui.common.ContextSimulator
 import com.anything2game.app.ui.importing.ImportContent
 import com.anything2game.app.ui.game.GameScreen
@@ -138,20 +139,12 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator) {
             val state by vm.state.collectAsStateWithLifecycle()
             val cancel = { vm.cancel(); navigator.toHome() }
             BackHandler(onBack = cancel)
-            suspend fun openImported(id: String) {
-                val catalog = deps.materials.materials()
-                val source = catalog.firstOrNull { it.tutorKey == id || (it.member as? com.anything2game.contract.space.SpaceMember.LocalPackRef)?.packageId == id }
-                val parent = deps.spaces.list().firstOrNull { source?.member in it.members }
-                navigator.selectTab(HomeTab.SPACES)
-                if (parent != null && source != null) {
-                    navigator.openSpace(parent.spaceId, true)
-                    navigator.openRead(source.tutorKey ?: id, sourcePackage = source.localPack?.packageId, version = source.localPack?.contentVersion)
-                }
-            }
-            LaunchedEffect(state.ready) { state.ready?.let { openImported(it) } }
+            val openImported = remember(deps.materials, deps.spaces) { OpenImported(deps.materials, deps.spaces) }
+            suspend fun showImported(id: String) = navigator.showImported(openImported(id))
+            LaunchedEffect(state.ready) { state.ready?.let { showImported(it) } }
             Scaffold(containerColor = A2g.skin.paper) { padding ->
                 ImportContent(r.request, onCancel = cancel, contentPadding = padding, endpoint = deps.tutors.endpoint,
-                    state = state, onStart = vm::start, onDemo = { vm.cancel(); scope.launch { openImported(com.anything2game.app.data.tutor.EXAMPLE_TUTOR_PACKAGE) } })
+                    state = state, onStart = vm::start, onDemo = { vm.cancel(); scope.launch { showImported(com.anything2game.app.data.tutor.EXAMPLE_TUTOR_PACKAGE) } })
             }
         }
     }
@@ -159,9 +152,9 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator) {
     }
 }
 
-/** The simulator appears only when the context source is the simulated one (debug / demo builds). */
+/** The simulator appears only when the container offers hand-driven controls (debug / demo builds). */
 private fun simulatorFor(deps: AppDependencies): (@Composable () -> Unit)? {
-    val source = deps.contextSource as? SimulatedContextSource ?: return null
+    val source = deps.contextSimulator ?: return null
     return {
         val signals by source.signals.collectAsStateWithLifecycle()
         ContextSimulator(signals, onActivity = source::setActivity, onNetwork = source::setNetwork)

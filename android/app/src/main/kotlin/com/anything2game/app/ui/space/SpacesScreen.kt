@@ -281,12 +281,7 @@ private fun RouteGenerator(vm: SpaceViewModel, space: Space, id: String, generat
 /** A Space with no route yet: the player's character and one clear next action, never a greyed-out button. */
 @Composable
 private fun EmptyRoute(noMaterials: Boolean, addMaterials: () -> Unit, makeRoute: @Composable () -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp).testTag("route_empty"), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Box(Modifier.size(132.dp).background(A2g.skin.evidenceSoft, CircleShape), contentAlignment = Alignment.Center) {
-            LocalAvatar.current.Draw(Mood.IDLE, Modifier.size(104.dp), pokeable = false)
-        }
-        Text(stringResource(R.string.route_empty_title), style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
-        Text(stringResource(if (noMaterials) R.string.route_empty_no_materials else R.string.route_empty_body), color = A2g.skin.inkMuted, textAlign = TextAlign.Center)
+    EmptyState("route_empty", stringResource(R.string.route_empty_title), stringResource(if (noMaterials) R.string.route_empty_no_materials else R.string.route_empty_body)) {
         if (noMaterials) Button(addMaterials, Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("route_add_materials")) { Text(stringResource(R.string.route_add_materials)) }
         else makeRoute()
     }

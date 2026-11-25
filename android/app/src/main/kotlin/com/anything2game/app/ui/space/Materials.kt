@@ -204,11 +204,7 @@ private fun ImportRow(vm: SpaceViewModel, row: PdfImportItem) {
 @Composable
 private fun EmptyMaterials(vm: SpaceViewModel, space: Space, pickPdfs: () -> Unit) {
     var adding by rememberSaveable { mutableStateOf(false) }
-    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp).testTag("materials_empty"), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Box(Modifier.size(132.dp).background(A2g.skin.evidenceSoft, CircleShape), contentAlignment = Alignment.Center) {
-            LocalAvatar.current.Draw(Mood.IDLE, Modifier.size(104.dp), pokeable = false)
-        }
-        Text(stringResource(R.string.files_empty_title), style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
+    EmptyState("materials_empty", stringResource(R.string.files_empty_title)) {
         Button(pickPdfs, Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("pick_pdfs"), enabled = !vm.busy) { Text(stringResource(R.string.spaces_import)) }
         TextButton({ adding = true }, Modifier.heightIn(min = 48.dp).testTag("add_existing"), enabled = !vm.busy) { Text(stringResource(R.string.spaces_add)) }
     }
