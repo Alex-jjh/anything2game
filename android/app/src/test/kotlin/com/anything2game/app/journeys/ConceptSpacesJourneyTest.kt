@@ -103,14 +103,16 @@ class ConceptSpacesJourneyTest : JourneyTest() {
             deps.spaces!!.route(space.spaceId, "en")!!.nodes.size
         }))
         tap(rule.onNodeWithTag("show_materials"))
-        rule.onNodeWithTag("space_materials").performScrollToNode(hasText(str(R.string.spaces_remove)))
-        val remove = rule.onAllNodes(hasText(str(R.string.spaces_remove)) and hasClickAction())[0]
+        waitFor("the first file's menu") { runCatching { rule.onNodeWithTag("space_materials").performScrollToNode(hasTestTag("material_more_demo_attention")); true }.getOrDefault(false) }
+        tap(rule.onNodeWithTag("material_more_demo_attention"))
+        val remove = rule.onNodeWithTag("remove_demo_attention")
         waitFor("remove available") { runCatching { remove.assertIsEnabled(); true }.getOrDefault(false) }
         tap(remove)
         waitFor("one remaining member") { com.anything2game.app.awaitIo { deps.spaces!!.list().first { it.title == "My two papers" }.members.size == 1 } }
         systemBack()
         openMaterial(Level("demo_attention", com.anything2game.contract.FrameId.CLASSIC).pkg.title)
-        rule.onNodeWithTag("space_materials").performScrollToNode(hasTestTag("start_explanation_demo_attention"))
+        rule.onNodeWithTag("space_materials").performScrollToNode(hasTestTag("material_more_demo_attention"))
+        tap(rule.onNodeWithTag("material_more_demo_attention"))
         rule.onNodeWithTag("start_explanation_demo_attention").assertHasClickAction()
     }
 }

@@ -68,12 +68,17 @@ class SpacePdfPickerTest {
         for (row in rows) {
             rule.waitUntil(20000) {
                 ShadowLooper.idleMainLooper()
-                runCatching { rule.onNodeWithTag("space_materials").performScrollToNode(hasText(row.title)); true }.getOrDefault(false)
+                runCatching { rule.onNodeWithTag("space_materials").performScrollToNode(hasTestTag("material_row_${row.id}")); true }.getOrDefault(false)
             }
+            // A row per file, with a plain status; the reason is one tap away and says what to do, not the error code.
             rule.onNodeWithText(row.title).assertExists()
+            rule.onNode(hasTestTag("material_row_${row.id}") and hasText(RuntimeEnvironment.getApplication().getString(R.string.file_status_problem), substring = true)).assertExists()
             rule.onAllNodesWithText(row.error!!, substring = true).assertCountEquals(0)
+            rule.onNodeWithTag("material_row_${row.id}").performClick()
+            rule.onNode(isDialog()).assertExists()
             assertTrue(rule.onAllNodes(hasText("PDF", substring = true) and hasText("choose", substring = true, ignoreCase = true))
                 .fetchSemanticsNodes().isNotEmpty())
+            rule.onNode(hasText(RuntimeEnvironment.getApplication().getString(R.string.import_cancel)) and hasAnyAncestor(isDialog())).performClick()
         }
         assertTrue(awaitIo { deps.spaces.list().first { it.spaceId == id }.members.isEmpty() })
     }
@@ -100,9 +105,11 @@ class SpacePdfPickerTest {
         val again = RuntimeEnvironment.getApplication().getString(R.string.spaces_upload_again)
         rule.waitUntil(20000) {
             ShadowLooper.idleMainLooper()
-            runCatching { rule.onNodeWithTag("space_materials").performScrollToNode(hasText(again)); true }.getOrDefault(false)
+            runCatching { rule.onNodeWithTag("space_materials").performScrollToNode(hasTestTag("material_row_${row.id}")); true }.getOrDefault(false)
         }
-        rule.onNodeWithText(again).performClick()
+        rule.onNode(hasTestTag("material_row_${row.id}") and hasText(RuntimeEnvironment.getApplication().getString(R.string.file_status_unsure), substring = true)).assertExists()
+        // Not another upload until the reader has read the warning and agreed.
+        rule.onNodeWithTag("material_row_${row.id}").performClick()
         rule.onNode(isDialog()).assertExists()
         assertEquals(1, attempts.get())
         rule.onNode(hasText(again) and hasAnyAncestor(isDialog())).performClick()

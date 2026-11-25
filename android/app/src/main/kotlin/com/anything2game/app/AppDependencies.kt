@@ -124,7 +124,7 @@ class AndroidAppContainer(context: Context, private val apiBaseUrl: String = Bui
         val materials = MaterialCatalog(content, tutors, presetSources, sessions, authenticated::owns, framePreferences)
         val spaces = SpaceRepository(File(dir, "spaces.json"), materials::materials, api, content::path)
         val generation = GenerationRepository(File(dir, "generation.json"), api, content, materials, spaces)
-        val imports = PdfImportQueue(File(dir, "pdf-imports"), http::readPdf, tutors, spaces)
+        val imports = PdfImportQueue(File(dir, "pdf-imports"), http::readPdf, tutors, spaces, clock::now)
 
     }
 

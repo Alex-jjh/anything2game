@@ -23,6 +23,11 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -85,7 +90,7 @@ internal val Marker = Color(0xFFFFE066)
 private val PageInk = Color(0xFF1F1F1F)
 
 /** One page of the document: every chunk printed on it, in order. */
-private data class SourcePage(val pageIndex: Int, val label: String, val chunks: List<SourceChunk>)
+internal data class SourcePage(val pageIndex: Int, val label: String, val chunks: List<SourceChunk>)
 
 /**
  * Attaching a preset's PDF (ADR-019), held by the reading screen rather than the viewer dialog: the check runs in the
@@ -178,7 +183,7 @@ private fun TextSourceViewer(sources: List<SourceChunk>, refs: List<SourceRef>, 
  * The text is capped and scrolls, so a long refusal at large font sizes never squeezes the page away.
  */
 @Composable
-private fun AttachBar(offer: SourceAttach) {
+internal fun AttachBar(offer: SourceAttach) {
     val context = LocalContext.current
     val size = { bytes: Long -> Formatter.formatShortFileSize(context, bytes) }
     val state = offer.flow.state
@@ -215,29 +220,44 @@ private fun AttachBar(offer: SourceAttach) {
     }
 }
 
-/** The reader's chrome around either kind of page: close, "p. X · N pages", and Prev/Next (48dp) beside the marker legend. */
+/**
+ * The reader's chrome around either kind of page. With a [title] it is a file viewer (back arrow, the file's name, "3 / 15");
+ * without, it is the quoted-passage viewer ("Close", "p. X · N pages"). Prev/Next (48dp) sit beside the marker legend when there is one.
+ */
 @Composable
-internal fun SourceFrame(label: String, count: Int, pager: PagerState, onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+internal fun SourceFrame(label: String, count: Int, pager: PagerState, onDismiss: () -> Unit, title: String? = null, legend: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
     val scope = rememberCoroutineScope()
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(Modifier.fillMaxSize().testTag("source_viewer"), color = Color(0xFF5F6368)) {
+        Surface(Modifier.fillMaxSize().testTag(if (title != null) "document_viewer" else "source_viewer"), color = Color(0xFF5F6368)) {
             Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
                 Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).background(Color(0xFF3C4043)).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp).testTag("source_close")) { Text(stringResource(R.string.tutor_close), color = Color.White) }
-                    Text(stringResource(R.string.tutor_source_title), style = MaterialTheme.typography.titleMedium, color = Color.White, modifier = Modifier.weight(1f))
-                    Text(pluralStringResource(R.plurals.source_page_of, count, label, count),
-                        style = MaterialTheme.typography.labelLarge, color = Color.White, modifier = Modifier.padding(end = 12.dp).testTag("source_page_label"))
+                    if (title != null) {
+                        IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp).testTag("document_close")) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.action_back), tint = Color.White)
+                        }
+                        Text(title, style = MaterialTheme.typography.titleMedium, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f).padding(start = 4.dp).testTag("document_title"))
+                        if (count > 0) Text(stringResource(R.string.document_page_of, pager.currentPage + 1, count),
+                            style = MaterialTheme.typography.labelLarge, color = Color.White, modifier = Modifier.padding(start = 8.dp, end = 12.dp).testTag("document_page_label"))
+                    } else {
+                        TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp).testTag("source_close")) { Text(stringResource(R.string.tutor_close), color = Color.White) }
+                        Text(stringResource(R.string.tutor_source_title), style = MaterialTheme.typography.titleMedium, color = Color.White, modifier = Modifier.weight(1f))
+                        Text(pluralStringResource(R.plurals.source_page_of, count, label, count),
+                            style = MaterialTheme.typography.labelLarge, color = Color.White, modifier = Modifier.padding(end = 12.dp).testTag("source_page_label"))
+                    }
                 }
                 content()
                 Row(Modifier.fillMaxWidth().background(Color(0xFF3C4043)).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = { scope.launch { pager.animateScrollToPage(pager.currentPage - 1) } }, enabled = pager.currentPage > 0, modifier = Modifier.heightIn(min = 48.dp)) {
+                    TextButton(onClick = { scope.launch { pager.animateScrollToPage(pager.currentPage - 1) } }, enabled = pager.currentPage > 0, modifier = Modifier.heightIn(min = 48.dp).testTag("document_prev")) {
                         Text("◂ " + stringResource(R.string.source_prev_page), color = if (pager.currentPage > 0) Color.White else Color.White.copy(alpha = 0.4f))
                     }
                     Row(Modifier.weight(1f), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(width = 14.dp, height = 10.dp).background(Marker, RoundedCornerShape(2.dp)))
-                        Text("  " + stringResource(R.string.source_marker_note), style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.85f))
+                        if (legend) {
+                            Box(Modifier.size(width = 14.dp, height = 10.dp).background(Marker, RoundedCornerShape(2.dp)))
+                            Text("  " + stringResource(R.string.source_marker_note), style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.85f))
+                        }
                     }
-                    TextButton(onClick = { scope.launch { pager.animateScrollToPage(pager.currentPage + 1) } }, enabled = pager.currentPage < count - 1, modifier = Modifier.heightIn(min = 48.dp)) {
+                    TextButton(onClick = { scope.launch { pager.animateScrollToPage(pager.currentPage + 1) } }, enabled = pager.currentPage < count - 1, modifier = Modifier.heightIn(min = 48.dp).testTag("document_next")) {
                         Text(stringResource(R.string.source_next_page) + " ▸", color = if (pager.currentPage < count - 1) Color.White else Color.White.copy(alpha = 0.4f))
                     }
                 }
@@ -247,7 +267,7 @@ internal fun SourceFrame(label: String, count: Int, pager: PagerState, onDismiss
 }
 
 @Composable
-private fun PageSheet(page: SourcePage, refs: List<SourceRef>, modifier: Modifier) {
+internal fun PageSheet(page: SourcePage, refs: List<SourceRef>, modifier: Modifier, note: Boolean = true) {
     val scroll = rememberScrollState()
     val density = LocalDensity.current
     // Where the first highlight sits, so the page opens scrolled to it (as a PDF reader jumps to a search hit).
@@ -273,7 +293,7 @@ private fun PageSheet(page: SourcePage, refs: List<SourceRef>, modifier: Modifie
                 Text(stringResource(R.string.evidence_page, page.label), style = MaterialTheme.typography.labelMedium, color = Color(0xFF757575), fontWeight = FontWeight.Medium, modifier = Modifier.align(Alignment.CenterHorizontally))
             }
         }
-        Text(stringResource(R.string.tutor_source_note), style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.8f), modifier = Modifier.widthIn(max = 640.dp).fillMaxWidth())
+        if (note) Text(stringResource(R.string.tutor_source_note), style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.8f), modifier = Modifier.widthIn(max = 640.dp).fillMaxWidth())
     }
 }
 

@@ -25,7 +25,7 @@ class ProfileJourneysTest : JourneyTest() {
         openPractice()
         val resume = Level("demo_resnet", FrameId.CASE).session()!!
         val resumeText = str(R.string.level_status_in_progress, resume.position + 1, resume.queue.size)
-        openMaterial(Level("demo_resnet", FrameId.CASE).pkg.title)
+        openMaterial(Level("demo_resnet", FrameId.CASE).pkg.title); unfoldPractice(Level("demo_resnet", FrameId.CASE).pkg.title)
         scrollPracticeTo(resumeText)
 
         // Lin -> welcome -> guest: nothing of Lin's is visible.
@@ -54,7 +54,7 @@ class ProfileJourneysTest : JourneyTest() {
         chooseLin()
         openPractice()
         waitFor("Lin's Attention to read 'Needs practice'") { levelStatus(attentionTitle, level1) == str(R.string.home_needs_review) }
-        openMaterial(Level("demo_resnet", FrameId.CASE).pkg.title)
+        openMaterial(Level("demo_resnet", FrameId.CASE).pkg.title); unfoldPractice(Level("demo_resnet", FrameId.CASE).pkg.title)
         scrollPracticeTo(resumeText)
         openMe()
         assertEquals("Lin's figures are intact", lin, me())
@@ -90,7 +90,7 @@ class ProfileJourneysTest : JourneyTest() {
         val resnet = Level("demo_resnet", FrameId.CASE)
         val seeded = resnet.session()!!
         // Lin finishes the open case ...
-        openMaterial(Level("demo_resnet", FrameId.CASE).pkg.title)
+        openMaterial(Level("demo_resnet", FrameId.CASE).pkg.title); unfoldPractice(Level("demo_resnet", FrameId.CASE).pkg.title)
         scrollPracticeTo(str(R.string.level_status_in_progress, seeded.position + 1, seeded.queue.size))
         tapText(str(R.string.home_resume))
         waitFor("play screen") { exists(androidx.compose.ui.test.hasContentDescription(str(R.string.action_back))) }

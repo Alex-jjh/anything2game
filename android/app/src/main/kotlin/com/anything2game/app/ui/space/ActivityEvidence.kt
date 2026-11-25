@@ -10,12 +10,12 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import com.anything2game.app.R
 import com.anything2game.app.data.learning.*
-import com.anything2game.app.ui.reading.SourceViewer
+import com.anything2game.app.ui.reading.DocumentViewer
 import com.anything2game.contract.game.EvidenceRef
 import kotlinx.coroutines.CancellationException
 
 @Composable
-internal fun ActivityEvidence(catalog: MaterialCatalog, ref: EvidenceRef, material: Material? = null, dismiss: () -> Unit) {
+internal fun ActivityEvidence(catalog: MaterialCatalog, ref: EvidenceRef, material: Material? = null, title: String? = null, dismiss: () -> Unit) {
     var target by remember(ref) { mutableStateOf<SourceTarget?>(null) }
     var loading by remember(ref) { mutableStateOf(true) }
     var failed by remember(ref) { mutableStateOf(false) }
@@ -24,7 +24,11 @@ internal fun ActivityEvidence(catalog: MaterialCatalog, ref: EvidenceRef, materi
         loading = false
     }
     val t = target
-    if (t is SourceTarget.Pdf) { SourceViewer(t.chunks, listOf(t.ref), t.document, onDismiss = dismiss); return }
+    if (t is SourceTarget.Pdf) {
+        // The same viewer as a tapped file in Materials, opened on the cited page.
+        DocumentViewer(title ?: material?.title ?: stringResource(R.string.tutor_source_title), t.chunks, t.document, listOf(t.ref), onDismiss = dismiss)
+        return
+    }
     val uri = LocalUriHandler.current
     AlertDialog(onDismissRequest = dismiss, title = { Text(when (t) {
         is SourceTarget.Card -> t.evidence.sourceTitle

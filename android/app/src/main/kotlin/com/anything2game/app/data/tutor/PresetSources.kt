@@ -13,7 +13,7 @@ fun interface SourceLayouts {
 }
 
 /** What a reader can be told about the one PDF file a preset's geometry was measured on. */
-data class PresetPdf(val packageId: String, val documentId: String, val documentVersion: String, val pdfBytes: Long, val pdfSource: String?)
+data class PresetPdf(val packageId: String, val documentId: String, val documentVersion: String, val pdfBytes: Long, val pdfSource: String?, val pageCount: Int = 0)
 
 sealed interface AttachResult {
     class Accepted(val document: SourceDocument) : AttachResult
@@ -80,5 +80,5 @@ class PresetSources(
         return kept(l)?.let { AttachResult.Accepted(it) } ?: AttachResult.Unreadable
     }
 
-    private fun describe(l: PresetSourceLayout) = PresetPdf(l.packageId, l.documentId, l.documentVersion, l.pdfBytes, l.pdfSource)
+    private fun describe(l: PresetSourceLayout) = PresetPdf(l.packageId, l.documentId, l.documentVersion, l.pdfBytes, l.pdfSource, l.pageCount)
 }

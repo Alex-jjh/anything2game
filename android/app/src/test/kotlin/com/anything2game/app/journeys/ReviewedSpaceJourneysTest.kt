@@ -149,17 +149,21 @@ class ReviewedSpaceJourneysTest : LearnJourneyBase() {
         }
     }
 
-    @Test fun practice_only_source_opens_all_original_pages_and_returns_to_its_material() {
+    @Test fun a_course_without_a_lesson_opens_its_text_page_by_page_from_the_list_and_returns_to_it() {
         launch(); chooseGuest()
         val pkg = Level("demo_mapreduce", com.anything2game.contract.FrameId.CLASSIC).pkg
         openMaterial(pkg.title)
-        waitFor("full source action", 5000) { has("read_source_demo_mapreduce") }
-        tap(rule.onNodeWithTag("read_source_demo_mapreduce"))
-        waitForTag("material_reader")
-        val last = pkg.sources.last()
-        rule.onNodeWithTag("material_reader").performScrollToNode(hasText(last.text))
-        rule.onNodeWithText(last.text).assertExists()
-        systemBack(); waitForTag("space_materials")
+        waitFor("the course's row", 5000) { has("material_row_demo_mapreduce") }
+        tap(rule.onNodeWithTag("material_row_demo_mapreduce"))
+        waitForTag("document_viewer")
+        val pages = pkg.sources.map { it.pageIndex }.distinct().size
+        assertEquals("1 / $pages", textOf("document_page_label"))
+        // The original is not on this phone: the viewer says so, and every page of the text is one swipe or tap away.
+        assertTrue(textShown(str(R.string.document_text_note)) || has("source_attach_status"))
+        repeat(pages - 1) { tap(rule.onNodeWithTag("document_next")) }
+        assertEquals("$pages / $pages", textOf("document_page_label"))
+        assertTrue(exists(hasText(pkg.sources.last().text.take(30), substring = true)))
+        tap(rule.onNodeWithTag("document_close")); waitForTag("space_materials")
     }
 
     @Test fun available_locker_numbers_have_readable_contrast_before_selecting_a_cut() {

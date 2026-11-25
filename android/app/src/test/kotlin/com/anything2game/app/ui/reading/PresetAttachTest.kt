@@ -110,7 +110,7 @@ class PresetAttachTest {
         show(pkg.sources, listOf(SourceRef("c2", quoteOf(c2))), expected, { presets.attach("demo_attention", it) }, Picker { error("not picked") })
         rule.waitUntil(5000) { has("source_highlighted") }
         assertTrue(!has("source_pdf_page") && !has("source_highlight_rect"))
-        assertEquals("This is the extracted text. Have the original PDF? Attach it to see the real page.", textOf("source_attach_status"))
+        assertEquals("The original file isn't stored on this phone; this is its text. Have the PDF? Attach it to see the real pages.", textOf("source_attach_status"))
         rule.onNodeWithTag("source_attach_pdf").assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp).assertHasClickAction()
             .assert(hasContentDescription("Attach your copy of the original PDF to see the real page"))
     }

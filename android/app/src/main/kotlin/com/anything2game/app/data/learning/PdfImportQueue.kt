@@ -18,11 +18,13 @@ import java.util.UUID
 @Serializable
 data class PdfImportItem(val id: String, val spaceId: String, val title: String, val uri: String, val sizeBytes: Long?,
     val staged: Boolean = false, val document: DocumentResponse? = null, val sessionId: String? = null, val error: String? = null,
-    val batchId: String? = null, val language: String = "zh")
+    val batchId: String? = null, val language: String = "zh",
+    /** When the reader chose the file (epoch millis); 0 for rows saved before this was kept. */
+    val addedAt: Long = 0)
 
 /** Stage the authorized selection while its temporary grant is alive. Each PDF has its own retry boundary. */
 class PdfImportQueue(private val dir: File, private val read: suspend (ImportRequest.PdfFile) -> ByteArray,
-    private val tutors: TutorRepository, private val spaces: SpaceRepository) {
+    private val tutors: TutorRepository, private val spaces: SpaceRepository, private val now: () -> Long = System::currentTimeMillis) {
     private val rows = AtomicSnapshot(File(dir, "queue.json"), ListSerializer(PdfImportItem.serializer()), ::emptyList)
     suspend fun list() = rows.read()
     private suspend fun save(row: PdfImportItem): PdfImportItem {
@@ -52,7 +54,7 @@ class PdfImportQueue(private val dir: File, private val read: suspend (ImportReq
         language: String = "zh", onJournaled: () -> Unit = {}): List<PdfImportItem> {
         require(batchId.isNotBlank() && requests.isNotEmpty())
         val selection = requests.map { request ->
-            PdfImportItem(UUID.randomUUID().toString(), spaceId, request.title, request.uri.toString(), request.sizeBytes, batchId = batchId, language = language)
+            PdfImportItem(UUID.randomUUID().toString(), spaceId, request.title, request.uri.toString(), request.sizeBytes, batchId = batchId, language = language, addedAt = now())
         }
         val batch = rows.update { all ->
             val existing = all.filter { it.batchId == batchId }

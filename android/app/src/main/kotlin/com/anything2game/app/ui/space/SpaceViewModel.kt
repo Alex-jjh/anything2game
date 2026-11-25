@@ -36,6 +36,11 @@ internal class SpaceViewModel(deps: AppDependencies, private val language: Strin
     var cards by mutableStateOf(emptyList<SpaceCard>()); private set
     var materials by mutableStateOf(emptyList<Material>()); private set
     var imports by mutableStateOf(emptyList<PdfImportItem>()); private set
+    /** The Space's files for the Materials list, in the Space's order. */
+    var files by mutableStateOf(emptyList<MaterialFile>()); private set
+    /** The file open in the viewer, and the files whose practice list is unfolded; kept here so they survive a trip to a game. */
+    var viewing by mutableStateOf<SpaceMember?>(null)
+    var practising by mutableStateOf(emptySet<SpaceMember>()); private set
     var remote by mutableStateOf<Space?>(null); private set
     var rejected by mutableStateOf(emptyMap<String, ApiError>()); private set
     var weekDays by mutableIntStateOf(0); private set
@@ -70,8 +75,14 @@ internal class SpaceViewModel(deps: AppDependencies, private val language: Strin
             remote = spaces.serverState(detail)
             rejected = spaces.rejectedEdits(detail)
             imports = queue.list().filter { it.spaceId == detail }
+            files = cards.firstOrNull()?.space?.members.orEmpty().map { member ->
+                val file = catalog.file(member, inventory.materials, memberTitle(member))
+                val key = inventory.materials.firstOrNull { it.member == member && it.localPack == null }?.tutorKey
+                file.copy(addedAt = imports.firstOrNull { key != null && it.sessionId == key }?.addedAt ?: 0)
+            }
         }
     }
+    fun togglePractice(member: SpaceMember) { practising = if (member in practising) practising - member else practising + member }
     fun perform(work: suspend () -> Unit = {}) {
         if (busy) return
         busy = true

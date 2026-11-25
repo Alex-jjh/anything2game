@@ -231,6 +231,9 @@ internal fun SpaceScreen(deps: AppDependencies, language: String, route: Route.S
                     } }
                 }
             }
+            if (route.materials) vm.viewing?.let { member -> vm.files.firstOrNull { it.member == member }?.let { file ->
+                key(file.member) { MaterialViewer(deps, file) { vm.viewing = null } }
+            } }
             var last by remember { mutableStateOf<RouteStep?>(null) }
             if (sheet != null) last = sheet
             AnimatedVisibility(sheet != null, Modifier.fillMaxSize(), enter = fadeIn(), exit = fadeOut()) {
@@ -247,7 +250,7 @@ internal fun SpaceScreen(deps: AppDependencies, language: String, route: Route.S
                     StepSheet(step, sectionAccent(map?.sections?.firstOrNull { s -> s.steps.any { it.id == step.id } }?.number?.minus(1) ?: 0), resumable, !vm.busy,
                         onStart = { start(step.node) }, onDismiss = { selectedStep = null }, onSource = { selectedEvidence = step.id })
                     if (selectedEvidence == step.id) step.source?.let { source ->
-                        ActivityEvidence(vm.catalog, source.evidence, material) { selectedEvidence = null }
+                        ActivityEvidence(vm.catalog, source.evidence, material, (source.evidence as? EvidenceRef.Pdf)?.let { vm.sourceTitle(step.node, it) }) { selectedEvidence = null }
                     }
                 }
             }

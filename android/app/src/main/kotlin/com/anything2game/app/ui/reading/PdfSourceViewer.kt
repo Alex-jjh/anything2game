@@ -113,7 +113,7 @@ internal fun pdfMarks(sources: List<SourceChunk>, refs: List<SourceRef>, layout:
     return rects.mapValues { (page, r) -> PageMarks(r, quotes[page].orEmpty().map { (q, placed) -> PageMarks.Quote(q, placed) }) }
 }
 
-private sealed interface Opened {
+internal sealed interface Opened {
     data object Loading : Opened
     data object Failed : Opened
     class Ready(val pages: PageImages) : Opened
@@ -152,7 +152,7 @@ internal fun PdfSourceViewer(sources: List<SourceChunk>, pdf: SourceDocument, ma
 }
 
 @Composable
-private fun PdfPage(pages: PageImages, index: Int, label: String, total: Int, box: PageBox?, marks: PageMarks?, current: Boolean, onZoom: (Boolean) -> Unit, modifier: Modifier) {
+internal fun PdfPage(pages: PageImages, index: Int, label: String, total: Int, box: PageBox?, marks: PageMarks?, current: Boolean, onZoom: (Boolean) -> Unit, modifier: Modifier, note: Boolean = true) {
     val scroll = rememberScrollState()
     val density = LocalDensity.current
     var widthPx by remember { mutableIntStateOf(0) }
@@ -218,7 +218,7 @@ private fun PdfPage(pages: PageImages, index: Int, label: String, total: Int, bo
             }
         }
         Text(stringResource(R.string.source_pdf_zoom_hint), style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.8f), modifier = Modifier.widthIn(max = 640.dp).fillMaxWidth())
-        Text(stringResource(R.string.tutor_source_note), style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.8f), modifier = Modifier.widthIn(max = 640.dp).fillMaxWidth())
+        if (note) Text(stringResource(R.string.tutor_source_note), style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.8f), modifier = Modifier.widthIn(max = 640.dp).fillMaxWidth())
     }
 }
 

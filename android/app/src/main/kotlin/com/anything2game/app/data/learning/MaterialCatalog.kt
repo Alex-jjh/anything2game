@@ -55,6 +55,16 @@ sealed interface OpenActivity {
     data class Game(val activity: ActivityRef.Game, val spec: GameSpec) : OpenActivity
 }
 
+/** What a file in a Space is, as a phone's file list would say it. */
+enum class FileKind { PDF, SLIDES, TEXT, COURSE }
+
+/**
+ * One file of a Space as the Materials list shows it, with what the viewer needs to open it.
+ * [pages] and [chapters] are null when nothing says; [addedAt] is 0 when the phone never noted the day.
+ */
+data class MaterialFile(val member: SpaceMember, val title: String, val kind: FileKind, val pages: Int?, val chapters: Int?,
+    val chunks: List<SourceChunk>, val source: ContentVersion, val course: SpaceMember.LocalPackRef?, val addedAt: Long = 0)
+
 sealed interface SourceTarget {
     data class Pdf(val chunks: List<SourceChunk>, val ref: SourceRef, val document: SourceDocument?) : SourceTarget
     data class Card(val evidence: EvidenceRef.Reviewed) : SourceTarget
@@ -112,6 +122,38 @@ class MaterialCatalog(private val content: ContentLibrary, private val tutors: T
         } }
         PathNode(node, q.concept, ref, evidence = listOfNotNull(evidence))
     }
+
+    /** The Materials-list entry for [member]: its type, size and text, from what is already on the phone (the PDF itself is read by [document]). */
+    suspend fun file(member: SpaceMember, all: List<Material>, title: String): MaterialFile {
+        val matches = all.filter { it.member == member || it.localPack == member }
+        val chunks = matches.firstOrNull { it.chunks.isNotEmpty() }?.chunks.orEmpty()
+        val course = matches.firstNotNullOfOrNull { it.localPack }
+        val uploaded = matches.any { it.localPack == null }
+        val source = matches.firstOrNull()?.source ?: member.version()
+        val kept = safely { tutors.sourceDocument(source.contentId, source.contentVersion) }
+        val preset = course?.let { c -> safely { presets?.available(c.packageId, c.contentVersion) } }
+        val textPages = chunks.maxOfOrNull { it.pageIndex + 1 }
+        val lower = title.lowercase()
+        return when {
+            kept != null -> MaterialFile(member, title, FileKind.PDF, kept.pageCount, null, chunks, source, course)
+            preset != null -> MaterialFile(member, title, FileKind.PDF, preset.pageCount.takeIf { it > 0 } ?: textPages, null, chunks, source, course)
+            course != null && !uploaded -> MaterialFile(member, title, FileKind.COURSE, null,
+                safely { content.course(ContentVersion(course.packageId, course.contentVersion)) }?.pkg?.levels?.size, chunks, source, course)
+            lower.endsWith(".pdf") -> MaterialFile(member, title, FileKind.PDF, textPages, null, chunks, source, course)
+            SLIDE_EXTENSIONS.any { lower.endsWith(it) } -> MaterialFile(member, title, FileKind.SLIDES, textPages, null, chunks, source, course)
+            else -> MaterialFile(member, title, FileKind.TEXT, textPages?.takeIf { it > 1 }, null, chunks, source, course)
+        }
+    }
+
+    /** The reader's own copy of the original PDF (imported, attached, or bundled with the course), or null when it is not on this phone. */
+    suspend fun document(file: MaterialFile): SourceDocument? {
+        safely { tutors.sourceDocument(file.source.contentId, file.source.contentVersion) }?.let { return it }
+        val course = file.course ?: return null
+        return safely { presets?.load(course.packageId, file.source.contentId, file.source.contentVersion, course.contentVersion) }
+    }
+
+    private suspend fun <T> safely(block: suspend () -> T?): T? =
+        try { block() } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
 
     suspend fun availableDocuments() = materials().filter { it.tutorKey != null }.map { it.source }.toSet()
     suspend fun availableVersions() = content.availableVersions() + availableDocuments()
@@ -174,4 +216,6 @@ class MaterialCatalog(private val content: ContentLibrary, private val tutors: T
             }
         }
     }
+
+    private companion object { val SLIDE_EXTENSIONS = listOf(".ppt", ".pptx", ".key", ".odp") }
 }

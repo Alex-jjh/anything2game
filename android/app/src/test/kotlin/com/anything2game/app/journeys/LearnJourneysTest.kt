@@ -72,7 +72,9 @@ class LearnJourneysTest : LearnJourneyBase() {
             openMaterial(title(id))
             val pkg = Level(id, FrameId.CLASSIC).pkg
             levelButton(pkg.title, pkg.levels.first().title).assertHasClickAction()
+            tap(rule.onNodeWithTag("material_more_$id")); waitForTag("practise_$id")
             assertFalse("A course without a script offered a tutor", exists(hasTestTag("start_explanation_$id")))
+            tap(rule.onNodeWithTag("material_more_$id"))
         }
     }
 

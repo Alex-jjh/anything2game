@@ -29,7 +29,7 @@
     <string name="tutor_concept_count">Teaching concept %1$d of %2$d</string>
     <string name="tutor_all_introduced">All introductory concepts are covered. You can keep asking or return to your shelf.</string>
     <string name="tutor_source_title">Source passage</string>
-    <string name="tutor_source_note">A matching quote verifies the link, not the truth of the source or the explanation.</string>
+    <string name="tutor_source_note">The quote only shows where this comes from. It doesn\'t prove the explanation is right.</string>
     <string name="tutor_close">Close</string>
     <string name="tutor_error">Could not complete this step (%1$s). Saved records are retained. Retry or reload to reconcile with the server.</string>
     <string name="tutor_reload">Reload session</string>
@@ -48,7 +48,7 @@
     <string name="tutor_separate_example">Preview with a separate self-authored example. It is not generated from the selected file.</string>
     <string name="tutor_demo_action">Try the fixed tutorial</string>
     <string name="tutor_resume">Continue this document</string>
-    <string name="tutor_prepare_practice">Prepare practice</string>
+    <string name="tutor_prepare_practice">Make practice questions</string>
     <string name="tutor_practice_separate">Practice is generated separately. It does not reuse your diagnostic as a score.</string>
     <string name="tutor_scripted_note">Written for this course ahead of time. Nothing is uploaded and no AI is running; your answers here stay on this device.</string>
     <string name="tutor_start_explanation">Start explanation</string>
@@ -81,7 +81,7 @@
     <string name="source_pdf_quote_unplaced">Quoted on this page (not marked): “%1$s”</string>
     <string name="source_pdf_zoom_hint">Pinch to zoom, double-tap to reset</string>
     <!-- Preset courses: the reader attaches their own copy of the paper's PDF (ADR-019). -->
-    <string name="source_attach_note">This is the extracted text. Have the original PDF? Attach it to see the real page.</string>
+    <string name="source_attach_note">The original file isn\'t stored on this phone; this is its text. Have the PDF? Attach it to see the real pages.</string>
     <string name="source_attach_action">Attach PDF</string>
     <string name="source_attach_desc">Attach your copy of the original PDF to see the real page</string>
     <string name="source_attach_checking">Checking the file…</string>
@@ -93,9 +93,9 @@
     <string name="source_attach_unplaced">PDF attached. This passage has no position on its page, so its text is shown here.</string>
     <string name="source_attach_retry">Choose another file</string>
     <string name="source_attach_download">Open download page</string>
-    <string name="import_invalid_pdf">This file could not be opened as a PDF. Choose a valid PDF file.</string>
-    <string name="import_oversized_pdf">Choose a PDF of 20 MB or less, or split the document into smaller files.</string>
-    <string name="import_encrypted_pdf">Remove the password or encryption, then choose the unlocked PDF.</string>
-    <string name="import_scanned_pdf">This PDF has no readable text. Choose a searchable PDF or add a text layer with OCR.</string>
-    <string name="import_unreadable_pdf">The file could not be read. Download it to this device and choose it again.</string>
+    <string name="import_invalid_pdf">This file couldn\'t be opened as a PDF. Please choose another PDF.</string>
+    <string name="import_oversized_pdf">This PDF is over 20 MB. Please choose a smaller one, or split it into parts.</string>
+    <string name="import_encrypted_pdf">This PDF is locked with a password. Remove the password, then choose it again.</string>
+    <string name="import_scanned_pdf">This PDF is made of pictures, so there is no text to read. Please choose a PDF where you can select the text.</string>
+    <string name="import_unreadable_pdf">We couldn\'t read this file. Save it to this phone, then choose it again.</string>
 </resources>

@@ -91,15 +91,21 @@ class VerifiedMaterialActionsTest {
             }
             spaces.list().single { it.members == listOf(SpaceMember.ServerDocumentRef(pkg.documentId, pkg.documentVersion)) }
         }
+        val documentId = awaitIo { base.packages.load(EXAMPLE_TUTOR_PACKAGE).getOrThrow().documentId }
         val nav = Navigator(SavedStateHandle()).apply { openSpace(space.spaceId, true) }
         rule.setContent { A2gTheme { AppRoot(deps, nav) } }
+        // One row for the document; its menu holds both the lesson and the compiled course's practice.
+        rule.waitUntil(15000) { ShadowLooper.idleMainLooper(); rule.onAllNodesWithTag("material_more_$documentId").fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithTag("material_more_$documentId").performClick()
+        rule.onNodeWithTag("practise_$documentId").performClick()
         rule.waitUntil(15000) {
             ShadowLooper.idleMainLooper()
             runCatching { rule.onNodeWithTag("space_materials").performScrollToNode(hasTestTag("play_owned-course_L1")); true }.getOrDefault(false)
         }
         rule.onNodeWithTag("play_other-course_L1").assertDoesNotExist()
-        rule.onNodeWithTag("space_materials").performScrollToNode(hasText(RuntimeEnvironment.getApplication().getString(R.string.tutor_resume)))
-        rule.onNodeWithText(RuntimeEnvironment.getApplication().getString(R.string.tutor_resume)).performClick()
+        rule.onNodeWithTag("space_materials").performScrollToNode(hasTestTag("material_more_$documentId"))
+        rule.onNodeWithTag("material_more_$documentId").performClick()
+        rule.onNodeWithTag("start_explanation_tut_verified").performClick()
         assertEquals("tut_verified", (nav.route.value as Route.Read).packageId)
     }
 
@@ -114,6 +120,9 @@ class VerifiedMaterialActionsTest {
         val nav = Navigator(SavedStateHandle()).apply { openSpace(space.spaceId, true) }
         rule.setContent { A2gTheme { AppRoot(deps, nav) } }
         val list = rule.onNodeWithTag("space_materials")
+        rule.waitUntil(15000) { ShadowLooper.idleMainLooper(); rule.onAllNodesWithTag("material_more_demo_attention").fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithTag("material_more_demo_attention").performClick()
+        rule.onNodeWithTag("practise_demo_attention").performClick()
         rule.waitUntil(15000) {
             ShadowLooper.idleMainLooper()
             runCatching { list.performScrollToNode(hasTestTag("play_as_ROOKIE")); true }.getOrDefault(false)

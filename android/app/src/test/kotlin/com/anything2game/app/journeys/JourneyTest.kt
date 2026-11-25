@@ -222,16 +222,27 @@ abstract class JourneyTest {
         waitFor("material control $tag") { runCatching { rule.onNodeWithTag("space_materials").performScrollToNode(hasTestTag(tag)); true }.getOrDefault(false) }
         return rule.onNodeWithTag(tag)
     }
+    /** A course's practice is unfolded from its row's menu ("Practise"); unfolded once, it stays so while the app is open. */
+    protected fun unfoldPractice(courseTitle: String) {
+        val pkg = awaitIo { deps.packages.list().single { it.title == courseTitle }.packageId }
+        if (exists(hasTestTag("practice_$pkg"))) return
+        waitFor("menu of $pkg") { runCatching { rule.onNodeWithTag("space_materials").performScrollToNode(hasTestTag("material_more_$pkg")); true }.getOrDefault(false) }
+        tap(rule.onNodeWithTag("material_more_$pkg"))
+        waitForTag("practise_$pkg")
+        if (exists(hasTestTag("practise_$pkg") and hasText(str(R.string.material_practice_hide)))) tap(rule.onNodeWithTag("material_more_$pkg"))
+        else tap(rule.onNodeWithTag("practise_$pkg"))
+        waitForTag("practice_$pkg")
+    }
     protected fun levelButton(courseTitle: String, levelTitle: String): SemanticsNodeInteraction {
-        openMaterial(courseTitle)
+        openMaterial(courseTitle); unfoldPractice(courseTitle)
         return materialControl("play_" + levelTag(courseTitle, levelTitle))
     }
     protected fun levelStatus(courseTitle: String, levelTitle: String): String {
-        openMaterial(courseTitle)
+        openMaterial(courseTitle); unfoldPractice(courseTitle)
         return materialControl("level_status_" + levelTag(courseTitle, levelTitle)).fetchSemanticsNode().config[SemanticsProperties.Text].joinToString("") { it.text }
     }
     protected fun playAs(courseTitle: String, frame: FrameId) {
-        openMaterial(courseTitle)
+        openMaterial(courseTitle); unfoldPractice(courseTitle)
         val chip = materialControl("play_as_${frame.name}")
         tap(chip)
         waitFor("frame selected") { chip.fetchSemanticsNode().config.getOrNull(SemanticsProperties.Selected) == true }

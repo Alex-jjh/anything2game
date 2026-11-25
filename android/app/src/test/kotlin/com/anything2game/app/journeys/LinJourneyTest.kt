@@ -27,7 +27,7 @@ class LinJourneyTest : JourneyTest() {
         val open = resnet.session()!!
         assertFalse(open.isFinished)
         val resnetLevel = resnet.pkg.level(open.levelId)!!
-        openMaterial(Level("demo_resnet", FrameId.CASE).pkg.title)
+        openMaterial(Level("demo_resnet", FrameId.CASE).pkg.title); unfoldPractice(Level("demo_resnet", FrameId.CASE).pkg.title)
         scrollPracticeTo(str(R.string.level_status_in_progress, open.position + 1, open.queue.size))
         val before = resnet.mastery()
 

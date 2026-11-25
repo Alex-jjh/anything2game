@@ -70,10 +70,14 @@ abstract class LearnJourneyBase : JourneyTest() {
         }
         throw AssertionError("Could not scroll to tag $tag in $list", last)
     }
+    /** The explain action of a course lives in its row's menu: opens the Space and the menu (left open if it already is). */
     protected fun scrollLearnTo(tag: String) {
-        openMaterial(title(tag.removePrefix("start_explanation_")))
-        scrollListTo("space_materials", tag)
+        val id = tag.removePrefix("start_explanation_")
+        openMaterial(title(id))
+        if (!exists(hasTestTag(tag))) { scrollListTo("space_materials", "material_more_$id"); tap(rule.onNodeWithTag("material_more_$id")); waitForTag(tag) }
     }
+    /** Closes the menu [scrollLearnTo] opened (the menu button toggles it). */
+    protected fun closeLearnMenu(pkgId: String) { if (exists(hasTestTag("start_explanation_$pkgId"))) tap(rule.onNodeWithTag("material_more_$pkgId")) }
 
     protected fun startExplanation(pkgId: String) {
         scrollLearnTo("start_explanation_$pkgId")
@@ -82,12 +86,17 @@ abstract class LearnJourneyBase : JourneyTest() {
     }
 
     /** What the student sees on the card of one course in Learn: the text of its action button. */
-    protected fun learnCardAction(pkgId: String): String { scrollLearnTo("start_explanation_$pkgId"); return textOf("start_explanation_$pkgId") }
+    protected fun learnCardAction(pkgId: String): String { scrollLearnTo("start_explanation_$pkgId"); return textOf("start_explanation_$pkgId").also { closeLearnMenu(pkgId) } }
 
     /** The shelf re-reads the saved sessions when it comes back on screen: wait until the card of [pkgId] says [label]. */
     protected fun assertLearnCard(pkgId: String, label: String) {
-        scrollLearnTo("start_explanation_$pkgId")
-        waitFor("the Learn card of $pkgId to say \"$label\" (says \"${runCatching { textOf("start_explanation_$pkgId") }.getOrNull()}\")") { textOf("start_explanation_$pkgId") == label }
+        // The menu reads how far the student got when it opens: open it fresh each time until it says [label].
+        waitFor("the explain action of $pkgId to say \"$label\"") {
+            scrollLearnTo("start_explanation_$pkgId")
+            val said = textOf("start_explanation_$pkgId")
+            closeLearnMenu(pkgId)
+            said == label
+        }
     }
 
     // ---- focus + diagnostic -----------------------------------------------------------------------------
