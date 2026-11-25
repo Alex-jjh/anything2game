@@ -85,7 +85,7 @@ class AndroidTutorRepository(
             val base = script.blueprint.concepts.map { it.question }
             val saved = files.read(key)
             if (saved == null) return OpenTutor(TutorCache(TutorSession(sessionId = key, documentId = pkg.documentId, documentVersion = pkg.documentVersion,
-                title = pkg.title, language = language(script), mode = "local-mock", questions = base, sources = pkg.sources)))
+                title = pkg.title, language = language(script), mode = TutorMode.LOCAL_MOCK, questions = base, sources = pkg.sources)))
             // Same questions as the script (the script may have gained facet tags since the session was saved); order is the reader's focus.
             val byId = base.associateBy { it.id }
             val fresh = saved.session.questions.map { byId[it.id] ?: throw IllegalArgumentException("Saved question is not in the script") }
@@ -119,13 +119,13 @@ class AndroidTutorRepository(
     }
     override suspend fun assess(cache: TutorCache, requestId: String): TutorSession {
         val s = cache.session
-        if (s.mode == "local-mock") return s.copy(revision = s.revision + 1, answers = cache.draftAnswers,
+        if (s.mode == TutorMode.LOCAL_MOCK) return s.copy(revision = s.revision + 1, answers = cache.draftAnswers,
             assessment = TutorRules.assess(localScript(s).blueprint, cache.draftAnswers))
         return decode(http.request("POST", "/v1/tutors/${s.sessionId}/assessment", json.encodeToString(AssessTutorRequest.serializer(), AssessTutorRequest(s.revision, cache.draftAnswers, requestId)))).keepingFocusOf(s)
     }
     override suspend fun turn(cache: TutorCache, intent: TutorIntent, question: String, requestId: String, targetPosition: Int?): TutorSession {
         val s = cache.session
-        if (s.mode == "local-mock") {
+        if (s.mode == TutorMode.LOCAL_MOCK) {
             require(s.messages.size < 80)
             val position = TutorRules.positionAfter(s, intent, targetPosition)
             // Going back does not undo the walk: the furthest point reached is what the concept list offers.
@@ -146,7 +146,7 @@ class AndroidTutorRepository(
         }
         return decode(http.request("POST", "/v1/tutors/${s.sessionId}/turns", json.encodeToString(TutorTurnRequest.serializer(), TutorTurnRequest(s.revision, intent, question, requestId, targetPosition)))).keepingFocusOf(s)
     }
-    override suspend fun cancel(cache: TutorCache, requestId: String): TutorSession = if (cache.session.mode == "local-mock") cache.session else
+    override suspend fun cancel(cache: TutorCache, requestId: String): TutorSession = if (cache.session.mode == TutorMode.LOCAL_MOCK) cache.session else
         decode(http.request("POST", "/v1/tutors/${cache.session.sessionId}/cancel", json.encodeToString(CreateTutorRequest.serializer(), CreateTutorRequest(clientRequestId = requestId)))).keepingFocusOf(cache.session)
     /**
      * A PDF is read once, sent asking for its text geometry, and kept here with that geometry before the import goes on
@@ -169,7 +169,7 @@ class AndroidTutorRepository(
         return s
     }
     override suspend fun preparePractice(session: TutorSession): LearningPackage {
-        require(session.mode != "local-mock")
+        require(session.mode != TutorMode.LOCAL_MOCK)
         val request = CompileJobRequest(session.documentId, CompileOptions(language = session.language), java.util.UUID.randomUUID().toString())
         var status = json.decodeFromString(CompileJobStatus.serializer(), http.request("POST", "/v1/compile-jobs", json.encodeToString(CompileJobRequest.serializer(), request)))
         return kotlinx.coroutines.withTimeout(180_000) {

@@ -124,7 +124,7 @@ internal sealed interface Opened {
 internal class OriginalPdfRenderer(private val pages: PageImages, private val document: SourceDocument, chunks: List<SourceChunk>, refs: List<SourceRef>, startPage: Int?) : SourceRenderer {
     private val marks = if (refs.isEmpty()) emptyMap() else pdfMarks(chunks, refs, document.layout)
     private val boxes = document.layout.pages.associateBy { it.pageIndex }
-    private val labels = chunks.associate { it.pageIndex to (it.pageLabel ?: (it.pageIndex + 1).toString()) }
+    private val labels = chunks.associate { it.pageIndex to it.displayPage() }
     private var zoomed by mutableStateOf(false)
 
     override val pageCount get() = document.pageCount

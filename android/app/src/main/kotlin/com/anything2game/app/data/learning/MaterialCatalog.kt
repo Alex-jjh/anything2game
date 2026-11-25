@@ -1,5 +1,7 @@
 package com.anything2game.app.data.learning
 
+import com.anything2game.contract.tutor.TutorMode
+
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import com.anything2game.app.data.content.ContentLibrary
@@ -91,7 +93,7 @@ class MaterialCatalog(private val content: ContentLibrary, private val tutors: T
         for (s in saved) {
             val source = ContentVersion(s.documentId, s.documentVersion)
             result += Material(source, s.title, SpaceMember.ServerDocumentRef(s.documentId, s.documentVersion),
-                tutorNodes(source, s.sessionId, s.questions, s.sources), s.language, s.sessionId, s.sources, fixture = s.mode == "mock")
+                tutorNodes(source, s.sessionId, s.questions, s.sources), s.language, s.sessionId, s.sources, fixture = s.mode == TutorMode.MOCK)
         }
         for (manifest in content.manifests().filter { it.schema == PACK_SCHEMA_V1 }) {
             val version = ContentVersion(manifest.packageId, manifest.contentVersion)

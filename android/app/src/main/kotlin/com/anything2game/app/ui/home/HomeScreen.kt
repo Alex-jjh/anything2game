@@ -24,6 +24,7 @@ import com.anything2game.app.ui.character.Avatars
 import com.anything2game.app.ui.character.Mood
 import com.anything2game.app.ui.common.Badge
 import com.anything2game.app.ui.library.*
+import com.anything2game.app.ui.play.presentation
 import com.anything2game.app.ui.theme.A2g
 import com.anything2game.contract.FrameId
 
@@ -190,10 +191,10 @@ internal fun PlayAs(frames: List<FrameId>, selected: FrameId, onSelect: (FrameId
         androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             frames.forEach { f ->
                 androidx.compose.material3.FilterChip(f == selected, { onSelect(f) },
-                    { Text(stringResource(com.anything2game.app.ui.play.frameName(f))) }, Modifier.heightIn(min = 48.dp).testTag("play_as_${f.name}"))
+                    { Text(stringResource(f.presentation().name)) }, Modifier.heightIn(min = 48.dp).testTag("play_as_${f.name}"))
             }
         }
-        Text(stringResource(com.anything2game.app.ui.play.frameDescription(selected)), style = MaterialTheme.typography.bodyMedium, color = skin.ink)
-        Text(stringResource(com.anything2game.app.ui.play.frameBestFor(selected)), style = MaterialTheme.typography.bodySmall, color = skin.inkMuted)
+        Text(stringResource(selected.presentation().description), style = MaterialTheme.typography.bodyMedium, color = skin.ink)
+        Text(stringResource(selected.presentation().bestFor), style = MaterialTheme.typography.bodySmall, color = skin.inkMuted)
     }
 }

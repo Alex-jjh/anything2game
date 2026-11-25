@@ -126,7 +126,7 @@ fun PlayContent(
                     FailedContent(state.frameId, onReplay = onRestart, onLibrary = onBack)
                 }
                 recap != null -> Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                    RecapContent(recap, unitCount = level?.units?.size ?: 0, title = stringResource(recapTitle(state.frameId)), frameId = state.frameId, onReplay = onRestart, onLibrary = onBack,
+                    RecapContent(recap, unitCount = level?.units?.size ?: 0, title = stringResource(state.frameId.presentation().recapTitle), frameId = state.frameId, onReplay = onRestart, onLibrary = onBack,
                         hero = {
                             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { avatar.Draw(mood, Modifier.size(150.dp)) }
                             avatarLine(avatar, mood, session.position)?.let { SpeechBubble(avatar, it) }
@@ -195,7 +195,7 @@ private fun ProgressHeader(state: PlayUiState.Ready, onAction: (Action) -> Unit,
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             avatar?.invoke()
             val boss = s.currentSlot?.kind == SlotKind.BOSS
-            val bossText = bossLabel(state.frameId)
+            val bossText = state.frameId.presentation().bossLabel
             when {
                 boss && bossText != null -> Badge(stringResource(bossText), skin.onAction, skin.wrong)
                 s.currentSlot?.kind == SlotKind.TEACH_BACK -> Badge(

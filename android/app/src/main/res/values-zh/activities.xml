@@ -127,6 +127,7 @@
     <string name="route_kind_case">案件练习</string>
     <string name="route_kind_rookie">带新人练习</string>
     <string name="route_kind_escape">密室练习</string>
+    <string name="route_kind_companion">陪伴练习</string>
     <string name="route_kind_game">游戏</string>
     <string name="route_state_current">下一步</string>
     <string name="route_state_locked">未解锁</string>

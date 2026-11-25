@@ -1,5 +1,7 @@
 package com.anything2game.app.ui.source
 
+import com.anything2game.contract.tutor.TutorMode
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -79,7 +81,7 @@ class SourceViewerScreenshotTest {
         val deps = container()
         val space = awaitIo {
             val pkg = deps.packages.load(EXAMPLE_TUTOR_PACKAGE).getOrThrow()
-            val session = deps.tutors.open(pkg.packageId).cache.session.copy(sessionId = "tut_file", mode = "mock", title = "01-attention.pdf")
+            val session = deps.tutors.open(pkg.packageId).cache.session.copy(sessionId = "tut_file", mode = TutorMode.MOCK, title = "01-attention.pdf")
             deps.tutors.save(TutorCache(session))
             SourceDocumentStore(File(app.filesDir, "source-documents")).save(session.documentId, session.documentVersion, 15, DocumentLayout(List(15) { PageBox(it, 612f, 792f) }), "%PDF-kept".toByteArray())
             session to deps.spaces.list().single { it.members == listOf(SpaceMember.ServerDocumentRef(session.documentId, session.documentVersion)) }

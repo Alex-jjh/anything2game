@@ -93,7 +93,7 @@ class TutorModelTest {
             s = first.assess(s.sessionId, "owner", AssessTutorRequest(0, s.questions.associate { it.id to UNKNOWN_ANSWER }, "assess"))
             val reconfigured = TutorService(env.store, forbidden, forbidden, false, 1000)
             val next = reconfigured.turn(s.sessionId, "owner", TutorTurnRequest(s.revision, TutorIntent.START, clientRequestId = "start")) {}
-            assertEquals("mock", next.mode)
+            assertEquals(TutorMode.MOCK, next.mode)
             assertEquals(2, next.messages.size)
         } }
     }

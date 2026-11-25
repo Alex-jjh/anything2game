@@ -77,13 +77,11 @@ class RouteMapTest {
         assertNull(m.current)
     }
 
-    @Test fun step_kind_follows_the_activity_and_the_frame_the_practice_opens_in() {
-        assertEquals(StepKind.EXPLAIN, kindOf(tutor("a", "c")))
-        assertEquals(StepKind.CLASSIC, kindOf(practice("L")))
-        assertEquals(StepKind.CASE, kindOf(practice("L", FrameId.CASE)))
-        assertEquals(StepKind.ROOKIE, kindOf(practice("L", FrameId.ROOKIE)))
-        assertEquals(StepKind.ESCAPE, kindOf(practice("L", FrameId.ESCAPE)))
-        assertEquals(StepKind.GAME, kindOf(ActivityRef.Game("g", "1", "final")))
+    @Test fun step_kind_follows_the_activity_and_a_practice_step_carries_the_frame_it_opens_in() {
+        assertEquals(StepKind.Explain, kindOf(tutor("a", "c")))
+        assertEquals(StepKind.Practice(FrameId.CLASSIC), kindOf(practice("L")))
+        FrameId.entries.forEach { assertEquals(StepKind.Practice(it), kindOf(practice("L", it))) }
+        assertEquals(StepKind.Game, kindOf(ActivityRef.Game("g", "1", "final")))
     }
 
     @Test fun nodes_without_a_chapter_group_by_material_and_name_it_only_when_materials_are_mixed() {

@@ -132,6 +132,7 @@
     <string name="route_kind_case">Case practice</string>
     <string name="route_kind_rookie">Rookie practice</string>
     <string name="route_kind_escape">Escape practice</string>
+    <string name="route_kind_companion">Companion practice</string>
     <string name="route_kind_game">Game</string>
     <string name="route_state_current">up next</string>
     <string name="route_state_locked">locked</string>

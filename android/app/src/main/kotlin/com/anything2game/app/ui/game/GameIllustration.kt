@@ -13,6 +13,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import com.anything2game.contract.game.AllocationConfig
 import com.anything2game.contract.game.GameSpec
 import com.anything2game.contract.game.PartitionConfig
+import com.anything2game.contract.game.icon
+import com.anything2game.contract.game.icons
 
 private val ink = Color(0xFF2A2630)
 
@@ -36,8 +38,8 @@ internal fun GameIllustration(spec: GameSpec, modifier: Modifier = Modifier) {
     val config = spec.stages.first().config
     Canvas(modifier.fillMaxWidth().aspectRatio(1.9f)) {
         when (config) {
-            is PartitionConfig -> drawPartitionScene(config.theme?.icon ?: "locker")
-            is AllocationConfig -> drawAllocationScene(config.theme?.firstIcon ?: "bowl", config.theme?.secondIcon ?: "cup", config.theme?.tokenIcon ?: "coin")
+            is PartitionConfig -> drawPartitionScene(config.icon())
+            is AllocationConfig -> config.icons().let { drawAllocationScene(it.first, it.second, it.token) }
         }
     }
 }

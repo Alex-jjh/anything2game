@@ -7,6 +7,8 @@ import com.anything2game.contract.game.AllocationConfig
 import com.anything2game.contract.game.AllocationTheme
 import com.anything2game.contract.game.PartitionConfig
 import com.anything2game.contract.game.PartitionTheme
+import com.anything2game.contract.game.icon
+import com.anything2game.contract.game.icons
 import java.util.Locale
 
 /** The words and pictures of a partition board. Each missing theme field falls back to the neutral locker wording of the first release. */
@@ -30,7 +32,7 @@ internal fun PartitionConfig.look(): PartitionLook {
     val t = theme ?: PartitionTheme()
     return PartitionLook(t.item ?: stringResource(R.string.look_locker), t.items ?: t.item?.let { it } ?: stringResource(R.string.look_lockers),
         t.target ?: stringResource(R.string.look_locker_target), t.query ?: stringResource(R.string.look_questions),
-        t.ask ?: stringResource(R.string.games_ask), t.icon ?: "locker", t.where)
+        t.ask ?: stringResource(R.string.games_ask), icon(), t.where)
 }
 
 @Composable
@@ -41,7 +43,7 @@ internal fun AllocationConfig.look(): AllocationLook {
     return AllocationLook(t.firstZone ?: stringResource(R.string.look_zone, "A"), t.secondZone ?: stringResource(R.string.look_zone, "B"),
         t.firstGood ?: goodA, t.firstGoods ?: t.firstGood ?: goodsA, t.secondGood ?: goodB, t.secondGoods ?: t.secondGood ?: goodsB,
         t.token ?: stringResource(R.string.look_token), t.tokens ?: t.token ?: stringResource(R.string.look_tokens),
-        t.firstIcon ?: "bowl", t.secondIcon ?: "cup", t.tokenIcon ?: "coin")
+        icons().first, icons().second, icons().token)
 }
 
 /** 1.5, 0.67, 4: at most two decimals, no trailing zeros. Always uses '.', which both languages read the same way. */

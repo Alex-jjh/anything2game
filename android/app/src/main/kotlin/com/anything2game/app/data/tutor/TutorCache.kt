@@ -38,7 +38,7 @@ import java.security.MessageDigest
     fun validate(): TutorCache {
         val s = session
         require(s.schema == TUTOR_SCHEMA && s.questions.isNotEmpty() && s.questions.size <= 6)
-        require(s.revision >= 0 && s.mode in setOf("mock", "model", "local-mock"))
+        require(s.revision >= 0)
         require(s.questions.map { it.id }.distinct().size == s.questions.size)
         TutorRules.checkFocus(s.focus, s.focusNote)
         require(questionIndex in s.questions.indices && s.conceptPosition in s.questions.indices)
@@ -133,7 +133,7 @@ class TutorCacheStore(private val directory: File,
     suspend fun list(includeScripted: Boolean = false): List<TutorSession> = withContext(Dispatchers.IO) {
         lock.withLock {
             targets().mapNotNull { historical(it)?.let { cache -> recover(cache).session } }
-                .filter { includeScripted || it.mode != "local-mock" }.sortedBy { it.title }
+                .filter { includeScripted || it.mode != TutorMode.LOCAL_MOCK }.sortedBy { it.title }
         }
     }
 }

@@ -56,10 +56,7 @@ private val HALVING_ROWS = listOf(1..16, 9..16, 9..12, 11..12, 11..11)
 private const val HALVING_TARGET = 11
 
 /** The icon a game is known by: its tiles' picture, or the first of its two places. */
-internal fun GameSpec.mainIcon(): String = when (val c = stages.first().config) {
-    is PartitionConfig -> c.theme?.icon ?: "locker"
-    is AllocationConfig -> c.theme?.firstIcon ?: "bowl"
-}
+internal fun GameSpec.mainIcon(): String = stages.first().config.mainIcon()
 
 /**
  * The "Quick look": a full-screen story told before a game, one short scene per tap (or swipe), with a progress bar of segments on top,
@@ -221,7 +218,7 @@ private fun HookVisual(spec: GameSpec, reduced: Boolean) {
     Row(Modifier.graphicsLayer { scaleX = bounce; scaleY = bounce }, horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
         when (config) {
             is PartitionConfig -> { val icon = spec.mainIcon(); IntroTile(icon, 64.dp); IntroTile(null, 76.dp, text = "?"); IntroTile(icon, 64.dp) }
-            is AllocationConfig -> { IntroTile(config.theme?.firstIcon ?: "bowl", 70.dp); IntroTile(null, 76.dp, text = "?"); IntroTile(config.theme?.secondIcon ?: "cup", 70.dp) }
+            is AllocationConfig -> { val icons = config.icons(); IntroTile(icons.first, 70.dp); IntroTile(null, 76.dp, text = "?"); IntroTile(icons.second, 70.dp) }
         }
     }
 }
@@ -242,7 +239,7 @@ private fun PlayVisual(config: StageConfig) {
         when (config) {
             is PartitionConfig -> HeartsRow(config.queryBudget, config.queryBudget, 30.dp, description = "")
             is AllocationConfig -> Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                repeat(config.tokens) { PixelSprite(config.theme?.tokenIcon ?: "coin", 26.dp) }
+                repeat(config.tokens) { PixelSprite(config.icons().token, 26.dp) }
             }
         }
         StarsRow(3, 44.dp)

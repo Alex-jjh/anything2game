@@ -87,7 +87,7 @@ class TutorViewModel(private val repository: TutorRepository, private val id: St
         if (s.assessment.isNotEmpty() && s.messages.any { it.role == "tutor" } && TutorRules.orderedQuestions(s)[s.conceptPosition].conceptId == conceptId) return
         execute { old, requestId ->
             var cache = old
-            val scripted = cache.session.mode == "local-mock"
+            val scripted = cache.session.mode == TutorMode.LOCAL_MOCK
             if (cache.session.assessment.isEmpty()) {
                 val unknown = cache.copy(draftAnswers = cache.session.questions.associate { it.id to UNKNOWN_ANSWER })
                 val assessed = repository.assess(unknown, "$requestId-open")

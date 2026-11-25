@@ -1,5 +1,7 @@
 package com.anything2game.app.ui.source
 
+import com.anything2game.contract.tutor.TutorMode
+
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.background
@@ -162,7 +164,7 @@ class SourceEntryPointsTest {
         return awaitIo {
             deps.profiles.choose(LocalProfile.GUEST)
             val pkg = deps.packages.load(EXAMPLE_TUTOR_PACKAGE).getOrThrow()
-            val session = deps.tutors.open(pkg.packageId).cache.session.copy(sessionId = "tut_file", mode = "mock", title = "lecture-notes.pdf")
+            val session = deps.tutors.open(pkg.packageId).cache.session.copy(sessionId = "tut_file", mode = TutorMode.MOCK, title = "lecture-notes.pdf")
             deps.tutors.save(TutorCache(session))
             if (original) SourceDocumentStore(File(app.filesDir, "source-documents")).save(session.documentId, session.documentVersion, pages,
                 DocumentLayout(List(pages) { PageBox(it, 612f, 792f) }), "%PDF-kept".toByteArray())

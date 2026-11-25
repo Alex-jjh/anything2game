@@ -43,7 +43,7 @@ private val MarkedInk = Color(0xFF1F1F1F)
 internal data class SourcePage(val pageIndex: Int, val label: String, val chunks: List<SourceChunk>)
 
 internal fun sourcePages(chunks: List<SourceChunk>): List<SourcePage> =
-    chunks.groupBy { it.pageIndex }.toSortedMap().map { (i, cs) -> SourcePage(i, cs.first().pageLabel ?: (i + 1).toString(), cs) }
+    chunks.groupBy { it.pageIndex }.toSortedMap().map { (i, cs) -> SourcePage(i, cs.first().displayPage(), cs) }
 
 /**
  * The text taken from the file, set as a reading layout: a heading per page ("Page 3"), the paragraphs under it on the

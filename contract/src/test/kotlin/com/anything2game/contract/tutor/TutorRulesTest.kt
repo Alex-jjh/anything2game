@@ -32,7 +32,7 @@ class TutorRulesTest {
         )
         val scene = bp.copy(concepts = listOf(bp.concepts.single().copy(beats = beats)))
         TutorRules.validate(scene, source)
-        val s = TutorSession(sessionId = "t", documentId = "d", documentVersion = "v", title = "T", language = "en", mode = "local-mock", questions = listOf(q), sources = source,
+        val s = TutorSession(sessionId = "t", documentId = "d", documentVersion = "v", title = "T", language = "en", mode = TutorMode.LOCAL_MOCK, questions = listOf(q), sources = source,
             assessment = listOf(ConceptAssessment("q1", "c1", Understanding.NOT_YET_ASSESSED)))
         val start = TutorRules.scriptedReply(s, scene, TutorIntent.START)
         assertEquals(beats, start.beats)
@@ -47,7 +47,7 @@ class TutorRulesTest {
     @Test fun `a concept can be explained again, but only one that was already introduced`() {
         val q2 = q.copy(id = "q2", conceptId = "c2")
         val q3 = q.copy(id = "q3", conceptId = "c3")
-        val s = TutorSession(sessionId = "t", documentId = "d", documentVersion = "v", title = "T", language = "en", mode = "local-mock",
+        val s = TutorSession(sessionId = "t", documentId = "d", documentVersion = "v", title = "T", language = "en", mode = TutorMode.LOCAL_MOCK,
             questions = listOf(q, q2, q3), sources = source, conceptPosition = 1, conceptsIntroduced = 2,
             assessment = listOf(q, q2, q3).map { ConceptAssessment(it.id, it.conceptId, Understanding.NOT_YET_ASSESSED) })
         assertEquals(2, TutorRules.positionAfter(s, TutorIntent.CONTINUE))
@@ -74,7 +74,7 @@ class TutorRulesTest {
     }
     @Test fun `teaching prioritizes uncertain concepts without changing formal mastery`() {
         val q2 = q.copy(id = "q2", conceptId = "c2")
-        val s = TutorSession(sessionId = "t", documentId = "d", documentVersion = "v", title = "T", language = "zh", mode = "mock", questions = listOf(q, q2), sources = source,
+        val s = TutorSession(sessionId = "t", documentId = "d", documentVersion = "v", title = "T", language = "zh", mode = TutorMode.MOCK, questions = listOf(q, q2), sources = source,
             assessment = listOf(ConceptAssessment("q1", "c1", Understanding.DEMONSTRATED), ConceptAssessment("q2", "c2", Understanding.NOT_YET_ASSESSED)))
         assertEquals(listOf("q2", "q1"), TutorRules.orderedQuestions(s).map { it.id })
         val free = TutorRules.scriptedReply(s.copy(language = "en"), bp.copy(concepts = bp.concepts + bp.concepts.single().copy(question = q2)), TutorIntent.QUESTION)
@@ -90,7 +90,7 @@ class TutorRulesTest {
 
     private fun faceted(vararg f: Pair<String, Facet?>) = f.map { (id, facet) -> q.copy(id = id, conceptId = "c-$id", facet = facet) }
     private fun session(qs: List<TutorQuestion>, focus: List<Facet> = emptyList(), assessment: List<ConceptAssessment> = emptyList()) =
-        TutorSession(sessionId = "t", documentId = "d", documentVersion = "v", title = "T", language = "en", mode = "mock", questions = qs, sources = source, focus = focus, assessment = assessment)
+        TutorSession(sessionId = "t", documentId = "d", documentVersion = "v", title = "T", language = "en", mode = TutorMode.MOCK, questions = qs, sources = source, focus = focus, assessment = assessment)
 
     @Test fun `chosen facets come first and nothing is dropped`() {
         val qs = faceted("b" to Facet.BACKGROUND, "m" to Facet.METHOD, "r" to Facet.RESULT, "l" to Facet.LIMITATION, "x" to null)

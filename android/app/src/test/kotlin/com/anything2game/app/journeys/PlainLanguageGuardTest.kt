@@ -1,5 +1,7 @@
 package com.anything2game.app.journeys
 
+import com.anything2game.contract.tutor.TutorMode
+
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -63,7 +65,7 @@ class PlainLanguageGuardTest : LearnJourneyBase() {
         for ((language, zh) in listOf("en" to false, "zh" to true)) {
             Understanding.entries.forEach { lines.getValue(language) += com.anything2game.contract.tutor.TutorRules.leadIn(it, zh) }
             val script = awaitIo { deps.tutorScripts.scriptFor(if (zh) zhSpaced else attention)!! }
-            val session = com.anything2game.contract.tutor.TutorSession(sessionId = "g", documentId = "d", documentVersion = "v", title = "t", language = language, mode = "local-mock",
+            val session = com.anything2game.contract.tutor.TutorSession(sessionId = "g", documentId = "d", documentVersion = "v", title = "t", language = language, mode = TutorMode.LOCAL_MOCK,
                 questions = script.blueprint.concepts.map { it.question }, sources = emptyList(),
                 assessment = script.blueprint.concepts.map { com.anything2game.contract.tutor.ConceptAssessment(it.question.id, it.question.conceptId, Understanding.NOT_YET_ASSESSED) })
             lines.getValue(language) += com.anything2game.contract.tutor.TutorRules.scriptedReply(session, script.blueprint, TutorIntent.QUESTION).text

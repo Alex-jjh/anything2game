@@ -1,5 +1,7 @@
 package com.anything2game.app
 
+import com.anything2game.contract.tutor.TutorMode
+
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.getOrNull
@@ -65,7 +67,7 @@ class SpaceFilesScreenshotTest {
             val space = deps.spaces.create("Learning Lab")
             val rows = mutableListOf<PdfImportItem>()
             names.forEachIndexed { i, name ->
-                val session = base.copy(sessionId = "tut_$i", documentId = "doc_file_$i", mode = "mock", title = name)
+                val session = base.copy(sessionId = "tut_$i", documentId = "doc_file_$i", mode = TutorMode.MOCK, title = name)
                 deps.tutors.save(TutorCache(session))
                 pages[i]?.let { n -> SourceDocumentStore(File(app.filesDir, "source-documents")).save(session.documentId, session.documentVersion, n,
                     DocumentLayout(List(n) { PageBox(it, 612f, 792f) }), "%PDF-$i".toByteArray()) }

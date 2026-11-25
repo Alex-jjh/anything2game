@@ -249,7 +249,7 @@ internal fun FailedContent(frameId: FrameId, onReplay: () -> Unit, onLibrary: ()
     val skin = A2g.skin
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
-            stringResource(when (frameId) { FrameId.CASE -> R.string.failed_title_case; FrameId.ESCAPE -> R.string.failed_title_escape; else -> R.string.failed_title_default }),
+            stringResource(frameId.presentation().failedTitle),
             style = MaterialTheme.typography.headlineSmall, color = skin.wrong,
         )
         Text(stringResource(R.string.failed_body), style = MaterialTheme.typography.bodyLarge, color = skin.ink)
@@ -258,29 +258,6 @@ internal fun FailedContent(frameId: FrameId, onReplay: () -> Unit, onLibrary: ()
             Button(onClick = onReplay, Modifier.weight(1f)) { Text(stringResource(R.string.recap_replay)) }
         }
     }
-}
-
-internal fun recapTitle(frameId: FrameId) = when (frameId) {
-    FrameId.CLASSIC -> R.string.recap_title_classic
-    FrameId.CASE -> R.string.recap_title
-    FrameId.ESCAPE -> R.string.recap_title_escape
-    FrameId.ROOKIE -> R.string.recap_title_rookie
-    FrameId.COMPANION -> R.string.recap_title_companion
-}
-
-internal fun bossLabel(frameId: FrameId) = when (frameId) {
-    FrameId.CASE -> R.string.boss_case
-    FrameId.ESCAPE -> R.string.boss_escape
-    FrameId.ROOKIE -> R.string.boss_rookie
-    else -> null
-}
-
-internal fun frameName(frameId: FrameId) = when (frameId) {
-    FrameId.CLASSIC -> R.string.frame_classic
-    FrameId.CASE -> R.string.frame_case
-    FrameId.ESCAPE -> R.string.frame_escape
-    FrameId.ROOKIE -> R.string.frame_rookie
-    FrameId.COMPANION -> R.string.frame_companion
 }
 
 /**
@@ -299,20 +276,4 @@ internal fun offeredFrames(pkg: com.anything2game.contract.LearningPackage, avai
     val process = units.count { it.knowledgeType == com.anything2game.contract.KnowledgeType.PROCESS || it.mechanic == com.anything2game.contract.Mechanic.ORDER }
     val processHeavy = process >= 2 || (units.isNotEmpty() && process * 4 >= units.size)
     return framesByIntent.filter { it in available && it != FrameId.COMPANION && (it != FrameId.ESCAPE || processHeavy) }
-}
-
-internal fun frameBestFor(frameId: FrameId) = when (frameId) {
-    FrameId.CLASSIC -> R.string.frame_classic_best
-    FrameId.CASE -> R.string.frame_case_best
-    FrameId.ESCAPE -> R.string.frame_escape_best
-    FrameId.ROOKIE -> R.string.frame_rookie_best
-    FrameId.COMPANION -> R.string.frame_companion_best
-}
-
-internal fun frameDescription(frameId: FrameId) = when (frameId) {
-    FrameId.CLASSIC -> R.string.frame_classic_desc
-    FrameId.CASE -> R.string.frame_case_desc
-    FrameId.ESCAPE -> R.string.frame_escape_desc
-    FrameId.ROOKIE -> R.string.frame_rookie_desc
-    FrameId.COMPANION -> R.string.frame_companion_desc
 }

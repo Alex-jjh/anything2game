@@ -21,7 +21,7 @@ class TutorApiTest {
         assertEquals(r.bodyAsText(), HttpStatusCode.Created, r.status)
         var s = api.decode(TutorSession.serializer(), r)
         assertEquals(doc.documentVersion, s.documentVersion)
-        assertEquals("mock", s.mode)
+        assertEquals(TutorMode.MOCK, s.mode)
         assertTrue(s.questions.isNotEmpty())
         assertFalse("No scoring keys before assessment", r.bodyAsText().contains("correctOptionId"))
         s.questions.forEach { TutorRules.checkRefs(it.sourceRefs, s.sources) }

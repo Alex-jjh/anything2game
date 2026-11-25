@@ -50,7 +50,7 @@ class TutorService(
         val bp = if (mock) fakeBlueprint(sources, req.language) else generate(sources, req.language)
         try { TutorRules.validate(bp, sources) } catch (_: Exception) { throw GenerationException.failed("The diagnostic did not pass source/option validation.") }
         val session = TutorSession(sessionId = id, documentId = doc.documentId, documentVersion = doc.documentVersion,
-            title = doc.title, language = req.language, mode = if (mock) "mock" else "model", questions = bp.concepts.map { it.question }, sources = sources)
+            title = doc.title, language = req.language, mode = if (mock) TutorMode.MOCK else TutorMode.MODEL, questions = bp.concepts.map { it.question }, sources = sources)
         currentCoroutineContext().ensureActive()
         return store.createTutor(TutorRecord(doc.ownerId, bp, session))?.session ?: throw ApiException.notFound()
     }
@@ -85,8 +85,8 @@ class TutorService(
         // Going back does not undo the walk: the furthest point reached is kept.
         val next = s.copy(conceptPosition = nextPosition, conceptsIntroduced = maxOf(TutorRules.introduced(s), nextPosition + 1))
         val user = TutorMessage("m${s.revision + 1}u", "user", if (req.intent == TutorIntent.QUESTION) req.question.trim() else label(req.intent, s.language))
-        if (s.mode == "model" && mock) throw conflict("TUTOR_MODE_CHANGED")
-        val answer = if (s.mode == "mock") TutorRules.scriptedReply(next, current.blueprint, req.intent) else reply(next, req)
+        if (s.mode == TutorMode.MODEL && mock) throw conflict("TUTOR_MODE_CHANGED")
+        val answer = if (s.mode == TutorMode.MOCK) TutorRules.scriptedReply(next, current.blueprint, req.intent) else reply(next, req)
         return commit(current, next.copy(revision = s.revision + 1, messages = s.messages + user + answer), req.clientRequestId, fingerprint)
     }
 

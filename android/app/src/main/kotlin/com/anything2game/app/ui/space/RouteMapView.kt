@@ -40,6 +40,7 @@ import com.anything2game.app.ui.character.LocalAvatar
 import com.anything2game.app.ui.character.Mood
 import com.anything2game.app.ui.character.rememberReducedMotion
 import com.anything2game.app.ui.common.label
+import com.anything2game.app.ui.play.presentation
 import com.anything2game.app.ui.theme.A2g
 import com.anything2game.app.ui.theme.Skin
 import com.anything2game.app.ui.theme.castColor
@@ -60,12 +61,9 @@ private val Amplitude = 54.dp
 
 @Composable
 internal fun StepKind.label() = stringResource(when (this) {
-    StepKind.EXPLAIN -> R.string.route_kind_explain
-    StepKind.CLASSIC -> R.string.route_kind_classic
-    StepKind.CASE -> R.string.route_kind_case
-    StepKind.ROOKIE -> R.string.route_kind_rookie
-    StepKind.ESCAPE -> R.string.route_kind_escape
-    StepKind.GAME -> R.string.route_kind_game
+    StepKind.Explain -> R.string.route_kind_explain
+    StepKind.Game -> R.string.route_kind_game
+    is StepKind.Practice -> frame.presentation().routeLabel
 })
 
 /** What a step says about itself: where it sits on the route when that is the news (up next, locked, needs an update), else how the learner is doing. */
@@ -78,12 +76,9 @@ internal fun RouteStep.statusLabel() = when (state) {
 }
 
 internal fun StepKind.icon(): ImageVector = when (this) {
-    StepKind.EXPLAIN -> Icons.AutoMirrored.Filled.MenuBook
-    StepKind.CLASSIC -> Icons.Filled.Checklist
-    StepKind.CASE -> Icons.Filled.Search
-    StepKind.ROOKIE -> Icons.Filled.School
-    StepKind.ESCAPE -> Icons.Filled.MeetingRoom
-    StepKind.GAME -> Icons.Filled.SportsEsports
+    StepKind.Explain -> Icons.AutoMirrored.Filled.MenuBook
+    StepKind.Game -> Icons.Filled.SportsEsports
+    is StepKind.Practice -> frame.presentation().icon
 }
 
 private fun Color.darker(by: Float = 0.28f) = lerp(this, Color.Black, by)

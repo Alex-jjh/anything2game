@@ -175,7 +175,7 @@ class LearningRecoveryTest {
     @Test fun `sideload sharing document labels stays separate from owned tutor and its server practice`() = runBlocking {
         val initial = AndroidAppContainer(app)
         val pkg = initial.packages.load(EXAMPLE_TUTOR_PACKAGE).getOrThrow()
-        val tutor = initial.tutors.open(pkg.packageId).cache.session.copy(sessionId = "tut_owned", mode = "mock")
+        val tutor = initial.tutors.open(pkg.packageId).cache.session.copy(sessionId = "tut_owned", mode = TutorMode.MOCK)
         val compiled = pkg.copy(packageId = "server-practice")
         val sideload = pkg.copy(packageId = "unrelated-pack", title = "Independent handout")
         val mislabeled = pkg.copy(packageId = "different-source", sources = pkg.sources.map { it.copy(text = it.text + " Different material follows.") })
@@ -479,7 +479,7 @@ class LearningRecoveryTest {
             path.endsWith("/tutor") -> {
                 val lang = json.decodeFromString<CreateTutorRequest>(body).language
                 languages += lang
-                201 to json.encodeToString(session.copy(sessionId = "tut_$posts", mode = "mock", documentId = "doc-$posts",
+                201 to json.encodeToString(session.copy(sessionId = "tut_$posts", mode = TutorMode.MOCK, documentId = "doc-$posts",
                     documentVersion = "v1", language = lang))
             }
             else -> errorResponse(404, "NOT_FOUND")
@@ -581,7 +581,7 @@ class LearningRecoveryTest {
             it.copy(explanation = "An independent author's explanation.", beats = emptyList())
         }))
         deps.content.install(PackCodec.toBytes(PackCodec.build(other, emptyList(), PackOrigin.IMPORT, otherScript)).inputStream())
-        val owned = deps.tutors.open(pkg.packageId).cache.session.copy(sessionId = "tut_owned", mode = "mock", title = "Server lesson")
+        val owned = deps.tutors.open(pkg.packageId).cache.session.copy(sessionId = "tut_owned", mode = TutorMode.MOCK, title = "Server lesson")
         deps.tutors.save(TutorCache(owned))
         val a = SpaceMember.LocalPackRef(pkg.packageId, pkg.contentVersion)
         val b = SpaceMember.LocalPackRef(other.packageId, other.contentVersion)
@@ -617,7 +617,7 @@ class LearningRecoveryTest {
         cache = cache.copy(session = deps.tutors.assess(cache, "assess"))
         val taught = deps.tutors.turn(cache, TutorIntent.START, "", "read")
         deps.tutors.save(cache.copy(session = taught))
-        deps.tutors.save(TutorCache(taught.copy(sessionId = "tut_elsewhere", mode = "mock", messages = emptyList())))
+        deps.tutors.save(TutorCache(taught.copy(sessionId = "tut_elsewhere", mode = TutorMode.MOCK, messages = emptyList())))
         val ledger = File(app.filesDir, "learning.json")
         val old = com.anything2game.contract.progress.ActivityKey("guest", com.anything2game.contract.progress.ActivityKind.TUTOR,
             taught.documentId, taught.documentVersion, TutorRules.orderedQuestions(taught).first().conceptId, 1)
@@ -648,7 +648,7 @@ class LearningRecoveryTest {
         val material = deps.materials.materials().first { it.localPack?.packageId == EXAMPLE_TUTOR_PACKAGE }
         val node = material.nodes.first { it.activity is ActivityRef.Tutor }
         val old = ActivityRef.Tutor(material.source.contentId, material.source.contentVersion, node.activity.activityId)
-        val session = deps.tutors.open(EXAMPLE_TUTOR_PACKAGE).cache.session.copy(sessionId = "tut_actual", mode = "mock")
+        val session = deps.tutors.open(EXAMPLE_TUTOR_PACKAGE).cache.session.copy(sessionId = "tut_actual", mode = TutorMode.MOCK)
         val path = LearningPath("old", "1", "s", "Server route", session.language, listOf(node.copy(activity = old)))
         assertTrue(runCatching { deps.materials.verify(path) }.isFailure)
         deps.tutors.save(TutorCache(session))
@@ -693,8 +693,8 @@ class LearningRecoveryTest {
     @Test fun `a saved fallback route stays pinned to its chosen tutor after another language is added`() = runBlocking {
         val deps = AndroidAppContainer(app)
         val original = deps.tutors.open(EXAMPLE_TUTOR_PACKAGE).cache.session
-        val zh = original.copy(sessionId = "tut_chinese", mode = "mock", language = "zh")
-        val en = original.copy(sessionId = "tut_english", mode = "mock", language = "en")
+        val zh = original.copy(sessionId = "tut_chinese", mode = TutorMode.MOCK, language = "zh")
+        val en = original.copy(sessionId = "tut_english", mode = TutorMode.MOCK, language = "en")
         deps.tutors.save(TutorCache(en))
         val ref = ActivityRef.Tutor(original.documentId, original.documentVersion, original.questions.first().conceptId, sessionId = zh.sessionId)
         val node = PathNode("first-lesson", "Quoted lesson", ref)
@@ -823,7 +823,7 @@ class LearningRecoveryTest {
                 uploads.incrementAndGet()
                 201 to json.encodeToString(DocumentResponse("batch-doc", "1", 1, "Good"))
             }
-            "/v1/documents/batch-doc/tutor" -> 200 to json.encodeToString(base.copy(sessionId = "tut_batch", mode = "mock", documentId = "batch-doc", documentVersion = "1"))
+            "/v1/documents/batch-doc/tutor" -> 200 to json.encodeToString(base.copy(sessionId = "tut_batch", mode = TutorMode.MOCK, documentId = "batch-doc", documentVersion = "1"))
             else -> errorResponse(404, "NOT_FOUND")
         } }) { transport ->
             val dir = tmp.newFolder()
@@ -977,7 +977,7 @@ class LearningRecoveryTest {
         var installs = 0
         server({ path, _, _ -> when (path) {
             "/v1/documents" -> { posts++; 201 to json.encodeToString(DocumentResponse("doc", "1", 1, "One")) }
-            "/v1/documents/doc/tutor" -> 201 to json.encodeToString(seed.copy(sessionId = "tut_ok", mode = "mock", documentId = "doc", documentVersion = "1"))
+            "/v1/documents/doc/tutor" -> 201 to json.encodeToString(seed.copy(sessionId = "tut_ok", mode = TutorMode.MOCK, documentId = "doc", documentVersion = "1"))
             else -> errorResponse(404, "NOT_FOUND")
         } }, install = {
             installs++
@@ -1000,7 +1000,7 @@ class LearningRecoveryTest {
                 accepted += doc
                 if (accepted.size == 1) -1 to "" else 201 to json.encodeToString(doc)
             }
-            "/v1/documents/doc-2/tutor" -> 201 to json.encodeToString(seed.copy(sessionId = "tut_retry", mode = "mock",
+            "/v1/documents/doc-2/tutor" -> 201 to json.encodeToString(seed.copy(sessionId = "tut_retry", mode = TutorMode.MOCK,
                 documentId = "doc-2", documentVersion = "version"))
             else -> errorResponse(404, "NOT_FOUND")
         } }) { transport ->

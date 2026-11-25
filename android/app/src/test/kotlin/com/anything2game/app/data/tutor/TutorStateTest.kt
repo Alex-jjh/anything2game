@@ -15,7 +15,7 @@ import org.junit.Test
 class TutorStateTest {
     private fun initial(): TutorCache {
         val q = TutorQuestion("q", "c", "Concept", "Question", listOf(TutorOption("a", "A"), TutorOption("b", "B")), listOf(SourceRef("s", "source")))
-        return TutorCache(TutorSession(sessionId = "tut_test", documentId = "doc", documentVersion = "v", title = "Title", language = "en", mode = "mock", questions = listOf(q), sources = listOf(SourceChunk("s", 0, "1", "source text"))))
+        return TutorCache(TutorSession(sessionId = "tut_test", documentId = "doc", documentVersion = "v", title = "Title", language = "en", mode = TutorMode.MOCK, questions = listOf(q), sources = listOf(SourceChunk("s", 0, "1", "source text"))))
     }
     private open class Repository(var cache: TutorCache) : TutorRepository {
         override val endpoint = "http://127.0.0.1:18080"

@@ -94,12 +94,12 @@ fun ReadingContent(deps: AppDependencies, packageId: String, conceptId: String? 
             }
             if (s != null && phase in 1..2 && !compact) item { ExplainerHeader(theme, when { phase == 2 -> stringResource(R.string.explainer_assess_line); focusDue(c) -> stringResource(R.string.explainer_focus_line); else -> stringResource(R.string.explainer_diag_line, s.questions.size) }, state.busy) }
             if (s != null && compact) item {
-                val badge = stringResource(when (s.mode) { "local-mock" -> R.string.badge_pre_generated; "mock" -> R.string.tutor_server_mock_badge; else -> R.string.tutor_model_badge })
+                val badge = stringResource(s.mode.badgeRes())
                 Text("$badge · ${s.title}", style = MaterialTheme.typography.labelLarge, color = skin.inkMuted, modifier = Modifier.testTag("compact_header"))
             } else if (s != null) item {
                 Text(s.title, style = MaterialTheme.typography.titleMedium, color = skin.inkMuted)
-                Badge(stringResource(when (s.mode) { "local-mock" -> R.string.badge_pre_generated; "mock" -> R.string.tutor_server_mock_badge; else -> R.string.tutor_model_badge }), skin.evidence, skin.evidenceSoft)
-                Text(stringResource(if (s.mode == "local-mock") R.string.tutor_scripted_note else R.string.tutor_coverage_note), style = MaterialTheme.typography.bodySmall, color = skin.inkMuted)
+                Badge(stringResource(s.mode.badgeRes()), skin.evidence, skin.evidenceSoft)
+                Text(stringResource(s.mode.coverageNoteRes()), style = MaterialTheme.typography.bodySmall, color = skin.inkMuted)
             }
             if (state.offline) item { Text(stringResource(R.string.tutor_offline), color = skin.hint) }
             if (state.busy) item {
@@ -117,7 +117,7 @@ fun ReadingContent(deps: AppDependencies, packageId: String, conceptId: String? 
                 if (unsupported != null) item { OutlinedButton(onClick = { readOriginal = true }, Modifier.fillMaxWidth().testTag("read_original")) { Text(stringResource(R.string.tutor_read_original)) } }
             }
             val enabled = !state.busy && state.problem == null
-            val askingFocus = focusItems(c, enabled, allowNote = s?.mode == "model", onSet = vm::setFocus)
+            val askingFocus = focusItems(c, enabled, allowNote = s?.mode?.takesFocusNote == true, onSet = vm::setFocus)
             if (s != null && !askingFocus) when (phase) {
                 1 -> {
                     val q = s.questions[c.questionIndex]
@@ -155,7 +155,7 @@ fun ReadingContent(deps: AppDependencies, packageId: String, conceptId: String? 
                         val evidence = s.assessment.first { it.questionId == q.id }.evidence
                         PaperCard {
                             Text(q.concept, style = MaterialTheme.typography.titleMedium, color = skin.ink)
-                            Badge(stringResource(when (evidence) { Understanding.DEMONSTRATED -> R.string.tutor_correct; Understanding.NEEDS_CLARIFICATION -> R.string.tutor_clarify; Understanding.NOT_YET_ASSESSED, Understanding.NOT_ASKED -> R.string.tutor_not_assessed }), skin.action, skin.evidenceSoft)
+                            Badge(stringResource(evidence.labelRes()), skin.action, skin.evidenceSoft)
                         }
                     }
                     item { Button(onClick = { turn(TutorIntent.START, "", null) }, enabled = enabled, modifier = Modifier.fillMaxWidth().testTag("start_tutor")) { Text(stringResource(R.string.tutor_start)) } }

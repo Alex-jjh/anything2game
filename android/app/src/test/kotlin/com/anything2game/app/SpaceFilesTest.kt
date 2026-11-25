@@ -1,5 +1,7 @@
 package com.anything2game.app
 
+import com.anything2game.contract.tutor.TutorMode
+
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
@@ -54,7 +56,7 @@ class SpaceFilesTest {
         return awaitIo {
             deps.profiles.choose(LocalProfile.GUEST)
             val pkg = deps.packages.load(EXAMPLE_TUTOR_PACKAGE).getOrThrow()
-            val session = deps.tutors.open(pkg.packageId).cache.session.copy(sessionId = "tut_file", mode = "mock", title = fileName)
+            val session = deps.tutors.open(pkg.packageId).cache.session.copy(sessionId = "tut_file", mode = TutorMode.MOCK, title = fileName)
             deps.tutors.save(TutorCache(session))
             if (keepPdfPages != null) SourceDocumentStore(File(app.filesDir, "source-documents")).save(session.documentId, session.documentVersion, keepPdfPages,
                 DocumentLayout(List(keepPdfPages) { PageBox(it, 612f, 792f) }), "%PDF-kept".toByteArray())

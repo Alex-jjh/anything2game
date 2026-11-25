@@ -1,5 +1,6 @@
 package com.anything2game.app.ui.reading
 
+
 import com.anything2game.app.ui.common.problemCode
 import com.anything2game.app.ui.common.problemText
 import androidx.compose.animation.AnimatedVisibility
@@ -284,7 +285,7 @@ private fun Stage(
             Box(Modifier.align(Alignment.BottomCenter).size(side)) { theme.Standee(expression, Modifier.fillMaxSize()) }
         }
         Badge(
-            stringResource(when (session.mode) { "local-mock" -> R.string.badge_pre_generated; "mock" -> R.string.tutor_server_mock_badge; else -> R.string.tutor_model_badge }),
+            stringResource(session.mode.badgeRes()),
             skin.evidence, skin.evidenceSoft, Modifier.align(Alignment.TopStart).padding(12.dp).widthIn(max = 280.dp),
         )
         // The player's own character, small in the corner; poking it makes it react (it must not turn the page).
@@ -454,7 +455,7 @@ private fun ChoiceButton(label: String, modifier: Modifier, enabled: Boolean, pr
 
 @Composable
 private fun sourceLabel(session: TutorSession, refs: List<SourceRef>): String {
-    val pages = refs.mapNotNull { r -> session.sources.firstOrNull { it.chunkId == r.chunkId }?.let { it.pageLabel ?: (it.pageIndex + 1).toString() } }.distinct()
+    val pages = refs.mapNotNull { r -> session.sources.firstOrNull { it.chunkId == r.chunkId }?.displayPage() }.distinct()
     return if (pages.isEmpty()) stringResource(R.string.reading_source) else stringResource(R.string.explainer_show_source, pages.joinToString(", "))
 }
 
@@ -471,7 +472,7 @@ private fun AskSheet(name: String, session: TutorSession, input: String, onInput
                 value = input, onValueChange = { onInput(it.take(1000)) }, modifier = Modifier.fillMaxWidth().focusRequester(focus).testTag("tutor_input"),
                 label = { Text(stringResource(R.string.tutor_input)) }, minLines = 2, maxLines = 5,
             )
-            Text(stringResource(if (session.mode == "model") R.string.tutor_model_note else R.string.tutor_script_note), color = skin.inkMuted, style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(session.mode.askNoteRes()), color = skin.inkMuted, style = MaterialTheme.typography.bodySmall)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
                 TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 52.dp)) { Text(stringResource(R.string.explainer_cancel)) }
                 Button(onClick = onSend, enabled = canSend, modifier = Modifier.heightIn(min = 52.dp).testTag("tutor_send")) { Text(stringResource(R.string.tutor_send)) }
@@ -491,7 +492,7 @@ private fun LogSheet(session: TutorSession, explainer: String, player: String, o
             item {
                 Text(stringResource(R.string.explainer_log_title), style = MaterialTheme.typography.titleLarge, color = skin.ink)
                 Text(session.title, style = MaterialTheme.typography.titleMedium, color = skin.inkMuted)
-                Text(stringResource(if (session.mode == "local-mock") R.string.tutor_scripted_note else R.string.tutor_coverage_note), style = MaterialTheme.typography.bodySmall, color = skin.inkMuted)
+                Text(stringResource(session.mode.coverageNoteRes()), style = MaterialTheme.typography.bodySmall, color = skin.inkMuted)
             }
             items(session.messages, key = { it.id }) { message -> LogMessage(message, session, explainer, player, onSource) }
             item { Spacer(Modifier.navigationBarsPadding()) }

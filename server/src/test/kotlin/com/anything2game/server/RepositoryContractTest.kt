@@ -1,5 +1,7 @@
 package com.anything2game.server
 
+import com.anything2game.contract.tutor.TutorMode
+
 import com.anything2game.contract.ApiError
 import com.anything2game.contract.CompileJobState
 import com.anything2game.server.store.InstallRecord
@@ -30,7 +32,7 @@ abstract class RepositoryContractTest : StoreBackendTest() {
             listOf(com.anything2game.contract.SourceRef(source.chunkId, source.text.take(80))))
         val blueprint = com.anything2game.contract.tutor.TutorBlueprint(concepts = listOf(com.anything2game.contract.tutor.TutorConcept(q, "a", "Explanation", "Simple", "Example")))
         val session = com.anything2game.contract.tutor.TutorSession(sessionId = "tut_test", documentId = doc.documentId, documentVersion = doc.documentVersion,
-            title = doc.title, language = "en", mode = "mock", questions = listOf(q), sources = doc.chunks)
+            title = doc.title, language = "en", mode = TutorMode.MOCK, questions = listOf(q), sources = doc.chunks)
         val first = com.anything2game.server.tutor.TutorRecord(doc.ownerId, blueprint, session)
         assertEquals(first, store.createTutor(first))
         assertEquals(first, anotherInstance().createTutor(first.copy(session = session.copy(title = "must not replace"))))

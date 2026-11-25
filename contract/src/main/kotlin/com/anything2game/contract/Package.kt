@@ -56,7 +56,10 @@ data class SourceChunk(
     /** Printed page number, when known. */
     val pageLabel: String? = null,
     val text: String,
-)
+) {
+    /** The page as a reader names it: the printed number when known, else the physical page counted from 1. */
+    fun displayPage(): String = pageLabel ?: (pageIndex + 1).toString()
+}
 
 /** A citation: the quote must appear verbatim (whitespace-normalised) in the chunk. */
 @Serializable

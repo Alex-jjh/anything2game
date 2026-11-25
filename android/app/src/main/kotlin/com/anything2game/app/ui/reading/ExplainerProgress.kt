@@ -113,7 +113,7 @@ internal fun WrapUp(
                 Text(stringResource(R.string.wrapup_steps, asked), style = MaterialTheme.typography.labelLarge, color = skin.action)
                 concepts.forEachIndexed { i, q ->
                     val evidence = session.assessment.firstOrNull { it.questionId == q.id }?.evidence
-                    val page = q.sourceRefs.firstOrNull()?.let { r -> session.sources.firstOrNull { it.chunkId == r.chunkId } }?.let { it.pageLabel ?: (it.pageIndex + 1).toString() }
+                    val page = q.sourceRefs.firstOrNull()?.let { r -> session.sources.firstOrNull { it.chunkId == r.chunkId } }?.displayPage()
                     Surface(Modifier.fillMaxWidth().testTag("wrapup_concept"), color = skin.card, shape = RoundedCornerShape(14.dp), border = BorderStroke(1.dp, skin.outline.copy(alpha = 0.4f))) {
                         Row(Modifier.padding(start = 14.dp, end = 4.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Box(Modifier.size(28.dp).background(skin.correctSoft, CircleShape), contentAlignment = Alignment.Center) {
@@ -121,9 +121,7 @@ internal fun WrapUp(
                             }
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(q.concept, style = MaterialTheme.typography.titleSmall, color = skin.ink, fontWeight = FontWeight.SemiBold)
-                                if (evidence != null && evidence != Understanding.NOT_ASKED) Badge(stringResource(R.string.wrapup_start, stringResource(when (evidence) {
-                                    Understanding.DEMONSTRATED -> R.string.tutor_correct; Understanding.NEEDS_CLARIFICATION -> R.string.tutor_clarify; Understanding.NOT_YET_ASSESSED, Understanding.NOT_ASKED -> R.string.tutor_not_assessed
-                                })), skin.action, skin.evidenceSoft)
+                                if (evidence != null && evidence != Understanding.NOT_ASKED) Badge(stringResource(R.string.wrapup_start, stringResource(evidence.labelRes())), skin.action, skin.evidenceSoft)
                             }
                             if (page != null) TextButton(onClick = { onSource(q.sourceRefs) }, modifier = Modifier.heightIn(min = 48.dp).testTag("wrapup_source")) {
                                 Text(stringResource(R.string.evidence_page, page), color = skin.evidence)

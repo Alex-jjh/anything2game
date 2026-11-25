@@ -80,9 +80,25 @@ const val SPEAKER_PLAYER = "player"
     /** The same reply as scene lines, when the content has them; [text] stays the full reply (Log, older clients). */
     val beats: List<TutorBeat> = emptyList(),
 )
+/**
+ * How a lesson was made. The wire strings ("local-mock", "mock", "model") are unchanged; they are read into this enum once, when the
+ * session is decoded, so nothing downstream compares strings. A string outside the three is refused at that boundary.
+ */
+@Serializable enum class TutorMode {
+    /** A script bundled with the app, played on the phone: it never reaches the server. */
+    @SerialName("local-mock") LOCAL_MOCK,
+    /** Made on the server by the test generator, with no model behind it. */
+    @SerialName("mock") MOCK,
+    /** Written by a model on the server. */
+    @SerialName("model") MODEL;
+
+    /** The scripted walk-through on the phone, as opposed to a lesson the server made. */
+    val scripted get() = this == LOCAL_MOCK
+}
+
 @Serializable data class TutorSession(
     val schema: String = TUTOR_SCHEMA, val sessionId: String, val documentId: String, val documentVersion: String,
-    val title: String, val language: String, val mode: String, val questions: List<TutorQuestion>, val sources: List<SourceChunk>,
+    val title: String, val language: String, val mode: TutorMode, val questions: List<TutorQuestion>, val sources: List<SourceChunk>,
     val revision: Int = 0, val answers: Map<String, String> = emptyMap(),
     val assessment: List<ConceptAssessment> = emptyList(), val messages: List<TutorMessage> = emptyList(),
     val conceptPosition: Int = 0,

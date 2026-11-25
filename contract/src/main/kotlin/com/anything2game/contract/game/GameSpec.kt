@@ -27,7 +27,10 @@ sealed interface EvidenceRef {
 
     @Serializable @SerialName("pdf")
     data class Pdf(override val evidenceId: String, val documentId: String, val documentVersion: String,
-        val chunkId: String, val quote: String, val pageIndex: Int, val pageLabel: String? = null) : EvidenceRef
+        val chunkId: String, val quote: String, val pageIndex: Int, val pageLabel: String? = null) : EvidenceRef {
+        /** The page as a reader names it: the printed number when known, else the physical page counted from 1. */
+        fun displayPage(): String = pageLabel ?: (pageIndex + 1).toString()
+    }
 
     @Serializable @SerialName("reviewed-card")
     data class Reviewed(override val evidenceId: String, val cardId: String, val cardVersion: String,
@@ -116,6 +119,24 @@ private fun requireThemeText(text: String) =
 object GameIcons {
     val partition = setOf("locker", "commit", "page", "layer", "number", "server")
     val allocation = setOf("bowl", "cup", "wine", "cloth", "book", "scroll", "wheat", "corn", "layers", "clock", "chip", "worker", "coin", "plot")
+    const val DEFAULT_PARTITION = "locker"
+    const val DEFAULT_FIRST = "bowl"
+    const val DEFAULT_SECOND = "cup"
+    const val DEFAULT_TOKEN = "coin"
+}
+
+/** The three pictures of an allocation board, with the neutral defaults filled in where its theme names none. */
+data class AllocationIcons(val first: String, val second: String, val token: String)
+
+/** The picture of a partition board's tiles; the one place its neutral default is written. */
+fun PartitionConfig.icon(): String = theme?.icon ?: GameIcons.DEFAULT_PARTITION
+fun AllocationConfig.icons(): AllocationIcons = AllocationIcons(theme?.firstIcon ?: GameIcons.DEFAULT_FIRST,
+    theme?.secondIcon ?: GameIcons.DEFAULT_SECOND, theme?.tokenIcon ?: GameIcons.DEFAULT_TOKEN)
+
+/** The picture a game is known by: its tiles, or the first of its two places. */
+fun StageConfig.mainIcon(): String = when (this) {
+    is PartitionConfig -> icon()
+    is AllocationConfig -> icons().first
 }
 
 @Serializable @SerialName("partition")

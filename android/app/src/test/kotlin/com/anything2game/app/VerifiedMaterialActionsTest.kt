@@ -1,5 +1,7 @@
 package com.anything2game.app
 
+import com.anything2game.contract.tutor.TutorMode
+
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.lifecycle.SavedStateHandle
@@ -83,7 +85,7 @@ class VerifiedMaterialActionsTest {
         }
         val space = awaitIo {
             val pkg = base.packages.load(EXAMPLE_TUTOR_PACKAGE).getOrThrow()
-            val session = base.tutors.open(pkg.packageId).cache.session.copy(sessionId = "tut_verified", mode = "mock")
+            val session = base.tutors.open(pkg.packageId).cache.session.copy(sessionId = "tut_verified", mode = TutorMode.MOCK)
             base.tutors.save(TutorCache(session))
             for (id in listOf("owned-course", "other-course")) {
                 val pack = PackCodec.build(pkg.copy(packageId = id), emptyList(), PackOrigin.SERVER)
@@ -137,7 +139,7 @@ class VerifiedMaterialActionsTest {
         val (space, material) = awaitIo {
             deps.profiles.choose(LocalProfile.GUEST)
             val pkg = deps.packages.load(EXAMPLE_TUTOR_PACKAGE).getOrThrow()
-            val other = deps.tutors.open(pkg.packageId).cache.session.copy(sessionId = "tut_other", mode = "mock", title = "Separate uploaded lesson")
+            val other = deps.tutors.open(pkg.packageId).cache.session.copy(sessionId = "tut_other", mode = TutorMode.MOCK, title = "Separate uploaded lesson")
             deps.tutors.save(TutorCache(other))
             val m = deps.materials.materials().single { it.localPack?.packageId == pkg.packageId }
             deps.spaces.list().single { m.member in it.members } to m

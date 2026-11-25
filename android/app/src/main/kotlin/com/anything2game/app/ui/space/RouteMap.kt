@@ -8,8 +8,12 @@ import com.anything2game.contract.space.PathNode
 import com.anything2game.engine.progress.NodeStatus
 import com.anything2game.engine.progress.Standing
 
-/** What a step asks the learner to do. Decides the node's icon and the name on its card. */
-internal enum class StepKind { EXPLAIN, CLASSIC, CASE, ROOKIE, ESCAPE, GAME }
+/** What a step asks the learner to do. Decides the node's icon and the name on its card; a practice step is named and drawn by its frame. */
+internal sealed interface StepKind {
+    data object Explain : StepKind
+    data object Game : StepKind
+    data class Practice(val frame: FrameId) : StepKind
+}
 
 /** What the learner sees at a glance. CURRENT is the one step the map invites you to start. */
 internal enum class StepState { DONE, REVIEW, CURRENT, AVAILABLE, LOCKED, UPDATE }
@@ -68,7 +72,7 @@ internal fun routeMap(
         }
         val cited = node.evidence.filterIsInstance<EvidenceRef.Pdf>().firstOrNull()
         RouteStep(node, index + 1, kindOf(node.activity), state, titles.getValue(node.nodeId), standings[node.nodeId] ?: Standing.NEW,
-            cited?.let { StepSource(it, sourceTitle(node, it), it.pageLabel ?: (it.pageIndex + 1).toString()) },
+            cited?.let { StepSource(it, sourceTitle(node, it), it.displayPage()) },
             if (state == StepState.LOCKED) node.prerequisites.firstOrNull { it !in finished }?.let(titles::get) else null,
             node.nodeId in finished)
     }
@@ -91,13 +95,8 @@ internal fun routeMap(
 
 internal data class MaterialInfo(val title: String, val fixture: Boolean)
 
-internal fun kindOf(activity: ActivityRef) = when (activity) {
-    is ActivityRef.Tutor -> StepKind.EXPLAIN
-    is ActivityRef.Game -> StepKind.GAME
-    is ActivityRef.Practice -> when (activity.frame) {
-        FrameId.CASE -> StepKind.CASE
-        FrameId.ROOKIE -> StepKind.ROOKIE
-        FrameId.ESCAPE -> StepKind.ESCAPE
-        else -> StepKind.CLASSIC
-    }
+internal fun kindOf(activity: ActivityRef): StepKind = when (activity) {
+    is ActivityRef.Tutor -> StepKind.Explain
+    is ActivityRef.Game -> StepKind.Game
+    is ActivityRef.Practice -> StepKind.Practice(activity.frame)
 }
