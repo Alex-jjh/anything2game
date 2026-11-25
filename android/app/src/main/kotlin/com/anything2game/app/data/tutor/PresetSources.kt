@@ -35,7 +35,7 @@ sealed interface AttachResult {
 class PresetSources(
     private val layouts: SourceLayouts, private val store: SourceDocumentStore,
     /** The paper the build bundled for this course (fetched and hash-checked at build time), or null. */
-    private val bundled: (packageId: String) -> InputStream? = { null },
+    private val bundledAsset: (packageId: String) -> InputStream? = { null },
 ) {
     private suspend fun layout(packageId: String, version: String? = null): PresetSourceLayout? =
         try { if (version == null) layouts.sourceLayoutFor(packageId) else layouts.sourceLayoutFor(packageId, version) } catch (e: CancellationException) { throw e } catch (e: Exception) { null }
@@ -43,11 +43,22 @@ class PresetSources(
     /** The file this course can show pages of, or null when it has no packed geometry (then nothing is offered). */
     suspend fun available(packageId: String, version: String? = null): PresetPdf? = layout(packageId, version)?.let(::describe)
 
-    /** The attached PDF for the session with these ids, if one was attached here and is still the file the pack's geometry is for. */
-    suspend fun load(packageId: String, documentId: String, documentVersion: String, contentVersion: String? = null): SourceDocument? {
-        val l = layout(packageId, contentVersion)?.takeIf { it.documentId == documentId && it.documentVersion == documentVersion } ?: return null
-        return kept(l) ?: store.bundled(l) ?: (attach(l, isBundled = true) { bundled(l.packageId) } as? AttachResult.Accepted)?.document
+    private suspend fun matching(packageId: String, documentId: String, documentVersion: String, contentVersion: String?): PresetSourceLayout? =
+        layout(packageId, contentVersion)?.takeIf { it.documentId == documentId && it.documentVersion == documentVersion }
+
+    /** The PDF the reader attached here for the session with these ids, if it is still the file the pack's geometry is for. */
+    suspend fun attached(packageId: String, documentId: String, documentVersion: String, contentVersion: String? = null): SourceDocument? =
+        matching(packageId, documentId, documentVersion, contentVersion)?.let { kept(it) }
+
+    /** The paper the build bundled for this course, checked against the geometry's hash and kept per profile; null when none shipped or it differs. */
+    suspend fun bundled(packageId: String, documentId: String, documentVersion: String, contentVersion: String? = null): SourceDocument? {
+        val l = matching(packageId, documentId, documentVersion, contentVersion) ?: return null
+        return store.bundled(l) ?: (attach(l, isBundled = true) { bundledAsset(l.packageId) } as? AttachResult.Accepted)?.document
     }
+
+    /** Whatever copy of the course's paper this phone has: the reader's attachment first, then the bundled one. */
+    suspend fun load(packageId: String, documentId: String, documentVersion: String, contentVersion: String? = null): SourceDocument? =
+        attached(packageId, documentId, documentVersion, contentVersion) ?: bundled(packageId, documentId, documentVersion, contentVersion)
 
     private suspend fun kept(l: PresetSourceLayout): SourceDocument? {
         val documentId = l.documentId

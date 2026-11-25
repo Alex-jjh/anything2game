@@ -1,5 +1,7 @@
 package com.anything2game.app.ui.space
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import com.anything2game.app.ui.common.problemCode
 import com.anything2game.app.ui.common.problemText
 import android.content.Intent
@@ -41,15 +43,12 @@ import androidx.compose.ui.unit.dp
 import com.anything2game.app.AppDependencies
 import com.anything2game.app.R
 import com.anything2game.app.data.learning.*
-import com.anything2game.app.data.tutor.AttachResult
+import com.anything2game.app.data.source.CourseRef
+import com.anything2game.app.data.source.SourceKey
+import com.anything2game.app.data.source.SourceText
 import com.anything2game.app.data.tutor.TutorProgress
-import com.anything2game.app.data.tutor.PresetPdf
-import com.anything2game.app.data.tutor.SourceDocument
 import com.anything2game.app.importing.IntentImportParser
-import com.anything2game.app.ui.reading.DocumentLoading
-import com.anything2game.app.ui.reading.DocumentViewer
-import com.anything2game.app.ui.reading.SourceAttach
-import com.anything2game.app.ui.reading.rememberAttachFlow
+import com.anything2game.app.ui.source.OpenSourceViewer
 import com.anything2game.app.ui.Navigator
 import com.anything2game.app.ui.Route
 import com.anything2game.app.ui.home.*
@@ -214,21 +213,11 @@ private fun EmptyMaterials(vm: SpaceViewModel, space: Space, pickPdfs: () -> Uni
     if (adding) AddExistingDialog(vm, space) { adding = false }
 }
 
-private class OpenedFile(val pdf: SourceDocument?, val preset: PresetPdf?)
-
 /** A tapped file, full screen: its own PDF when the phone has it, its text (with a plain note) when not. */
 @Composable
 internal fun MaterialViewer(deps: AppDependencies, file: MaterialFile, onDismiss: () -> Unit) {
-    val presets = deps.presetSources
-    val course = file.course
-    val opened by produceState<OpenedFile?>(null, file.member, file.course) {
-        value = OpenedFile(requireNotNull(deps.materials).document(file), course?.let { c -> runCatching { presets?.available(c.packageId, c.contentVersion) }.getOrNull() })
-    }
-    // Owned here, not by the viewer: a check outlives a closed viewer and a picker result outlives a recreated activity.
-    val attach = rememberAttachFlow(file.member.toString(), attach = { open -> course?.let { presets?.attach(it.packageId, it.contentVersion, open) } ?: AttachResult.NoLayout })
-    val ready = opened
-    if (ready == null) DocumentLoading(file.title, onDismiss)
-    else DocumentViewer(file.title, file.chunks, ready.pdf, attach = ready.preset?.let { SourceAttach(it, attach) }, onDismiss = onDismiss)
+    OpenSourceViewer(deps.sources, SourceKey(file.source.contentId, file.source.contentVersion, file.course?.let { CourseRef(it.packageId, it.contentVersion) }),
+        SourceText(file.title, file.chunks), onDismiss = onDismiss)
 }
 
 @Composable

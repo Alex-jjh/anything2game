@@ -155,15 +155,15 @@ class ReviewedSpaceJourneysTest : LearnJourneyBase() {
         openMaterial(pkg.title)
         waitFor("the course's row", 5000) { has("material_row_demo_mapreduce") }
         tap(rule.onNodeWithTag("material_row_demo_mapreduce"))
-        waitForTag("document_viewer")
+        waitForTag("source_viewer")
         val pages = pkg.sources.map { it.pageIndex }.distinct().size
-        assertEquals("1 / $pages", textOf("document_page_label"))
+        assertEquals("1 / $pages", textOf("source_page_label"))
         // The original is not on this phone: the viewer says so, and every page of the text is one swipe or tap away.
-        assertTrue(textShown(str(R.string.document_text_note)) || has("source_attach_status"))
-        repeat(pages - 1) { tap(rule.onNodeWithTag("document_next")) }
-        assertEquals("$pages / $pages", textOf("document_page_label"))
+        assertTrue(textShown(str(R.string.source_text_only_note)) || has("source_attach_status"))
+        repeat(pages - 1) { tap(rule.onNodeWithTag("source_next")) }
+        assertEquals("$pages / $pages", textOf("source_page_label"))
         assertTrue(exists(hasText(pkg.sources.last().text.take(30), substring = true)))
-        tap(rule.onNodeWithTag("document_close")); waitForTag("space_materials")
+        tap(rule.onNodeWithTag("source_close")); waitForTag("space_materials")
     }
 
     @Test fun available_locker_numbers_have_readable_contrast_before_selecting_a_cut() {

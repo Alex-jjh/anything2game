@@ -847,7 +847,6 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         assertEquals("1 completed activity · 1 learning day", completedDays(1, 1))
         assertEquals("2 completed activities · 3 learning days", completedDays(2, 3))
         assertEquals("1 character", plural(R.plurals.import_chars, 1, 1))
-        assertEquals("p. 1 · 1 page", plural(R.plurals.source_page_of, 1, "1", 1))
         // On screen: a Space with exactly one material says "1 material", one with two says "2 materials".
         val (one, two) = awaitIo {
             deps.profiles.choose(com.anything2game.app.data.profile.LocalProfile.GUEST)

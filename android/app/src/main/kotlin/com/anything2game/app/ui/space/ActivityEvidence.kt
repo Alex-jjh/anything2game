@@ -1,5 +1,7 @@
 package com.anything2game.app.ui.space
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -10,12 +12,14 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import com.anything2game.app.R
 import com.anything2game.app.data.learning.*
-import com.anything2game.app.ui.reading.DocumentViewer
+import com.anything2game.app.data.source.SourceLibrary
+import com.anything2game.app.data.source.SourceText
+import com.anything2game.app.ui.source.OpenSourceViewer
 import com.anything2game.contract.game.EvidenceRef
 import kotlinx.coroutines.CancellationException
 
 @Composable
-internal fun ActivityEvidence(catalog: MaterialCatalog, ref: EvidenceRef, material: Material? = null, title: String? = null, dismiss: () -> Unit) {
+internal fun ActivityEvidence(catalog: MaterialCatalog, sources: SourceLibrary, ref: EvidenceRef, material: Material? = null, title: String? = null, dismiss: () -> Unit) {
     var target by remember(ref) { mutableStateOf<SourceTarget?>(null) }
     var loading by remember(ref) { mutableStateOf(true) }
     var failed by remember(ref) { mutableStateOf(false) }
@@ -26,7 +30,7 @@ internal fun ActivityEvidence(catalog: MaterialCatalog, ref: EvidenceRef, materi
     val t = target
     if (t is SourceTarget.Pdf) {
         // The same viewer as a tapped file in Materials, opened on the cited page.
-        DocumentViewer(title ?: material?.title ?: stringResource(R.string.tutor_source_title), t.chunks, t.document, listOf(t.ref), onDismiss = dismiss)
+        OpenSourceViewer(sources, t.key, SourceText(title ?: material?.title ?: stringResource(R.string.tutor_source_title), t.chunks), listOf(t.ref), onDismiss = dismiss)
         return
     }
     val uri = LocalUriHandler.current

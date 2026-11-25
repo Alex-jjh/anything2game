@@ -88,7 +88,7 @@ internal fun GameScreen(deps: AppDependencies, version: ContentVersion, onBack: 
         val finish = { deps.homePreferences.markIntroSeen(version); introDone = true; introAgain = false }
         GameIntro(run.spec, replay = introAgain, onPlay = finish, onSkip = finish, onExit = { if (introAgain) introAgain = false else onBack() },
             onSource = { evidence = it.evidenceId })
-        run.spec.evidenceRefs.firstOrNull { it.evidenceId == evidence }?.let { ref -> ActivityEvidence(requireNotNull(deps.materials), ref) { evidence = null } }
+        run.spec.evidenceRefs.firstOrNull { it.evidenceId == evidence }?.let { ref -> ActivityEvidence(requireNotNull(deps.materials), deps.sources, ref) { evidence = null } }
         return
     }
     Scaffold(containerColor = A2g.skin.paper) { padding ->
@@ -107,7 +107,7 @@ internal fun GameScreen(deps: AppDependencies, version: ContentVersion, onBack: 
                     backTo = backTo, onBackTo = onBack, onQuickLook = if (run.spec.intro.isEmpty()) null else ({ introAgain = true })) {
                     run.spec.evidenceRefs.filter { it.evidenceId in run.stage.evidenceIds }.forEach { ref ->
                         PixelButton(stringResource(R.string.source_open), { evidence = ref.evidenceId })
-                        if (evidence == ref.evidenceId) ActivityEvidence(requireNotNull(deps.materials), ref) { evidence = null }
+                        if (evidence == ref.evidenceId) ActivityEvidence(requireNotNull(deps.materials), deps.sources, ref) { evidence = null }
                     }
                 }
             }

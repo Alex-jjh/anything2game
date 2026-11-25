@@ -1,7 +1,11 @@
 package com.anything2game.app.data.learning
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import com.anything2game.app.data.content.ContentLibrary
 import com.anything2game.app.data.content.availableFrames
+import com.anything2game.app.data.source.CourseRef
+import com.anything2game.app.data.source.SourceKey
 import com.anything2game.app.data.stableId
 import com.anything2game.app.data.tutor.*
 import com.anything2game.app.ui.play.offeredFrames
@@ -66,7 +70,7 @@ data class MaterialFile(val member: SpaceMember, val title: String, val kind: Fi
     val chunks: List<SourceChunk>, val source: ContentVersion, val course: SpaceMember.LocalPackRef?, val addedAt: Long = 0)
 
 sealed interface SourceTarget {
-    data class Pdf(val chunks: List<SourceChunk>, val ref: SourceRef, val document: SourceDocument?) : SourceTarget
+    data class Pdf(val chunks: List<SourceChunk>, val ref: SourceRef, val key: SourceKey) : SourceTarget
     data class Card(val evidence: EvidenceRef.Reviewed) : SourceTarget
     data class External(val evidence: EvidenceRef.External) : SourceTarget
 }
@@ -145,13 +149,6 @@ class MaterialCatalog(private val content: ContentLibrary, private val tutors: T
         }
     }
 
-    /** The reader's own copy of the original PDF (imported, attached, or bundled with the course), or null when it is not on this phone. */
-    suspend fun document(file: MaterialFile): SourceDocument? {
-        safely { tutors.sourceDocument(file.source.contentId, file.source.contentVersion) }?.let { return it }
-        val course = file.course ?: return null
-        return safely { presets?.load(course.packageId, file.source.contentId, file.source.contentVersion, course.contentVersion) }
-    }
-
     private suspend fun <T> safely(block: suspend () -> T?): T? =
         try { block() } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
 
@@ -199,20 +196,12 @@ class MaterialCatalog(private val content: ContentLibrary, private val tutors: T
                 val matches = (scoped?.let(::listOf) ?: materials()).filter { it.matches(evidence) }
                 if (matches.isEmpty()) return null
                 val reference = SourceRef(evidence.chunkId, evidence.quote)
+                // Which file this is, not where it is: the source library finds the original (imported, attached or bundled).
+                // A citation scoped to a lesson pack opens that course's own paper only; otherwise every course citing it may hold it.
                 val pack = scoped?.member as? SpaceMember.LocalPackRef
-                if (pack != null) return SourceTarget.Pdf(scoped.chunks, reference,
-                    presets?.load(pack.packageId, evidence.documentId, evidence.documentVersion, pack.contentVersion))
-                val existing = tutors.sourceDocument(evidence.documentId, evidence.documentVersion)
-                if (existing != null) return SourceTarget.Pdf(matches.first().chunks, reference, existing)
-                for (material in matches) {
-                    val local = material.localPack ?: continue
-                    val pdf = presets?.load(local.packageId, evidence.documentId, evidence.documentVersion, local.contentVersion)
-                    if (pdf != null) {
-                        val document = tutors.sourceDocument(evidence.documentId, evidence.documentVersion) ?: pdf
-                        return SourceTarget.Pdf(material.chunks, reference, document)
-                    }
-                }
-                SourceTarget.Pdf(matches.first().chunks, reference, null)
+                val courses = if (pack != null) listOf(CourseRef(pack.packageId, pack.contentVersion, ownPaperOnly = true))
+                    else matches.mapNotNull { it.localPack }.distinct().map { CourseRef(it.packageId, it.contentVersion) }
+                SourceTarget.Pdf(matches.first().chunks, reference, SourceKey(evidence.documentId, evidence.documentVersion, courses))
             }
         }
     }

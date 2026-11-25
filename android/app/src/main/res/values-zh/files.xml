@@ -20,7 +20,7 @@
     <string name="file_status_problem">这个文件读不出来，点一下看看怎么办</string>
     <string name="file_status_unsure">不确定这个文件传上去了没有，点一下看看怎么办</string>
     <string name="document_page_of">%1$d / %2$d</string>
-    <string name="document_text_note">原文件没有保存在这部手机上，这里显示的是它的文字。</string>
-    <string name="document_open_failed">这个文件在这里打不开，先显示它的文字。</string>
+    <string name="document_open_failed">这个文件在这里打不开，下面是从中提取的文字。</string>
     <string name="document_no_text">这个文件里没有可以显示的文字。</string>
+    <string name="source_text_only_note">原文件不在这台手机上，下面是从中提取的文字。</string>
 </resources>

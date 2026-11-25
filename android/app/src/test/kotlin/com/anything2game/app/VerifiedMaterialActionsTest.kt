@@ -148,8 +148,9 @@ class VerifiedMaterialActionsTest {
             val store = SourceDocumentStore(File(RuntimeEnvironment.getApplication().filesDir, "source-documents"))
             store.save(source.documentId, source.documentVersion, 1,
                 com.anything2game.contract.DocumentLayout(listOf(com.anything2game.contract.PageBox(0, 200f, 400f))), "%PDF-separate-upload".toByteArray())
-            assertNotNull((deps.materials.source(source) as SourceTarget.Pdf).document)
-            assertNull((deps.materials.source(source, material) as SourceTarget.Pdf).document)
+            suspend fun original(target: SourceTarget.Pdf) = deps.sources.open(target.key, com.anything2game.app.data.source.SourceText("t", target.chunks)).original
+            assertNotNull((deps.materials.source(source) as SourceTarget.Pdf).let { original(it) })
+            assertNull("a lesson's own citation never borrows the upload", (deps.materials.source(source, material) as SourceTarget.Pdf).let { original(it) })
         }
         val label = RuntimeEnvironment.getApplication().getString(R.string.spaces_source_page, material.title,
             source.pageLabel ?: (source.pageIndex + 1).toString())

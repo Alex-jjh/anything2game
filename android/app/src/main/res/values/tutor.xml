@@ -30,12 +30,12 @@
     <string name="tutor_all_introduced">That\'s every idea covered. You can keep asking, or go back to your files.</string>
     <string name="tutor_source_title">Source passage</string>
     <string name="tutor_source_note">The quote only shows where this comes from. It doesn\'t prove the explanation is right.</string>
-    <string name="tutor_close">Close</string>
     <string name="tutor_error">That didn\'t work. %1$s Nothing you\'ve done is lost. Try again, or reload.</string>
     <string name="tutor_reload">Reload</string>
     <string name="tutor_cancel">Cancel this request</string>
     <string name="tutor_offline">You\'re offline. You can see what\'s saved. Connect to the internet to get new replies.</string>
-    <string name="tutor_unavailable">This sample doesn\'t have an explanation yet. Its original text is below. Pick a course that has one, or add your own PDF.</string>
+    <string name="tutor_unavailable">This sample doesn\'t have an explanation yet. You can still read its original. Pick a course that has one, or add your own PDF.</string>
+    <string name="tutor_read_original">Read the original</string>
     <string name="tutor_limit">This conversation has reached its limit of 40 questions and replies. Everything so far stays saved.</string>
     <string name="tutor_upload_consent">If you continue, this document is sent to the server shown below. It reads the text and prepares a few starting questions. This is a practice server with no real AI, so the questions are simple stand-ins. A different server might use a real AI.</string>
     <string name="tutor_no_endpoint">This version of the app isn\'t connected to a server. You can still try the built-in example.</string>
@@ -68,10 +68,6 @@
     <string name="tutor_card_continue">Continue</string>
     <string name="tutor_card_continue_concept">Continue · concept %1$d/%2$d</string>
     <string name="tutor_card_explained">Explained</string>
-    <plurals name="source_page_of">
-        <item quantity="one">p. %1$s · %2$d page</item>
-        <item quantity="other">p. %1$s · %2$d pages</item>
-    </plurals>
     <string name="source_prev_page">Prev</string>
     <string name="source_next_page">Next</string>
     <string name="source_marker_note">Quoted in the explanation</string>
@@ -81,7 +77,7 @@
     <string name="source_pdf_quote_unplaced">Quoted on this page (not marked): “%1$s”</string>
     <string name="source_pdf_zoom_hint">Pinch to zoom, double-tap to reset</string>
     <!-- Preset courses: the reader attaches their own copy of the paper's PDF (ADR-019). -->
-    <string name="source_attach_note">The original file isn\'t stored on this phone; this is its text. Have the PDF? Attach it to see the real pages.</string>
+    <string name="source_attach_note">Have the PDF? Attach it to see the real pages.</string>
     <string name="source_attach_action">Attach PDF</string>
     <string name="source_attach_desc">Attach your copy of the original PDF to see the real page</string>
     <string name="source_attach_checking">Checking the file…</string>
@@ -90,7 +86,6 @@
     <string name="source_attach_too_large">That file is over 20 MB. Showing its text instead.</string>
     <string name="source_attach_not_pdf">That file isn\'t a PDF. Showing its text instead.</string>
     <string name="source_attach_unreadable">That file couldn\'t be read or kept. Showing its text instead.</string>
-    <string name="source_attach_unplaced">PDF attached. We can\'t tell where this passage sits on the page, so its text is shown here.</string>
     <string name="source_attach_retry">Choose another file</string>
     <string name="source_attach_download">Open download page</string>
     <string name="import_invalid_pdf">This file couldn\'t be opened as a PDF. Please choose another PDF.</string>

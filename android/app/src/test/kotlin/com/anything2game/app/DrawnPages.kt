@@ -5,7 +5,7 @@ import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Paint
-import com.anything2game.app.ui.reading.PageImages
+import com.anything2game.app.ui.source.PageImages
 
 /** Robolectric cannot render a PDF: these pages are drawn by hand (a title bar and lines of "text") so a viewer shows something page-like. */
 class DrawnPages(override val pageCount: Int) : PageImages {

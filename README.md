@@ -14,7 +14,7 @@ CSI301 Mobile Computing group project. Everything is due **2026-12-07** (ad + de
 
 Content ships as checksummed **content packs** in one format for presets, server output and imports. A shared deterministic game runtime runs on both phone and server. The phone never calls a model provider; real generation (PDF → route, concept → game) runs on our server and is not used in the demo.
 
-**Start here:** [product state](docs/product/PRODUCT.md) · [architecture: games and Spaces](docs/architecture/concept-games-spaces.md) · [screens: map](docs/design/screens/spaces-map/) · [screens: playground](docs/design/screens/playground/).
+**Start here:** [product state](docs/product/PRODUCT.md) · [architecture: games and Spaces](docs/architecture/concept-games-spaces.md) · [source viewer](docs/architecture/source-viewer.md) · [screens: map](docs/design/screens/spaces-map/) · [screens: playground](docs/design/screens/playground/).
 
 ## Quick start
 
@@ -25,6 +25,18 @@ Content ships as checksummed **content packs** in one format for presets, server
 ./gradlew :android:app:assembleDebug             # APK → android/app/build/outputs/apk/debug/app-debug.apk
 adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 ```
+
+### Demo build: the real papers
+
+"Show source" opens the **original PDF** for the Attention and ResNet demo courses. The papers are not in git: the debug build downloads them from arXiv, checks each against the SHA-256 the course was measured on, caches them in `~/.gradle/caches/a2g-sample-pdfs`, and puts them in the APK. If a download fails (offline, a changed file), the app still works but shows the extracted text instead, and the **end of the build prints a boxed `Demo papers: NOT in this APK` summary**.
+
+| Build | Command | Papers |
+|---|---|---|
+| Normal | `./gradlew :android:app:assembleDebug` | fetched; a boxed summary at the end says which are in or missing |
+| For the team / the demo video | `./gradlew :android:app:assembleDebug -Pa2g.samplePdfs=required` | **build fails** if any paper is missing |
+| Shared outside the team | `./gradlew :android:app:assembleDebug -Pa2g.samplePdfs=false` | left out on purpose (the papers are third-party) |
+
+Check an APK: `unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep sample-pdfs` should list `demo_attention.pdf` and `demo_resnet.pdf`. Unit tests never bundle them. See [the source viewer](docs/architecture/source-viewer.md).
 
 Demo path for the video (offline, presets only):
 1. **Continue as Lin.** Spaces opens on the Attention map, part-way done. Tap the current step → **Start** → Aya's explanation → back: the map has advanced.

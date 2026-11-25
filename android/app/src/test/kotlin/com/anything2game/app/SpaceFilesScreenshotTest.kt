@@ -12,7 +12,7 @@ import com.anything2game.app.data.profile.LocalProfile
 import com.anything2game.app.data.tutor.*
 import com.anything2game.app.ui.AppRoot
 import com.anything2game.app.ui.Navigator
-import com.anything2game.app.ui.reading.LocalPageImages
+import com.anything2game.app.ui.source.LocalPageImages
 import com.anything2game.app.ui.theme.A2gTheme
 import com.anything2game.contract.ContractJson
 import com.anything2game.contract.DocumentLayout
@@ -116,7 +116,7 @@ class SpaceFilesScreenshotTest {
         materials(deps, id)
         rule.onNodeWithTag("material_row_doc_file_0").performClick()
         wait { has("source_pdf_page") }
-        repeat(2) { rule.onNodeWithTag("document_next").performClick(); rule.waitForIdle() }
+        repeat(2) { rule.onNodeWithTag("source_next").performClick(); rule.waitForIdle() }
         wait { has("source_pdf_page") }
         rule.waitForIdle()
         captureScreenRoboImage("$out/f4_pdf_viewer_en.png")
@@ -126,7 +126,7 @@ class SpaceFilesScreenshotTest {
         val (deps, id) = threePdfSpace(listOf("03-tutor-notes.pdf"), listOf(null))
         materials(deps, id)
         rule.onNodeWithTag("material_row_doc_file_0").performClick()
-        wait { has("document_text_note") }
+        wait { has("source_text_note") }
         rule.waitForIdle()
         captureScreenRoboImage("$out/f5_text_fallback_en.png")
     }

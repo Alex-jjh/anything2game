@@ -1,5 +1,7 @@
 package com.anything2game.app.ui.play
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -38,10 +40,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -65,6 +65,10 @@ import com.anything2game.engine.session.Overlay
 import com.anything2game.engine.session.Phase
 import com.anything2game.engine.session.SlotKind
 import com.anything2game.contract.FrameSpec
+import com.anything2game.app.data.source.CourseRef
+import com.anything2game.app.data.source.SourceKey
+import com.anything2game.app.data.source.SourceText
+import com.anything2game.app.ui.source.OpenSourceViewer
 
 /** Stateless play screen. All input becomes an engine [Action]; nothing here decides game flow. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -75,8 +79,8 @@ fun PlayContent(
     onBack: () -> Unit,
     onRestart: () -> Unit,
     simulator: (@Composable () -> Unit)? = null,
-    /** The course's own PDF (imported, attached or bundled): evidence then opens on the real page, as Show source does. */
-    sourcePdf: com.anything2game.app.data.tutor.SourceDocument? = null,
+    /** Where evidence is opened from: the course's own PDF when the phone has it (the real page), its text when not. */
+    sources: com.anything2game.app.data.source.SourceLibrary = com.anything2game.app.data.source.TextOnlySources,
 ) {
     val skin = A2g.skin
     val session = state.session
@@ -152,15 +156,10 @@ fun PlayContent(
     when (val overlay = session.overlay) {
         is Overlay.Evidence -> {
             val refs = state.item?.allSourceRefs.orEmpty()
-            val pdf = sourcePdf?.takeIf { it.documentId == state.pkg.documentId && it.documentVersion == state.pkg.documentVersion }
-            if (pdf != null) com.anything2game.app.ui.reading.SourceViewer(state.pkg.sources, refs.filter { it.chunkId in overlay.chunkIds }.ifEmpty { refs }, pdf,
-                onDismiss = { onAction(Action.CloseOverlay) })
-            else EvidencePanel(
-                chunks = overlay.chunkIds.mapNotNull(state.pkg::chunk),
-                refs = refs,
-                documentTitle = state.pkg.title,
-                onClose = { onAction(Action.CloseOverlay) },
-            )
+            val pkg = state.pkg
+            OpenSourceViewer(sources, SourceKey(pkg.documentId, pkg.documentVersion, CourseRef(pkg.packageId, pkg.contentVersion)), SourceText(pkg.title, pkg.sources),
+                refs.filter { it.chunkId in overlay.chunkIds }.ifEmpty { refs },
+                startPage = overlay.chunkIds.firstNotNullOfOrNull { pkg.chunk(it)?.pageIndex }, onDismiss = { onAction(Action.CloseOverlay) })
         }
         Overlay.Asking -> AskPanel(offline = !state.context.askAvailable, onClose = { onAction(Action.CloseOverlay) })
         null -> Unit

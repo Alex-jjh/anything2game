@@ -30,12 +30,12 @@
     <string name="tutor_all_introduced">要讲的概念都讲完了。可以继续提问，也可以回到文件列表。</string>
     <string name="tutor_source_title">对应原文片段</string>
     <string name="tutor_source_note">这句原文只说明讲解的出处，不代表讲解一定正确。</string>
-    <string name="tutor_close">关闭</string>
     <string name="tutor_error">这一步没成功。%1$s 你已经做的不会丢。可以再试一次，或重新加载。</string>
     <string name="tutor_reload">重新加载</string>
     <string name="tutor_cancel">取消本次请求</string>
     <string name="tutor_offline">现在没有网络，只能看已保存的内容。联网后才能收到新的回复。</string>
-    <string name="tutor_unavailable">这个现成示例还没有讲解，原文在下面。可以选有讲解的课程，或者添加你自己的 PDF。</string>
+    <string name="tutor_unavailable">这个现成示例还没有讲解，但可以先读原文。可以选有讲解的课程，或者添加你自己的 PDF。</string>
+    <string name="tutor_read_original">读原文</string>
     <string name="tutor_limit">这段对话已到 40 问 40 答的上限，已有内容仍保留。</string>
     <string name="tutor_upload_consent">点确认后，这份文档会发送到下面的服务器，由它读出文字并准备几道开场小问题。这是练习用的服务器，没有真正的 AI，所以问题都很简单，只是占位。换成别的服务器时，可能会用真正的 AI。</string>
     <string name="tutor_no_endpoint">这个版本还没有连接服务器。你仍然可以试试自带的示例。</string>
@@ -68,9 +68,6 @@
     <string name="tutor_card_continue">继续</string>
     <string name="tutor_card_continue_concept">继续 · 第 %1$d/%2$d 个概念</string>
     <string name="tutor_card_explained">已讲完</string>
-    <plurals name="source_page_of">
-        <item quantity="other">第 %1$s 页 · 共 %2$d 页</item>
-    </plurals>
     <string name="source_prev_page">上一页</string>
     <string name="source_next_page">下一页</string>
     <string name="source_marker_note">讲解引用的原句</string>
@@ -80,7 +77,7 @@
     <string name="source_pdf_quote_unplaced">本页引用的原句（未能标出）：“%1$s”</string>
     <string name="source_pdf_zoom_hint">双指缩放，双击还原</string>
     <!-- 预置课程：读者附上自己手里的论文 PDF（ADR-019）。 -->
-    <string name="source_attach_note">原文件没有保存在这部手机上，这里是它的文字。手上有这份 PDF？附上它就能看到原来的页面。</string>
+    <string name="source_attach_note">手上有这份 PDF？附上它就能看到原来的页面。</string>
     <string name="source_attach_action">附上 PDF</string>
     <string name="source_attach_desc">附上你的原始 PDF，查看真实页面</string>
     <string name="source_attach_checking">正在核对文件…</string>
@@ -89,7 +86,6 @@
     <string name="source_attach_too_large">文件超过 20 MB。先显示它的文字。</string>
     <string name="source_attach_not_pdf">这个文件不是 PDF。先显示它的文字。</string>
     <string name="source_attach_unreadable">无法读取或保存这个文件。先显示它的文字。</string>
-    <string name="source_attach_unplaced">PDF 已附上。我们没法确定这段话在页面上的位置，所以在这里显示文字。</string>
     <string name="source_attach_retry">换一个文件</string>
     <string name="source_attach_download">打开下载页面</string>
     <string name="import_invalid_pdf">这个文件没法当作 PDF 打开。请换一份 PDF。</string>

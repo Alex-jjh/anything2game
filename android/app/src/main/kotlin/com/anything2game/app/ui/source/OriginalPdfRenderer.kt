@@ -1,4 +1,4 @@
-package com.anything2game.app.ui.reading
+package com.anything2game.app.ui.source
 
 import android.graphics.Bitmap
 import android.graphics.pdf.PdfRenderer
@@ -23,8 +23,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -71,9 +69,6 @@ import com.anything2game.contract.PageBox
 import com.anything2game.contract.SourceChunk
 import com.anything2game.contract.SourceLayout
 import com.anything2game.contract.SourceRef
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.io.Closeable
 import java.io.File
 import java.util.concurrent.locks.ReentrantLock
@@ -81,6 +76,9 @@ import kotlin.concurrent.withLock
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** Rendered pages of one PDF. A seam: the platform renderer on a phone, a fake under Robolectric (which cannot render). */
 interface PageImages : Closeable {
@@ -120,11 +118,34 @@ internal sealed interface Opened {
 }
 
 /**
- * The real PDF page with the quote marked where it is printed, like a PDF reader's highlight. Never half-shown: a file
- * that will not open, or has another page count than the server read, gives the text viewer ([onText]) instead.
+ * The original PDF, page by page: the real page as the platform draws it, pinch to zoom, the quoted sentences marked where
+ * they are printed when the layout knows (like a PDF reader's highlight), and the page opened on the cited one either way.
  */
+internal class OriginalPdfRenderer(private val pages: PageImages, private val document: SourceDocument, chunks: List<SourceChunk>, refs: List<SourceRef>, startPage: Int?) : SourceRenderer {
+    private val marks = if (refs.isEmpty()) emptyMap() else pdfMarks(chunks, refs, document.layout)
+    private val boxes = document.layout.pages.associateBy { it.pageIndex }
+    private val labels = chunks.associate { it.pageIndex to (it.pageLabel ?: (it.pageIndex + 1).toString()) }
+    private var zoomed by mutableStateOf(false)
+
+    override val pageCount get() = document.pageCount
+    override val startPage = openingPage(chunks, refs, marks, startPage).coerceIn(0, (document.pageCount - 1).coerceAtLeast(0))
+    override val legend = marks.values.any { it.rects.isNotEmpty() }
+    override val swipeable get() = !zoomed
+
+    @Composable override fun Page(index: Int, current: Boolean, modifier: Modifier) {
+        PdfPage(pages, index, labels[index] ?: (index + 1).toString(), document.pageCount, boxes[index], marks[index], current = current, onZoom = { zoomed = it },
+            modifier = modifier, note = marks.isNotEmpty())
+    }
+}
+
+/** The page the reader should land on: the caller's choice, else the first page with a mark, else the cited chunk's page, else the first. */
+internal fun openingPage(chunks: List<SourceChunk>, refs: List<SourceRef>, marks: Map<Int, PageMarks>, startPage: Int?): Int =
+    startPage ?: marks.entries.firstOrNull { it.value.rects.isNotEmpty() }?.key
+        ?: refs.firstNotNullOfOrNull { ref -> chunks.firstOrNull { it.chunkId == ref.chunkId }?.pageIndex } ?: 0
+
+/** Opens [pdf] with the platform renderer; [Opened.Failed] when it will not open or is not the file the geometry was measured on. */
 @Composable
-internal fun PdfSourceViewer(sources: List<SourceChunk>, pdf: SourceDocument, marks: Map<Int, PageMarks>, onText: @Composable () -> Unit, onDismiss: () -> Unit) {
+internal fun rememberOpenedPages(pdf: SourceDocument): Opened {
     val open = LocalPageImages.current
     val opened by produceState<Opened>(Opened.Loading, pdf.file) {
         val pages = try { open(pdf.file) } catch (e: CancellationException) { throw e } catch (e: Exception) { null }
@@ -132,23 +153,7 @@ internal fun PdfSourceViewer(sources: List<SourceChunk>, pdf: SourceDocument, ma
         value = Opened.Ready(pages)
         awaitDispose { pages.close() }
     }
-    if (opened == Opened.Failed) return onText()
-    val pages = (opened as? Opened.Ready)?.pages
-    val labels = remember(sources) { sources.associate { it.pageIndex to (it.pageLabel ?: (it.pageIndex + 1).toString()) } }
-    val label = { i: Int -> labels[i] ?: (i + 1).toString() }
-    val boxes = remember(pdf) { pdf.layout.pages.associateBy { it.pageIndex } }
-    val start = marks.entries.firstOrNull { it.value.rects.isNotEmpty() }?.key ?: 0
-    val pager = rememberPagerState(initialPage = start.coerceIn(0, pdf.pageCount - 1)) { pdf.pageCount }
-    var zoomed by remember { mutableStateOf(false) }
-    LaunchedEffect(pager.currentPage) { zoomed = false }
-    SourceFrame(label(pager.currentPage), pdf.pageCount, pager, onDismiss) {
-        if (pages == null) {
-            val loading = stringResource(R.string.source_pdf_loading)
-            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { CircularProgressIndicator(Modifier.semantics { contentDescription = loading }, color = Color.White) }
-        } else HorizontalPager(pager, Modifier.weight(1f).fillMaxWidth(), beyondViewportPageCount = 1, userScrollEnabled = !zoomed) { i ->
-            PdfPage(pages, i, label(i), pdf.pageCount, boxes[i], marks[i], current = i == pager.currentPage, onZoom = { zoomed = it }, modifier = Modifier.fillMaxSize())
-        }
-    }
+    return opened
 }
 
 @Composable

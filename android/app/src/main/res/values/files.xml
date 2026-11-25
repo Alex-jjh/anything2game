@@ -22,7 +22,7 @@
     <string name="file_status_problem">Couldn\'t read this file — tap for options</string>
     <string name="file_status_unsure">Not sure this one was sent — tap for options</string>
     <string name="document_page_of">%1$d / %2$d</string>
-    <string name="document_text_note">The original file isn\'t stored on this phone; here is its text.</string>
-    <string name="document_open_failed">This file couldn\'t be opened here; here is its text instead.</string>
+    <string name="document_open_failed">This file couldn\'t be opened here, so this is its text.</string>
     <string name="document_no_text">There is no text to show for this file.</string>
+    <string name="source_text_only_note">The original file isn\'t on this phone, so this is its text.</string>
 </resources>

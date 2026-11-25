@@ -1,4 +1,4 @@
-package com.anything2game.app.ui.reading
+package com.anything2game.app.ui.source
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.ImageBitmap
@@ -7,6 +7,8 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
+import com.anything2game.app.data.source.Original
+import com.anything2game.app.data.source.SourceFile
 import com.anything2game.app.data.tutor.SourceDocument
 import com.anything2game.app.data.tutor.SourceDocumentStore
 import com.anything2game.app.ui.theme.A2gTheme
@@ -26,7 +28,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
 
-/** "Show source": the real PDF page with the quote marked when the reader's PDF is kept, the text pages otherwise. */
+/** The one source viewer: the real PDF page with the quote marked when the original is on the phone, the extracted text (plainly labelled) otherwise. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "w393dp-h852dp-xxhdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -64,34 +66,61 @@ class SourceViewerTest {
     private fun has(tag: String) = rule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
     private fun textOf(tag: String) = rule.onNodeWithTag(tag).fetchSemanticsNode().config.getOrNull(SemanticsProperties.Text)?.joinToString("") { it.text }.orEmpty()
 
-    private fun show(pdf: SourceDocument?, cited: List<SourceRef> = refs, open: suspend (File) -> PageImages) = rule.setContent {
-        A2gTheme { CompositionLocalProvider(LocalPageImages provides open) { SourceViewer(sources, cited, pdf, onDismiss = {}) } }
+    private fun show(pdf: SourceDocument?, cited: List<SourceRef> = refs, startPage: Int? = null, open: suspend (File) -> PageImages) = rule.setContent {
+        A2gTheme { CompositionLocalProvider(LocalPageImages provides open) { SourceViewer(SourceFile("Lecture 3", sources, pdf?.let(Original::Pdf)), cited, startPage, onDismiss = {}) } }
     }
 
-    @Test fun `without a kept PDF the text viewer is shown as before`() {
+    @Test fun `without the original the text is a reading layout with one plain sentence, not a page of paper`() {
         var opened = 0
         show(null) { opened++; FakePages(3) }
         rule.waitUntil(5000) { has("source_highlighted") }
         assertTrue(textOf("source_highlighted").contains(quote))
-        assertEquals("p. 2 · 2 pages", textOf("source_page_label"))
+        assertEquals("The original file isn't on this phone, so this is its text.", textOf("source_text_note"))
+        // Opens on the cited chunk's page, headed like a reading layout; the title bar names the file.
+        assertEquals("Page 2", textOf("source_text_heading"))
+        assertEquals("Lecture 3", textOf("source_title"))
+        assertEquals("2 / 2", textOf("source_page_label"))
         assertTrue(!has("source_pdf_page") && !has("source_highlight_rect"))
         assertEquals(0, opened)
+        rule.onNodeWithTag("source_prev").performClick()
+        rule.waitUntil(5000) { textOf("source_text_heading") == "Page 1" }
+        assertTrue(has("source_text"))
     }
 
-    private fun assertText(pdf: SourceDocument, open: suspend (File) -> PageImages) {
+    @Test fun `a caller's start page wins over the cited one`() {
+        show(null, startPage = 0) { FakePages(3) }
+        rule.waitUntil(5000) { has("source_text_heading") }
+        assertEquals("Page 1", textOf("source_text_heading"))
+    }
+
+    @Test fun `while the file is being looked up the same frame shows a spinner and the name`() {
+        rule.setContent { A2gTheme { SourceViewer(null, onDismiss = {}, loadingTitle = "Lecture 3") } }
+        rule.waitUntil(5000) { has("source_loading") }
+        assertTrue(has("source_viewer"))
+        assertEquals("Lecture 3", textOf("source_title"))
+    }
+
+    private fun assertText(pdf: SourceDocument, note: String, open: suspend (File) -> PageImages) {
         show(pdf, open = open)
         rule.waitUntil(5000) { has("source_highlighted") }
+        assertEquals(note, textOf("source_text_note"))
         assertTrue(!has("source_pdf_page") && !has("source_highlight_rect"))
     }
 
-    @Test fun `a PDF whose quote cannot be placed shows the text`() =
-        assertText(document().let { SourceDocument(it.documentId, it.documentVersion, 3, it.file, it.layout.copy(chunks = emptyList())) }) { FakePages(3) }
+    @Test fun `the original is shown even when the quote cannot be placed on it, opened on the cited page`() {
+        val bare = document().let { SourceDocument(it.documentId, it.documentVersion, 3, it.file, it.layout.copy(chunks = emptyList())) }
+        show(bare) { FakePages(3) }
+        rule.waitUntil(5000) { has("source_pdf_page") }
+        assertEquals("2 / 3", textOf("source_page_label"))
+        assertTrue(!has("source_highlight_rect") && !has("source_text_note"))
+        assertTrue("the quote is still said in words", textOf("source_quote").startsWith("Quoted on this page"))
+    }
 
-    @Test fun `a PDF that will not open shows the text`() = assertText(document()) { throw java.io.IOException("damaged") }
+    @Test fun `a PDF that will not open shows the text and says so`() = assertText(document(), "This file couldn't be opened here, so this is its text.") { throw java.io.IOException("damaged") }
 
     @Test fun `a PDF with another page count than the server read shows the text, and is closed`() {
         val pages = FakePages(7)
-        assertText(document()) { pages }
+        assertText(document(), "This file couldn't be opened here, so this is its text.") { pages }
         assertTrue(pages.closed)
     }
 
@@ -99,7 +128,7 @@ class SourceViewerTest {
         val pages = FakePages(3)
         show(document()) { pages }
         rule.waitUntil(5000) { has("source_pdf_page") }
-        assertEquals("p. 2 · 3 pages", textOf("source_page_label"))
+        assertEquals("2 / 3", textOf("source_page_label"))
         // The neighbours are composed too (one swipe away); the one on screen is page 2, described for TalkBack.
         rule.onNode(hasTestTag("source_pdf_page") and hasContentDescription("Original PDF, page 2 of 3")).assertIsDisplayed()
         // The quote wraps from the first printed line onto the second: one mark per line.
@@ -119,13 +148,13 @@ class SourceViewerTest {
         assertTrue(textOf("source_quote").contains(quote))
         assertTrue(1 in pages.rendered)
 
-        listOf("source_close").forEach { rule.onNodeWithTag(it).assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp) }
+        rule.onNodeWithTag("source_close").assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp)
         rule.onNodeWithText("◂ Prev").assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp)
         rule.onNodeWithText("Next ▸").assertHeightIsAtLeast(48.dp).performClick()
-        rule.waitUntil(5000) { textOf("source_page_label") == "p. 3 · 3 pages" }
+        rule.waitUntil(5000) { textOf("source_page_label") == "3 / 3" }
         rule.onNodeWithText("◂ Prev").performClick(); rule.waitForIdle()
         rule.onNodeWithText("◂ Prev").performClick()
-        rule.waitUntil(5000) { textOf("source_page_label") == "p. 1 · 3 pages" }
+        rule.waitUntil(5000) { textOf("source_page_label") == "1 / 3" }
         rule.waitUntil(5000) { 0 in pages.rendered }
     }
 

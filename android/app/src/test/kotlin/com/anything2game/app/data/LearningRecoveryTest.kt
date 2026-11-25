@@ -7,6 +7,7 @@ import com.anything2game.app.AndroidAppContainer
 import com.anything2game.app.data.api.*
 import com.anything2game.app.data.learning.*
 import com.anything2game.app.data.profile.LocalProfile
+import com.anything2game.app.data.source.*
 import com.anything2game.app.data.tutor.*
 import com.anything2game.app.importing.ImportRequest
 import com.anything2game.app.ui.play.*
@@ -862,8 +863,7 @@ class LearningRecoveryTest {
         val catalog = MaterialCatalog(deps.content, deps.tutors, presets)
         val mat = catalog.materials().single { it.member == SpaceMember.LocalPackRef("retained", "1") }
         val citation = mat.nodes.first().evidence.single()
-        val target = catalog.source(citation) as SourceTarget.Pdf
-        assertArrayEquals(bytes, requireNotNull(target.document).file.readBytes())
+        assertArrayEquals(bytes, requireNotNull(originalOf(catalog, deps.tutors, presets, citation)).file.readBytes())
     }
 
     @Test fun `a retained tutor card reads progress at the requested version`() = runBlocking {
@@ -881,6 +881,12 @@ class LearningRecoveryTest {
         assertNull(deps.tutors.progressFor("retained-tutor", "2"))
     }
 
+    /** What the phone would open for this citation: the catalog says which file, the source library finds its original. */
+    private suspend fun originalOf(catalog: MaterialCatalog, tutors: TutorRepository, presets: PresetSources, citation: com.anything2game.contract.game.EvidenceRef): SourceDocument? {
+        val target = catalog.source(citation) as SourceTarget.Pdf
+        return (phoneSourceLibrary(tutors, presets).open(target.key, SourceText("t", target.chunks)).original as? Original.Pdf)?.document
+    }
+
     @Test fun `matching bundled evidence leaves uploaded profile PDF and layout intact`() = runBlocking {
         val deps = AndroidAppContainer(app)
         val pkg = deps.packages.load("demo_attention").getOrThrow()
@@ -896,7 +902,7 @@ class LearningRecoveryTest {
         val sources = PresetSources(content, stored) { bundledOpens++; bundled.inputStream() }
         val catalog = MaterialCatalog(content, deps.tutors, sources)
         val evidence = catalog.materials().single().nodes.first().evidence.first()
-        val selected = requireNotNull((catalog.source(evidence) as SourceTarget.Pdf).document)
+        val selected = requireNotNull(originalOf(catalog, deps.tutors, sources, evidence))
         assertArrayEquals(uploaded, selected.file.readBytes())
         assertEquals(0, bundledOpens)
         val reopened = requireNotNull(stored.load(pkg.documentId, pkg.documentVersion))
@@ -922,14 +928,14 @@ class LearningRecoveryTest {
         }
         val catalog = MaterialCatalog(content, deps.tutors, presets)
         val evidence = catalog.materials().single().nodes.first().evidence.first()
-        val lookup = async(Dispatchers.IO) { catalog.source(evidence) }
+        val lookup = async(Dispatchers.IO) { originalOf(catalog, deps.tutors, presets, evidence) }
         val uploaded = "%PDF-profile-upload".toByteArray()
         val original = DocumentLayout(pages = listOf(PageBox(0, 321f, 654f)))
         try {
             withTimeout(10000) { opening.await() }
             store.save(pkg.documentId, pkg.documentVersion, 1, original, uploaded)
         } finally { proceed.countDown() }
-        val selected = requireNotNull((lookup.await() as SourceTarget.Pdf).document)
+        val selected = requireNotNull(lookup.await())
         assertArrayEquals(uploaded, selected.file.readBytes())
         val reopened = requireNotNull(store.load(pkg.documentId, pkg.documentVersion))
         assertEquals(original, reopened.layout)
@@ -952,7 +958,7 @@ class LearningRecoveryTest {
         val sources = PresetSources(library, SourceDocumentStore(tmp.newFolder())) { bytes.inputStream() }
         val catalog = MaterialCatalog(library, deps.tutors, sources)
         val evidence = catalog.materials().first().nodes.first().evidence.single()
-        assertArrayEquals(bytes, requireNotNull((catalog.source(evidence) as SourceTarget.Pdf).document).file.readBytes())
+        assertArrayEquals(bytes, requireNotNull(originalOf(catalog, deps.tutors, sources, evidence)).file.readBytes())
     }
 
     @Test fun `configuration failure before PDF dispatch supports ordinary retry`() = runBlocking {

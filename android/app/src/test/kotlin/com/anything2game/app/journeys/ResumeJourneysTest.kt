@@ -110,9 +110,9 @@ class ResumeJourneysTest : JourneyTest() {
         level.play(steps = 1)                     // answer clue 1 -> verdict on screen
         val at = level.here()
         tapText(str(R.string.action_show_evidence))
-        waitForText(str(R.string.evidence_title))
+        waitForTag("source_viewer")
         systemBack()                              // first back closes the panel ...
-        waitFor("panel closed") { !textShown(str(R.string.evidence_title)) }
+        waitFor("panel closed") { !exists(androidx.compose.ui.test.hasTestTag("source_viewer")) }
         assertEquals(at, level.here())
         assertTrue("... and stays in the level", exists(hasContentDescription(str(R.string.action_back))))
     }

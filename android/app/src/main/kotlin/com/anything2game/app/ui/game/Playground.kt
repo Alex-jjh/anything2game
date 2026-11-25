@@ -71,7 +71,7 @@ internal fun Playground(deps: AppDependencies, language: String, padding: Paddin
             GameIntro(g.spec, replay = true, onPlay = { deps.homePreferences.markIntroSeen(g.version); looking = null; onOpen(g.version) },
                 onSkip = { looking = null }, onExit = { looking = null }, onSource = { source = it.evidenceId })
             g.spec.evidenceRefs.firstOrNull { it.evidenceId == source }?.let { ref ->
-                com.anything2game.app.ui.space.ActivityEvidence(requireNotNull(deps.materials), ref) { source = null }
+                com.anything2game.app.ui.space.ActivityEvidence(requireNotNull(deps.materials), deps.sources, ref) { source = null }
             }
         }
     }

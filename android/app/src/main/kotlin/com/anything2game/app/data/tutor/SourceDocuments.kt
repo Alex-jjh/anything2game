@@ -17,7 +17,7 @@ import java.security.MessageDigest
 
 /**
  * A PDF the reader imported, or attached to a preset course, kept on this phone with the text geometry measured in it,
- * so "Show source" can show the real page. Only ever the user's own file: presets ship geometry, never a PDF, and the
+ * so the source viewer can show the real page. Only ever the user's own file: presets ship geometry, never a PDF, and the
  * server keeps no copy. [pdfSha256] is set for an attached preset PDF (whose geometry was measured on exactly those bytes).
  */
 class SourceDocument(val documentId: String, val documentVersion: String, val pageCount: Int, val file: File, val layout: DocumentLayout, val pdfSha256: String? = null)
@@ -36,8 +36,9 @@ class SourceDocumentStore(private val directory: File) {
         File(directory, edition + (attachment?.let { "-$it" } ?: "") + ".layout.json")
     private fun blob(digest: String) = File(directory, "source-$digest.pdf")
 
+    /** An older server sends no layout: the file is kept all the same, shown page by page and opened on the cited page, with no marks. */
     suspend fun save(document: DocumentResponse, bytes: ByteArray) =
-        save(document.documentId, document.documentVersion, document.pageCount, requireNotNull(document.layout) { "No layout to keep" }, bytes)
+        save(document.documentId, document.documentVersion, document.pageCount, document.layout ?: DocumentLayout(), bytes)
 
     /** Publish one edition only after its exact PDF is durable. Existing records continue pointing to their original bytes. */
     suspend fun save(documentId: String, documentVersion: String, pageCount: Int, layout: DocumentLayout, bytes: ByteArray, pdfSha256: String? = null) = withContext(Dispatchers.IO) {

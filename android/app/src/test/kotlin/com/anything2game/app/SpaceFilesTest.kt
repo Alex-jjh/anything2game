@@ -10,7 +10,7 @@ import com.anything2game.app.data.learning.*
 import com.anything2game.app.data.profile.LocalProfile
 import com.anything2game.app.data.tutor.*
 import com.anything2game.app.ui.*
-import com.anything2game.app.ui.reading.LocalPageImages
+import com.anything2game.app.ui.source.LocalPageImages
 import com.anything2game.app.ui.theme.A2gTheme
 import com.anything2game.contract.DocumentLayout
 import com.anything2game.contract.PageBox
@@ -97,13 +97,13 @@ class SpaceFilesTest {
         ready("material_row_${s.session.documentId}")
         rule.onNodeWithTag("material_row_${s.session.documentId}").performClick()
         wait("the PDF page") { has("source_pdf_page") }
-        assertEquals("lecture-notes.pdf", textOf("document_title"))
-        assertEquals("1 / 15", textOf("document_page_label"))
+        assertEquals("lecture-notes.pdf", textOf("source_title"))
+        assertEquals("1 / 15", textOf("source_page_label"))
         assertFalse("a plain file has no quote marks", has("source_highlight_rect"))
-        rule.onNodeWithTag("document_next").performClick()
-        wait("page 2") { textOf("document_page_label") == "2 / 15" }
-        rule.onNodeWithTag("document_close").performClick()
-        wait("the list again") { !has("document_viewer") && has("material_row_${s.session.documentId}") }
+        rule.onNodeWithTag("source_next").performClick()
+        wait("page 2") { textOf("source_page_label") == "2 / 15" }
+        rule.onNodeWithTag("source_close").performClick()
+        wait("the list again") { !has("source_viewer") && has("material_row_${s.session.documentId}") }
     }
 
     @Test fun without_the_original_file_the_viewer_says_so_and_shows_the_text_by_page() {
@@ -111,11 +111,11 @@ class SpaceFilesTest {
         show(s.deps, Navigator(SavedStateHandle()).apply { openSpace(s.spaceId, true) })
         ready("material_row_${s.session.documentId}")
         rule.onNodeWithTag("material_row_${s.session.documentId}").performClick()
-        wait("the text") { has("document_text_note") }
-        assertEquals(app.getString(R.string.document_text_note), textOf("document_text_note"))
+        wait("the text") { has("source_text_note") }
+        assertEquals(app.getString(R.string.source_text_only_note), textOf("source_text_note"))
         assertFalse(has("source_pdf_page"))
         val pages = s.session.sources.map { it.pageIndex }.distinct().size
-        assertEquals("1 / $pages", textOf("document_page_label"))
+        assertEquals("1 / $pages", textOf("source_page_label"))
         assertTrue(has("source_text") || has("source_highlighted"))
     }
 
@@ -139,8 +139,8 @@ class SpaceFilesTest {
         wait("the chip") { has("route_sheet_source") }
         rule.onNodeWithTag("route_sheet_source").performClick()
         wait("the page") { has("source_pdf_page") }
-        assertEquals("lecture-notes.pdf", textOf("document_title"))
-        assertEquals("${ref.pageIndex + 1} / 9", textOf("document_page_label"))
+        assertEquals("lecture-notes.pdf", textOf("source_title"))
+        assertEquals("${ref.pageIndex + 1} / 9", textOf("source_page_label"))
     }
 
     @Test fun the_menu_keeps_explain_remove_and_practice_actions() {

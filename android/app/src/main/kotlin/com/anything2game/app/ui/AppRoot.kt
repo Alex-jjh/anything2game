@@ -1,6 +1,7 @@
 package com.anything2game.app.ui
 
-import com.anything2game.app.ui.common.problemCode
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import com.anything2game.app.ui.common.problemText
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
@@ -11,8 +12,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import com.anything2game.app.ui.character.Avatars
 import com.anything2game.app.ui.character.LocalAvatar
 import androidx.compose.ui.Alignment
@@ -28,7 +27,7 @@ import com.anything2game.app.ui.importing.ImportViewModel
 import com.anything2game.app.AppDependencies
 import com.anything2game.app.R
 import com.anything2game.app.importing.ImportRequest
-import com.anything2game.app.ui.reading.MaterialReader
+import com.anything2game.app.ui.source.SourceRoute
 import com.anything2game.app.ui.space.SharedPdfDestination
 import com.anything2game.app.platform.SimulatedContextSource
 import com.anything2game.app.ui.common.ContextSimulator
@@ -105,7 +104,7 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator) {
             }
             GameScreen(deps, ContentVersion(r.id, r.version), navigator::back, backTo = parentTitle)
         }
-        is Route.Source -> MaterialReader(deps.packages, r.packageId, r.version, navigator::back)
+        is Route.Source -> SourceRoute(deps.packages, deps.sources, r.packageId, r.version, navigator::back)
         is Route.Read -> {
             ReadingContent(deps, r.packageId, r.conceptId, r.sourcePackage ?: r.packageId, r.contentVersion, navigator::back)
         }
@@ -121,13 +120,7 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator) {
                     Text(stringResource(R.string.load_failed, problemText(s.reason)), Modifier.padding(24.dp))
                 }
                 is PlayUiState.Ready -> {
-                    // The same file Show source uses: a preset's attached or bundled paper, else a PDF the reader imported.
-                    val pkg = s.pkg
-                    val pdf by androidx.compose.runtime.produceState<com.anything2game.app.data.tutor.SourceDocument?>(null, current.id, pkg.packageId, pkg.documentVersion) {
-                        value = deps.presetSources?.load(pkg.packageId, pkg.documentId, pkg.documentVersion, pkg.contentVersion)
-                            ?: runCatching { deps.tutors.sourceDocument(pkg.documentId, pkg.documentVersion) }.getOrNull()
-                    }
-                    PlayContent(s, onAction = vm::dispatch, onBack = navigator::back, onRestart = vm::restart, simulator = simulator, sourcePdf = pdf)
+                    PlayContent(s, onAction = vm::dispatch, onBack = navigator::back, onRestart = vm::restart, simulator = simulator, sources = deps.sources)
                 }
             }
         }

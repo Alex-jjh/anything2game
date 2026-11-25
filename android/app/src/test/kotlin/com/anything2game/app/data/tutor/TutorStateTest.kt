@@ -183,19 +183,4 @@ class TutorStateTest {
             assertNull(vm.state.value.ready); assertTrue(repo.saved.isEmpty())
         } finally { Dispatchers.resetMain() }
     }
-    @Test fun `the kept PDF of the session's document version is offered to Show source, and nothing without one`() = runTest {
-        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
-        try {
-            val kept = SourceDocument("doc", "v", 1, java.io.File("doc.pdf"), DocumentLayout())
-            val asked = mutableListOf<Pair<String, String>>()
-            val repo = object : Repository(initial()) {
-                override suspend fun sourceDocument(documentId: String, documentVersion: String) = kept.also { asked += documentId to documentVersion }
-            }
-            val vm = TutorViewModel(repo, "tut_test"); advanceUntilIdle()
-            assertSame(kept, vm.sourceDocument.value)
-            assertEquals(listOf("doc" to "v"), asked)
-            val plain = TutorViewModel(Repository(initial()), "tut_test"); advanceUntilIdle()
-            assertNull(plain.sourceDocument.value)
-        } finally { Dispatchers.resetMain() }
-    }
 }

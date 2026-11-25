@@ -156,8 +156,9 @@ class AndroidTutorRepository(
         if (request !is ImportRequest.PdfFile) return http.upload(request)
         val bytes = com.anything2game.app.data.api.beforeApiDispatch("FILE_UNAVAILABLE") { http.readPdf(request) }
         val document = http.uploadPdf(request.title, bytes, layout = true)
-        // Not keeping it (full disk, an older server without layout) only means "Show source" stays text; the import goes on.
-        if (document.layout != null) try { sourceFiles.save(document, bytes) } catch (e: CancellationException) { throw e } catch (e: Exception) { }
+        // The reader's own file stays on this phone (per profile), so its original can always be shown. Not keeping it
+        // (full disk) only means "Show source" stays text; the import goes on. Nothing new is uploaded.
+        try { sourceFiles.save(document, bytes) } catch (e: CancellationException) { throw e } catch (e: Exception) { }
         return document.copy(layout = null)
     }
     override suspend fun sourceDocument(documentId: String, documentVersion: String): SourceDocument? =

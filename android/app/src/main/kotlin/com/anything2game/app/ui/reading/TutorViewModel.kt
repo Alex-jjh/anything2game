@@ -16,9 +16,6 @@ data class TutorUiState(val cache: TutorCache? = null, val busy: Boolean = true,
 class TutorViewModel(private val repository: TutorRepository, private val id: String) : ViewModel() {
     private val mutable = MutableStateFlow(TutorUiState())
     val state = mutable.asStateFlow()
-    private val pdf = MutableStateFlow<SourceDocument?>(null)
-    /** The reader's own PDF behind this session, for "Show source" on the real page; null for preset courses and text imports. */
-    val sourceDocument = pdf.asStateFlow()
     private var generation = 0
     private var job: Job? = null
     private var pending: Pair<String, suspend (TutorCache, String) -> TutorCache>? = null
@@ -32,8 +29,6 @@ class TutorViewModel(private val repository: TutorRepository, private val id: St
             try {
                 val result = repository.open(id)
                 if (epoch == generation) mutable.value = TutorUiState(result.cache, false, offline = result.offline)
-                val s = result.cache.session
-                if (s.mode != "local-mock" && pdf.value?.documentVersion != s.documentVersion) pdf.value = repository.sourceDocument(s.documentId, s.documentVersion)
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { if (epoch == generation) mutable.value = mutable.value.copy(busy = false, problem = code(e), unsupported = e is TutorUnavailable) }
         }

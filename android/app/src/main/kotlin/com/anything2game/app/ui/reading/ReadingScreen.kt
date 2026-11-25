@@ -1,8 +1,8 @@
 package com.anything2game.app.ui.reading
 
-import com.anything2game.app.ui.common.problemCode
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import com.anything2game.app.ui.common.problemText
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,16 +21,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import com.anything2game.app.AppDependencies
 import com.anything2game.app.R
 import com.anything2game.app.ui.common.Badge
 import com.anything2game.app.ui.home.PaperCard
 import com.anything2game.app.ui.theme.A2g
-import com.anything2game.app.data.tutor.AttachResult
-import com.anything2game.app.data.tutor.PresetPdf
-import com.anything2game.app.data.tutor.SourceDocument
+import com.anything2game.app.data.source.CourseRef
+import com.anything2game.app.data.source.SourceKey
+import com.anything2game.app.data.source.SourceText
+import com.anything2game.app.ui.source.OpenSourceViewer
 import com.anything2game.contract.*
 import com.anything2game.contract.tutor.*
 
@@ -44,7 +43,6 @@ fun ReadingContent(deps: AppDependencies, packageId: String, conceptId: String? 
     val profileId by deps.profiles.active.collectAsStateWithLifecycle()
     val vm = viewModel(key = "tutor:${profileId?.id}:$packageId") { TutorViewModel(deps.tutors, packageId) }
     val state by vm.state.collectAsStateWithLifecycle()
-    val pdf by vm.sourceDocument.collectAsStateWithLifecycle()
     androidx.activity.compose.BackHandler { if (state.busy) vm.cancelPending(); onBack() }
     val c = state.cache
     val s = c?.session
@@ -60,24 +58,13 @@ fun ReadingContent(deps: AppDependencies, packageId: String, conceptId: String? 
     var input by rememberSaveable(packageId) { mutableStateOf("") }
     // Saveable: attaching a PDF leaves for the system picker, and the activity may be recreated behind it.
     var sourceRefs by rememberSaveable(packageId, stateSaver = SourceRefsSaver) { mutableStateOf<List<SourceRef>>(emptyList()) }
-    // The PDF as it was when "Show source" was tapped: a late-loading layout must not swap an open viewer into another mode.
-    var sourcePdf by remember { mutableStateOf<SourceDocument?>(null) }
-    // Whether the open viewer was on the real page, so a viewer restored after recreation reopens in the same mode.
-    var sourceOnPage by rememberSaveable(packageId) { mutableStateOf(false) }
-    // Preset courses (ADR-019): the reader's own copy of the paper, attached in the viewer. Looked up here because the
-    // view model only asks for imported PDFs; keyed on the session's ids like that lookup, so both can never disagree.
-    val presets = deps.presetSources
-    val presetPdf by produceState<PresetPdf?>(null, presets, packageId) { value = presets?.available(sourcePackage, contentVersion) }
-    var presetDoc by remember(profileId, packageId) { mutableStateOf<SourceDocument?>(null) }
-    LaunchedEffect(presets, s?.documentId, s?.documentVersion) { presetDoc = s?.let { presets?.load(sourcePackage, it.documentId, it.documentVersion, contentVersion) } }
-    // Owned here, not by the dialog: a check outlives a closed viewer and a picker result outlives a recreated activity.
-    val attachFlow = rememberAttachFlow("$profileId:$packageId", attach = { open -> presets?.attach(sourcePackage, contentVersion, open) ?: AttachResult.NoLayout }, onAttached = { presetDoc = it })
     // Pending intent is only for loading feedback; the displayed reply's mode comes from its saved metadata.
     var requestedIntent by rememberSaveable(packageId) { mutableStateOf<TutorIntent?>(null) }
     val context = LocalContext.current
     val theme = remember(profileId, context) { ExplainerThemes.resolve(context, deps.explainerPreferences.get()) }
     val turn: (TutorIntent, String, Int?) -> Unit = { intent, question, target -> requestedIntent = intent; vm.turn(intent, question, target) }
     var unsupported by remember { mutableStateOf<LearningPackage?>(null) }
+    var readOriginal by rememberSaveable(packageId) { mutableStateOf(false) }
     LaunchedEffect(state.unsupported) {
         if (state.unsupported) unsupported = deps.packages.load(packageId).getOrNull()
     }
@@ -93,7 +80,7 @@ fun ReadingContent(deps: AppDependencies, packageId: String, conceptId: String? 
             LinearProgressIndicator(Modifier.fillMaxWidth())
         } else if (phase == 3 && s != null) ExplainerTheatre(
             s, theme, busy = state.busy, enabled = !state.busy && state.problem == null, offline = state.offline, problem = state.problem,
-            lastIntent = if (state.busy) requestedIntent else c.replyIntent, input = input, onInput = { input = it }, onTurn = turn, onSource = { sourceRefs = it; sourcePdf = pdf ?: presetDoc; sourceOnPage = sourcePdf != null; attachFlow.reset() },
+            lastIntent = if (state.busy) requestedIntent else c.replyIntent, input = input, onInput = { input = it }, onTurn = turn, onSource = { sourceRefs = it },
             onRetry = vm::retry, onReload = vm::reload, onCancel = vm::cancelPending, onBack = { if (state.busy) vm.cancelPending(); onBack() },
             modifier = Modifier.padding(padding).consumeWindowInsets(padding),
         ) else LazyColumn(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding().testTag("tutor_list"), state = list,
@@ -127,7 +114,7 @@ fun ReadingContent(deps: AppDependencies, packageId: String, conceptId: String? 
             }
             if (state.unsupported) {
                 item { Text(stringResource(R.string.tutor_unavailable), color = skin.inkMuted) }
-                sourceChunks(unsupported?.sources.orEmpty())
+                if (unsupported != null) item { OutlinedButton(onClick = { readOriginal = true }, Modifier.fillMaxWidth().testTag("read_original")) { Text(stringResource(R.string.tutor_read_original)) } }
             }
             val enabled = !state.busy && state.problem == null
             val askingFocus = focusItems(c, enabled, allowNote = s?.mode == "model", onSet = vm::setFocus)
@@ -177,10 +164,13 @@ fun ReadingContent(deps: AppDependencies, packageId: String, conceptId: String? 
         }
     }
     if (sourceRefs.isNotEmpty() && s != null) {
-        val attach = presetPdf?.takeIf { presets != null && it.documentId == s.documentId && it.documentVersion == s.documentVersion }?.let { SourceAttach(it, attachFlow) }
-        val shown = sourcePdf ?: (pdf ?: presetDoc).takeIf { sourceOnPage }
-        SourceViewer(s.sources, sourceRefs, shown?.takeIf { it.documentId == s.documentId && it.documentVersion == s.documentVersion }, attach,
-            onDismiss = { sourceRefs = emptyList(); sourcePdf = null; sourceOnPage = false })
+        OpenSourceViewer(deps.sources, SourceKey(s.documentId, s.documentVersion, CourseRef(sourcePackage, contentVersion)), SourceText(s.title, s.sources), sourceRefs,
+            onDismiss = { sourceRefs = emptyList() })
+    }
+    // A sample with no explanation yet: its original is still there to read.
+    if (readOriginal) unsupported?.let { pkg ->
+        OpenSourceViewer(deps.sources, SourceKey(pkg.documentId, pkg.documentVersion, CourseRef(pkg.packageId, pkg.contentVersion)), SourceText(pkg.title, pkg.sources),
+            onDismiss = { readOriginal = false })
     }
 }
 

@@ -1,5 +1,7 @@
 package com.anything2game.app
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import android.content.Context
 import com.anything2game.app.data.api.ApiTransport
 import com.anything2game.app.data.api.ActivityApi
@@ -35,6 +37,8 @@ import com.anything2game.app.data.profile.ProfileController
 import com.anything2game.app.data.profile.ProfileKind
 import com.anything2game.app.data.profile.ProfileRegistry
 import com.anything2game.app.data.profile.SampleProfileSeeder
+import com.anything2game.app.data.source.SourceLibrary
+import com.anything2game.app.data.source.phoneSourceLibrary
 import com.anything2game.app.data.tutor.AndroidTutorRepository
 import com.anything2game.app.data.tutor.PresetSources
 import com.anything2game.app.data.tutor.SourceDocumentStore
@@ -71,8 +75,8 @@ interface AppDependencies {
     val clock: Clock
     /** Who is playing (guest / sample student). Per-user stores above follow the active profile. */
     val profiles: ProfileController
-    /** The reader's own PDF of a preset course, attached in "Show source" (ADR-019); null where nothing can be attached. */
-    val presetSources: com.anything2game.app.data.tutor.PresetSources? get() = null
+    /** Where every source (its text, and its original file when the phone has it) is opened from; one viewer shows what it returns. */
+    val sources: SourceLibrary
 }
 
 /** Composition root: the only place that picks concrete implementations. */
@@ -121,6 +125,7 @@ class AndroidAppContainer(context: Context, private val apiBaseUrl: String = Bui
         val presetSources = PresetSources(content, SourceDocumentStore(File(dir, "source-documents"))) { id ->
             if (System.getProperty("a2g.bundledPdfs") == "off") null else runCatching { app.assets.open("sample-pdfs/$id.pdf") }.getOrNull()
         }
+        val sources: SourceLibrary = phoneSourceLibrary(tutors, presetSources)
         val materials = MaterialCatalog(content, tutors, presetSources, sessions, authenticated::owns, framePreferences)
         val spaces = SpaceRepository(File(dir, "spaces.json"), materials::materials, api, content::path)
         val generation = GenerationRepository(File(dir, "generation.json"), api, content, materials, spaces)
@@ -149,7 +154,7 @@ class AndroidAppContainer(context: Context, private val apiBaseUrl: String = Bui
     override val explainerPreferences: ExplainerPreferences get() = scope.explainerPreferences
     override val sessions: SessionStore get() = scope.sessions
     override val mastery: MasteryStore get() = scope.mastery
-    override val presetSources: PresetSources get() = scope.presetSources
+    override val sources: SourceLibrary get() = scope.sources
 
     override val profiles: ProfileController = object : ProfileController {
         private val state = MutableStateFlow(registry.active())

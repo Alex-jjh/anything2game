@@ -151,11 +151,11 @@ class LearnJourneysTest : LearnJourneyBase() {
             val page = pageLabelOf(attention, refs.first().chunkId)
             assertEquals(str(R.string.explainer_show_source, page), textOf("message_source"))
             rule.onNodeWithTag("message_source").performClick()
-            waitForText(str(R.string.tutor_source_title))
+            waitForTag("source_text_note")
             assertTrue("page $page shown", textShown(str(R.string.evidence_page, page)))
             assertTrue("the quote is on the page, marked", norm(textOf("source_highlighted")).contains(norm(refs.first().quote)))
-            tapText(str(R.string.tutor_close))
-            waitFor("source dialog closed") { !textShown(str(R.string.tutor_source_title)) }
+            tap(rule.onNodeWithTag("source_close"))
+            waitFor("source dialog closed") { !has("source_viewer") }
 
             if (i < teaching.lastIndex) {
                 choose(attention, "tutor_rephrase")
@@ -409,8 +409,8 @@ class LearnJourneysTest : LearnJourneyBase() {
         }
         assertEquals("讲完了 · 看总结", textOf("tutor_finish"))
         // Source, Ask, Log in Chinese too.
-        rule.onNodeWithTag("message_source").performClick(); waitForText(str(R.string.tutor_source_title)); noLeaks(zhSpaced, "source dialog"); tapText(str(R.string.tutor_close))
-        waitFor("closed") { !textShown(str(R.string.tutor_source_title)) }
+        rule.onNodeWithTag("message_source").performClick(); waitForTag("source_viewer"); noLeaks(zhSpaced, "source dialog"); tap(rule.onNodeWithTag("source_close"))
+        waitFor("closed") { !has("source_viewer") }
         rule.onNodeWithTag("tutor_ask").performClick(); waitForTag("tutor_input"); noLeaks(zhSpaced, "ask sheet")
         tapText(str(R.string.explainer_cancel)); waitFor("ask sheet closed") { !has("ask_sheet") }
         rule.onNodeWithTag("explainer_log").performClick(); waitForTag("explainer_log_list"); noLeaks(zhSpaced, "log")

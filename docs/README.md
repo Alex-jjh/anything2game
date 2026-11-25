@@ -31,6 +31,7 @@ Language: documents are in English. Some teammate design docs are in Chinese (ma
 | `architecture/` | Decoupling + multi-cloud audit, fix plan, IaC choice | [portability-audit.md](architecture/portability-audit.md) | 2026-11-18 |
 | `architecture/` | Layered generation (source → claims → game → frame), hallucination analysis, A/B plan | [layered-generation.md](architecture/layered-generation.md) | proposed |
 | `architecture/` | Ingest: text-first, vision only for low-text pages (slides, scans) | [multimodal-ingest.md](architecture/multimodal-ingest.md) | proposed |
+| `architecture/` | One source viewer: one library finds the original file, one viewer shows it (real pages or labelled text) from every screen | [source-viewer.md](architecture/source-viewer.md) | implemented |
 | `architecture/` | Content packs: one `.a2gpack` format for presets, server downloads and imports (ADR-017) | [content-packs.md](architecture/content-packs.md) | decided |
 | `architecture/` | Decision log (ADRs) | [decisions.md](architecture/decisions.md) | draft |
 | `plan/` | Schedule and ownership | [roadmap.md](plan/roadmap.md) | draft; deliverables and video plan now in PRODUCT.md §5 |
