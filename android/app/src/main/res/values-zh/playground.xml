@@ -48,7 +48,7 @@
     <string name="look_goods_b">份 B</string>
     <string name="look_token">枚筹码</string>
     <string name="look_tokens">枚筹码</string>
-    <string name="games_pick">你选的是 %1$d</string>
+    <string name="games_pick">选中第 %1$d 个</string>
     <string name="games_where">目标在 %1$d 到 %2$d 之间。</string>
     <string name="games_lost_allocation">还没达标：有一个目标差一点。调整一下，再交货。</string>
     <string name="intro_quick_look">先看一眼</string>

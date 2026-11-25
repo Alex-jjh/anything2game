@@ -97,7 +97,7 @@
     <string name="spaces_processing">处理中…</string>
     <string name="spaces_error">无法完成 · %1$s</string>
     <string name="games_choose_cut">点一个，或在这一排上滑动，来选它。</string>
-    <string name="games_groups">答案会告诉你：它在前 %1$d 个里，还是在后 %2$d 个里。</string>
+    <string name="games_groups">打开它就知道：答案在前 %1$d 个里，还是后 %2$d 个里。</string>
     <string name="games_cut_after">选第 %1$d %2$s</string>
     <string name="games_history">操作记录</string>
     <string name="games_trace_split">选了 %1$d · 划掉 %2$d · 还剩 %3$d–%4$d</string>
