@@ -244,12 +244,7 @@ internal fun SpaceScreen(deps: AppDependencies, language: String, route: Route.S
             AnimatedVisibility(sheet != null, Modifier.align(Alignment.BottomCenter), enter = slideInVertically { it } + fadeIn(), exit = slideOutVertically { it } + fadeOut()) {
                 last?.let { step ->
                     val material = vm.materialOf(step.node)
-                    val status by produceState(ActivityStatus(step.standing), step.id, vm.cards) {
-                        val activity = step.node.activity
-                        val open = (activity as? ActivityRef.Practice)?.let { runCatching { deps.sessions.load(it.contentId, it.contentVersion) }.getOrNull() }
-                            ?.takeIf { !it.isFinished && it.levelId == activity.activityId }
-                        value = ActivityStatus(step.standing, open?.let { it.position + 1 }, open?.queue?.size)
-                    }
+                    val status by produceState(ActivityStatus(step.standing), step.id, vm.cards) { value = vm.statusOf(step) }
                     StepSheet(step, status, sectionAccent(map?.sections?.firstOrNull { s -> s.steps.any { it.id == step.id } }?.number?.minus(1) ?: 0), !vm.busy,
                         onStart = { start(step.node) }, onDismiss = { selectedStep = null }, onSource = { selectedEvidence = step.id })
                     if (selectedEvidence == step.id) step.source?.let { source ->

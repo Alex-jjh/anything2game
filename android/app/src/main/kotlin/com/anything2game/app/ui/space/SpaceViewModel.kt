@@ -15,6 +15,8 @@ import com.anything2game.contract.game.EvidenceRef
 import com.anything2game.contract.game.GenerationInput
 import com.anything2game.contract.space.*
 import com.anything2game.engine.ports.Clock
+import com.anything2game.engine.ports.SessionStore
+import com.anything2game.engine.progress.ActivityStatus
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -34,12 +36,12 @@ internal data class SpaceCard(val space: Space, val path: LearningPath?, val map
 
 internal class SpaceViewModel(
     val spaces: SpaceRepository, val catalog: MaterialCatalog, val generation: GenerationRepository,
-    private val queue: PdfImportQueue, private val progress: LearningProgress, private val clock: Clock,
+    private val queue: PdfImportQueue, private val progress: LearningProgress, private val sessions: SessionStore, private val clock: Clock,
     private val language: String, private val detail: String?,
 ) : ViewModel() {
     companion object {
         fun of(deps: AppDependencies, language: String, detail: String?) =
-            SpaceViewModel(deps.spaces, deps.materials, deps.generation, deps.pdfImports, deps.learningProgress, deps.clock, language, detail)
+            SpaceViewModel(deps.spaces, deps.materials, deps.generation, deps.pdfImports, deps.learningProgress, deps.sessions, deps.clock, language, detail)
     }
     var cards by mutableStateOf(emptyList<SpaceCard>()); private set
     var materials by mutableStateOf(emptyList<Material>()); private set
@@ -90,6 +92,13 @@ internal class SpaceViewModel(
                 file.copy(addedAt = imports.firstOrNull { key != null && it.sessionId == key }?.addedAt ?: 0)
             }
         }
+    }
+    /** How the learner stands with [step]: its standing, or its place in a saved session of it that is still open. */
+    suspend fun statusOf(step: RouteStep): ActivityStatus {
+        val activity = step.node.activity as? ActivityRef.Practice
+        val open = try { activity?.let { sessions.load(it.contentId, it.contentVersion) }?.takeIf { !it.isFinished && it.levelId == activity.activityId } }
+            catch (e: CancellationException) { throw e } catch (_: Exception) { null }
+        return ActivityStatus(step.standing, open?.let { it.position + 1 }, open?.queue?.size)
     }
     fun togglePractice(member: SpaceMember) { practising = if (member in practising) practising - member else practising + member }
     fun perform(work: suspend () -> Unit = {}) {
