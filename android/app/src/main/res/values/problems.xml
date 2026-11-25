@@ -1,0 +1,21 @@
+<resources>
+    <string name="problem_generic">Something went wrong. Please try again.</string>
+    <string name="problem_offline">Can\'t reach the server. Check your internet and try again.</string>
+    <string name="problem_not_connected">This version of the app isn\'t connected to a server yet.</string>
+    <string name="problem_server">The server had a problem. Try again in a moment.</string>
+    <string name="problem_slow">That took too long. Try again in a moment.</string>
+    <string name="problem_quota">You\'ve reached the limit for now. Try again later.</string>
+    <string name="problem_not_found">We couldn\'t find that. It may have been removed.</string>
+    <string name="problem_not_ready">It isn\'t ready yet. Try again in a moment.</string>
+    <string name="problem_denied">The server didn\'t accept this request. Close the app, open it again and retry.</string>
+    <string name="problem_make_failed">We couldn\'t make this one. Try again, or try a different topic.</string>
+    <string name="problem_space_changed">This Space was changed somewhere else, so your change wasn\'t saved.</string>
+    <string name="problem_file_changed">This file changed or was removed. Add it again.</string>
+    <string name="problem_unsure_upload">We\'re not sure this file was sent.</string>
+    <string name="problem_conversation_changed">The conversation changed in the meantime. Reload it and try again.</string>
+    <string name="problem_cancelled">That request was cancelled.</string>
+    <string name="problem_answered">You\'ve already answered these questions.</string>
+    <string name="problem_cancel_unsure">We couldn\'t confirm the cancel. The server may still be working on it.</string>
+    <string name="problem_saved_data">Something saved on this phone couldn\'t be read.</string>
+    <string name="problem_activity">This activity isn\'t available right now.</string>
+</resources>

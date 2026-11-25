@@ -137,8 +137,8 @@ class PresetAttachTest {
         assertEquals(listOf<Any?>(listOf("application/pdf")), picker.asked.map { (it as Array<*>).toList() })
         assertTrue(results.single() is AttachResult.Mismatch)
         val message = textOf("source_attach_refused")
-        assertTrue(message, message.contains("isn't the exact file this course was measured on") && message.contains("fingerprint") && message.contains("re-measuring")
-            && message.contains("https://arxiv.org/pdf/1706.03762v7"))
+        assertTrue(message, message.contains("doesn't look like the same file") && message.contains("https://arxiv.org/pdf/1706.03762v7")
+            && !Regex("(?i)fingerprint|measure").containsMatchIn(message))
         rule.onNodeWithTag("source_attach_download").assertHeightIsAtLeast(48.dp).assertHasClickAction()
         assertTrue("never drawn from another file's geometry", has("source_highlighted") && !has("source_pdf_page") && !has("source_highlight_rect"))
         rule.onNodeWithTag("source_attach_pdf").assertHeightIsAtLeast(48.dp) // "Choose another file"

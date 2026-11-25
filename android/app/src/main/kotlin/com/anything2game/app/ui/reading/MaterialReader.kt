@@ -18,7 +18,7 @@ import com.anything2game.engine.ports.PackageRepository
 
 internal fun LazyListScope.sourceChunks(chunks: List<SourceChunk>) {
     items(chunks) { chunk -> PaperCard {
-        Text("${chunk.pageLabel ?: (chunk.pageIndex + 1)} · ${chunk.chunkId}", color = A2g.skin.evidence)
+        Text(stringResource(R.string.evidence_page, chunk.pageLabel ?: (chunk.pageIndex + 1).toString()), color = A2g.skin.evidence)
         Text(chunk.text, color = A2g.skin.ink)
     } }
 }

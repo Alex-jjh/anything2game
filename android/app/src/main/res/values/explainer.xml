@@ -4,7 +4,7 @@
     <string name="explainer_trait">Your reading guide</string>
     <string name="explainer_theme_paper">Paper</string>
     <string name="explainer_theme_illustrated">Illustrated</string>
-    <string name="explainer_diag_line">%1$d quick questions first. “I do not know yet” is a fine answer.</string>
+    <string name="explainer_diag_line">%1$d quick questions first. “I don\'t know yet” is a fine answer.</string>
     <string name="explainer_assess_line">Here is where each idea stands. We will start with the ones that are still fuzzy.</string>
     <string name="explainer_stage_desc">%1$s is explaining the document. Tap to continue.</string>
     <string name="explainer_tap_next">Next page</string>
@@ -14,7 +14,7 @@
     <string name="explainer_mode_rephrase">Rephrased</string>
     <string name="explainer_mode_answer">Answer</string>
     <string name="explainer_preparing_example">Preparing an example…</string>
-    <string name="explainer_log">Log</string>
+    <string name="explainer_log">History</string>
     <string name="explainer_log_title">Conversation so far</string>
     <string name="explainer_ask">Ask</string>
     <string name="explainer_ask_title">Ask %1$s</string>
@@ -30,12 +30,12 @@
     <string name="explainer_stage_last">Last concept</string>
     <string name="explainer_stage_done">All covered</string>
     <string name="wrapup_title">That is the walk-through</string>
-    <string name="wrapup_line">%1$s went through all %2$d foundation concepts with you.</string>
+    <string name="wrapup_line">%1$s went through all %2$d key ideas with you.</string>
     <string name="wrapup_steps">What we covered, in the order we went</string>
     <string name="wrapup_start">You started at: %1$s</string>
-    <string name="wrapup_note">These are the foundations picked from the document, not the whole of it. Tap a page to reread the passage; the full conversation stays in Log.</string>
+    <string name="wrapup_note">These are key ideas picked from the document, not all of it. Tap a page to reread the passage; the whole conversation is in History.</string>
     <string name="wrapup_stay">Back to the explanation</string>
-    <string name="wrapup_shelf">Back to shelf</string>
+    <string name="wrapup_shelf">Back to my files</string>
     <string name="check_right">Right.</string>
     <string name="check_wrong">Not quite.</string>
     <string name="explainer_prev_page">Back</string>

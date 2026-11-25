@@ -128,7 +128,7 @@ object CrossExamRenderer : MechanicRenderer {
                                 .padding(12.dp),
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
-                            Text("p.${chunk.pageLabel ?: (chunk.pageIndex + 1)}", style = MaterialTheme.typography.labelLarge, color = skin.evidence, fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.evidence_page, chunk.pageLabel ?: (chunk.pageIndex + 1).toString()), style = MaterialTheme.typography.labelLarge, color = skin.evidence, fontWeight = FontWeight.Bold)
                             Text(chunk.text, maxLines = 3, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium, color = skin.ink)
                         }
                     }

@@ -231,7 +231,7 @@ abstract class JourneyTest {
         waitFor("material control $tag") { runCatching { rule.onNodeWithTag("space_materials").performScrollToNode(hasTestTag(tag)); true }.getOrDefault(false) }
         return rule.onNodeWithTag(tag)
     }
-    /** A course's practice is unfolded from its row's menu ("Practise"); unfolded once, it stays so while the app is open. */
+    /** A course's practice is unfolded from its row's menu ("Practice"); unfolded once, it stays so while the app is open. */
     protected fun unfoldPractice(courseTitle: String) {
         val pkg = awaitIo { deps.packages.list().single { it.title == courseTitle }.packageId }
         if (exists(hasTestTag("practice_$pkg"))) return
@@ -403,7 +403,7 @@ abstract class JourneyTest {
                         .firstOrNull { it.chunkId == a.chunkId && it.quote.isNotBlank() }?.quote
                     waitFor("evidence picker") { textShown(str(R.string.crossexam_collected)) }
                     val rows = rule.onAllNodes(hasClickAction() and SemanticsMatcher("evidence row") {
-                        it.config.getOrNull(SemanticsProperties.Text)?.any { t -> t.text.startsWith("p.") } == true
+                        it.config.getOrNull(SemanticsProperties.Text)?.any { t -> Regex("^(Page|第) ").containsMatchIn(t.text) } == true
                     })
                     val pick = quote?.let { q -> rule.onAllNodes(hasClickAction() and hasText(q.take(40), substring = true)) }?.takeIf { it.fetchSemanticsNodes().isNotEmpty() } ?: rows
                     tap(pick[0])

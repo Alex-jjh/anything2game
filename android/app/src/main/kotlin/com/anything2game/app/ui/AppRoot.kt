@@ -1,5 +1,7 @@
 package com.anything2game.app.ui
 
+import com.anything2game.app.ui.common.problemCode
+import com.anything2game.app.ui.common.problemText
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -116,7 +118,7 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator) {
                 PlayUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                 is PlayUiState.Failed -> {
                     BackHandler(onBack = navigator::back)
-                    Text(stringResource(R.string.load_failed, s.reason), Modifier.padding(24.dp))
+                    Text(stringResource(R.string.load_failed, problemText(s.reason)), Modifier.padding(24.dp))
                 }
                 is PlayUiState.Ready -> {
                     // The same file Show source uses: a preset's attached or bundled paper, else a PDF the reader imported.

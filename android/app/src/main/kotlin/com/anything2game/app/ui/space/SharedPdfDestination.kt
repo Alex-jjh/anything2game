@@ -1,5 +1,7 @@
 package com.anything2game.app.ui.space
 
+import com.anything2game.app.ui.common.problemCode
+import com.anything2game.app.ui.common.problemText
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
@@ -29,7 +31,7 @@ internal fun SharedPdfDestination(deps: AppDependencies, language: String, title
                 vm.perform { val space = vm.spaces.create(name); onChoose(space.spaceId) }
             } }
             if (vm.busy) item { LinearProgressIndicator() }
-            vm.error?.let { item { Text(stringResource(R.string.spaces_error, it)); TextButton({ vm.perform() }) { Text(stringResource(R.string.home_retry)) } } }
+            vm.error?.let { item { Text(stringResource(R.string.spaces_error, problemText(it))); TextButton({ vm.perform() }) { Text(stringResource(R.string.home_retry)) } } }
             items(vm.cards, key = { it.space.spaceId }) { card ->
                 OutlinedButton({ onChoose(card.space.spaceId) }, Modifier.fillMaxWidth()) { Text(card.space.title) }
             }

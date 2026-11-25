@@ -1,0 +1,21 @@
+<resources>
+    <string name="problem_generic">出了点问题，请再试一次。</string>
+    <string name="problem_offline">连不上服务器。检查一下网络，再试一次。</string>
+    <string name="problem_not_connected">这个版本的应用还没有连接服务器。</string>
+    <string name="problem_server">服务器出了点问题，过一会儿再试。</string>
+    <string name="problem_slow">等了太久，过一会儿再试。</string>
+    <string name="problem_quota">暂时用完了可用的次数，稍后再试。</string>
+    <string name="problem_not_found">找不到这个内容，可能已经被删除了。</string>
+    <string name="problem_not_ready">还没准备好，过一会儿再试。</string>
+    <string name="problem_denied">服务器没有接受这次请求。关掉应用重新打开，再试一次。</string>
+    <string name="problem_make_failed">这个没能做出来。再试一次，或者换个主题。</string>
+    <string name="problem_space_changed">这个学习空间在别处被改过，所以你的改动没有保存。</string>
+    <string name="problem_file_changed">这个文件变了或已被删除。请重新添加。</string>
+    <string name="problem_unsure_upload">不确定这个文件有没有传上去。</string>
+    <string name="problem_conversation_changed">这段对话中途有了变化。重新加载后再试。</string>
+    <string name="problem_cancelled">这次请求已取消。</string>
+    <string name="problem_answered">这些问题你已经答过了。</string>
+    <string name="problem_cancel_unsure">没能确认取消成功，服务器可能还在处理。</string>
+    <string name="problem_saved_data">手机里保存的内容有一部分读不出来。</string>
+    <string name="problem_activity">这个活动现在用不了。</string>
+</resources>

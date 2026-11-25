@@ -1,5 +1,7 @@
 package com.anything2game.app.ui.space
 
+import com.anything2game.app.ui.common.problemCode
+import com.anything2game.app.ui.common.problemText
 import androidx.compose.runtime.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -90,7 +92,7 @@ internal class SpaceViewModel(deps: AppDependencies, private val language: Strin
             try { error = null; unavailable = false; stale = false; work(); load() }
             catch (e: CancellationException) { throw e }
             catch (e: Exception) {
-                error = e.message ?: e.javaClass.simpleName
+                error = problemCode(e)
                 stale = (e as? ApiException)?.code == "SPACE_STALE"
                 if (detail != null) readRejections(detail)
             }

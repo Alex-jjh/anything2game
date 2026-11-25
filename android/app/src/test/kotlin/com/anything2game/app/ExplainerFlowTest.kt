@@ -31,6 +31,7 @@ class ExplainerFlowTest {
     }
 
     private fun has(tag: String) = rule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+    private fun text(id: Int, vararg args: Any) = app.getString(id, *args)
     private fun textOf(tag: String): String = rule.onNodeWithTag(tag).fetchSemanticsNode().config.getOrNull(SemanticsProperties.Text)?.joinToString("") { it.text }.orEmpty()
     private fun settled() = rule.waitUntil(10000) { !has("typing_indicator") && has("dialogue_text") }
 
@@ -51,18 +52,18 @@ class ExplainerFlowTest {
     @Test fun fixed_example_end_to_end() {
         val deps = AndroidAppContainer(app)
         rule.setContent { A2gTheme { ReadingContent(deps, "pkg_demo_retrieval", onBack = {}) } }
-        rule.waitUntil(10000) { rule.onAllNodesWithText("Pre-generated sample").fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(10000) { rule.onAllNodesWithText(text(R.string.badge_pre_generated)).fetchSemanticsNodes().isNotEmpty() }
 
         // Every step before the scene is introduced by the explainer, the focus question included.
         rule.onNodeWithTag("explainer_header").assertExists()
         rule.onNodeWithTag("tutor_list").performScrollToNode(hasTestTag("focus_continue"))
         rule.onNodeWithTag("focus_continue").performClick()
-        rule.waitUntil(10000) { rule.onAllNodesWithText("FOUNDATION 1 / 3").fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(10000) { rule.onAllNodesWithText(text(R.string.tutor_question_count, 1, 3)).fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithTag("explainer_header").assertExists()
         repeat(3) {
             rule.onNode(hasScrollToNodeAction()).performScrollToNode(hasTestTag("answer_unknown"))
             rule.onNodeWithTag("answer_unknown").performClick()   // choosing an answer moves on by itself
-            rule.waitUntil(10000) { rule.onAllNodesWithText(if (it < 2) "FOUNDATION ${it + 2} / 3" else "Your starting point").fetchSemanticsNodes().isNotEmpty() }
+            rule.waitUntil(10000) { rule.onAllNodesWithText(if (it < 2) text(R.string.tutor_question_count, it + 2, 3) else text(R.string.tutor_assessment_title)).fetchSemanticsNodes().isNotEmpty() }
         }
         rule.onNodeWithTag("explainer_header").assertExists()
         rule.onNode(hasScrollToNodeAction()).performScrollToNode(hasTestTag("start_tutor"))
@@ -107,27 +108,27 @@ class ExplainerFlowTest {
         rule.waitUntil(10000) { has("explainer_log_list") }
         // The log opens at the latest message; earlier ones are a scroll away.
         rule.onNodeWithText("什么是检索？").assertExists()
-        listOf("按我的摸底结果开始讲解", "换个说法", "举个例子", "继续讲解").forEach {
+        listOf("按我答的情况开始讲解", "换个说法", "举个例子", "继续讲解").forEach {
             rule.onNodeWithTag("explainer_log_list").performScrollToNode(hasText(it))
             rule.onNodeWithText(it).assertExists()
         }
         rule.onNodeWithTag("explainer_log_list").performScrollToNode(hasTestTag("message_source_log"))
         assertTrue(has("message_source_log"))
-        rule.onNodeWithText("Start practice").assertDoesNotExist()
+        rule.onNodeWithText(text(R.string.home_practice_action)).assertDoesNotExist()
     }
 
     @Test fun last_concept_offers_to_go_back_to_the_shelf() {
         val deps = AndroidAppContainer(app)
         var back = 0
         rule.setContent { A2gTheme { ReadingContent(deps, "pkg_demo_retrieval", onBack = { back++ }) } }
-        rule.waitUntil(10000) { rule.onAllNodesWithText("Pre-generated sample").fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(10000) { rule.onAllNodesWithText(text(R.string.badge_pre_generated)).fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithTag("tutor_list").performScrollToNode(hasTestTag("focus_continue"))
         rule.onNodeWithTag("focus_continue").performClick()
-        rule.waitUntil(10000) { rule.onAllNodesWithText("FOUNDATION 1 / 3").fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(10000) { rule.onAllNodesWithText(text(R.string.tutor_question_count, 1, 3)).fetchSemanticsNodes().isNotEmpty() }
         repeat(3) {
             rule.onNode(hasScrollToNodeAction()).performScrollToNode(hasTestTag("answer_unknown"))
             rule.onNodeWithTag("answer_unknown").performClick()   // choosing an answer moves on by itself
-            rule.waitUntil(10000) { rule.onAllNodesWithText(if (it < 2) "FOUNDATION ${it + 2} / 3" else "Your starting point").fetchSemanticsNodes().isNotEmpty() }
+            rule.waitUntil(10000) { rule.onAllNodesWithText(if (it < 2) text(R.string.tutor_question_count, it + 2, 3) else text(R.string.tutor_assessment_title)).fetchSemanticsNodes().isNotEmpty() }
         }
         rule.onNode(hasScrollToNodeAction()).performScrollToNode(hasTestTag("start_tutor"))
         rule.onNodeWithTag("start_tutor").performClick()

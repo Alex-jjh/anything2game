@@ -81,10 +81,10 @@ class TutorRulesTest {
         assertTrue(free.sourceRefs.isEmpty())
         // A student-facing sentence: says what the explainer can do, not how the build is configured.
         assertTrue(free.text.contains("can't answer new questions"))
-        assertTrue(free.text.contains("saved in the log"))
+        assertTrue(free.text.contains("saved in History"))
         assertFalse(Regex("(?i)mock|server model|configured").containsMatchIn(free.text))
         val zh = TutorRules.scriptedReply(s, bp.copy(concepts = bp.concepts + bp.concepts.single().copy(question = q2)), TutorIntent.QUESTION)
-        assertTrue(zh.text.contains("没法回答新的问题") && zh.text.contains("记在记录里"))
+        assertTrue(zh.text.contains("没法回答新的问题") && zh.text.contains("记在对话记录里"))
         assertFalse(Regex("(?i)mock|模型|配置").containsMatchIn(zh.text))
     }
 

@@ -1,5 +1,7 @@
 package com.anything2game.app.ui.space
 
+import com.anything2game.app.ui.common.problemCode
+import com.anything2game.app.ui.common.problemText
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -225,7 +227,7 @@ internal fun SpaceScreen(deps: AppDependencies, language: String, route: Route.S
                         item { Button({ vm.perform { vm.generation.downloadActivePath(route.id) } }) { Text(stringResource(R.string.spaces_update)) } }
                     if (vm.stale) item { Button({ vm.perform { vm.spaces.rebase(route.id); vm.spaces.sync(route.id) } }) { Text(stringResource(R.string.spaces_rebase)) } }
                     items(vm.rejected.entries.toList()) { (id, err) -> PaperCard {
-                        Text(err.message)
+                        Text(problemText(err.code))
                         TextButton({ vm.perform { vm.spaces.retryRejected(route.id, id); vm.spaces.sync(route.id) } }) { Text(stringResource(R.string.home_retry)) }
                         TextButton({ vm.perform { vm.spaces.withdrawRejected(route.id, id) } }) { Text(stringResource(R.string.spaces_withdraw)) }
                     } }
@@ -363,7 +365,7 @@ internal fun NameEditor(initial: String, dismiss: () -> Unit, submit: (String) -
 @Composable
 private fun SpaceFeedback(vm: SpaceViewModel) {
     if (vm.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-    val problem = if (vm.unavailable) stringResource(R.string.spaces_unavailable) else vm.error?.let { stringResource(R.string.spaces_error, it) }
+    val problem = if (vm.unavailable) stringResource(R.string.spaces_unavailable) else vm.error?.let { stringResource(R.string.spaces_error, problemText(it)) }
     if (problem != null) {
         Text(problem, color = A2g.skin.wrong)
         OutlinedButton({ vm.perform() }) { Text(stringResource(R.string.home_retry)) }

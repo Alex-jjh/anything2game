@@ -1,5 +1,7 @@
 package com.anything2game.app.ui.game
 
+import com.anything2game.app.ui.common.problemCode
+import com.anything2game.app.ui.common.problemText
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -59,7 +61,7 @@ internal fun Playground(deps: AppDependencies, language: String, padding: Paddin
                 }.thenBy { g -> g.entry?.let { ReviewedGames.catalog.indexOf(it) } ?: Int.MAX_VALUE }.thenBy { it.spec.title })
             failure = null
         } catch (e: CancellationException) { throw e }
-        catch (e: Exception) { failure = e.message }
+        catch (e: Exception) { failure = problemCode(e) }
     }
     Box(Modifier.fillMaxSize()) {
     PlaygroundContent(games, failure, language, padding, adding, { adding = it }, onRetry = { reload++ }, onOpen = onOpen, onQuickLook = { looking = it.spec.gameId })
@@ -91,7 +93,7 @@ internal fun PlaygroundContent(games: List<InstalledGame>?, failure: String?, la
                     Modifier.fillMaxWidth().testTag("resume_game"), primary = true)
             }
             if (games == null && failure == null) LinearProgressIndicator(Modifier.fillMaxWidth())
-            failure?.let { Text(it); OutlinedButton(onRetry) { Text(stringResource(R.string.home_retry)) } }
+            failure?.let { Text(problemText(it)); OutlinedButton(onRetry) { Text(stringResource(R.string.home_retry)) } }
             games.orEmpty().chunked(2).forEach { pair ->
                 // One height per row: the tiles of a pair stretch to the taller one, so the grid has no ragged gaps.
                 Row(Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(14.dp)) {

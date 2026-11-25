@@ -470,7 +470,7 @@ class LearnJourneysTest : LearnJourneyBase() {
         assertEquals(str(R.string.explainer_name), textOf("dialogue_speaker"))
         val answer = textOf("dialogue_text")
         assertTrue("answers honestly that it cannot answer free text: $answer", Regex("(?i)can't answer|cannot answer").containsMatchIn(answer))
-        assertTrue("and says the question is kept: $answer", answer.contains("saved in the log"))
+        assertTrue("and says the question is kept: $answer", answer.contains("saved in History"))
         readPages("after the question")
         // The conversation goes on: the same concept can be rephrased and the walk continues.
         choose(attention, "tutor_rephrase"); readPages("rephrase after question")

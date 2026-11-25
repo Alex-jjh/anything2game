@@ -147,14 +147,14 @@ class TutorService(
         catch (_: Exception) { throw GenerationException.failed("Invalid tutor JSON") }
         val valid = reply.grounded && reply.text.isNotBlank() && reply.text.length <= 3000 && runCatching { TutorRules.checkRefs(reply.sourceRefs, s.sources) }.isSuccess
         // Reject the entire answer if any quote is fabricated; a real quote alone still does not prove semantic correctness.
-        val text = if (valid) reply.text else if (s.language == "zh") "现有文档依据不足，暂时不能可靠回答这个问题。可以回到原文核对或换一个问题。" else "The document does not provide enough evidence for a reliable answer. Check the source or ask another question."
+        val text = if (valid) reply.text else if (s.language == "zh") "文档里没有足够的依据，我没法可靠地回答。可以看看原文，或者换个问题。" else "I can't find enough in the document to answer that reliably. Check the original text, or try another question."
         return TutorMessage("m${s.revision + 1}a", "tutor", text, if (valid) reply.sourceRefs else emptyList())
     }
 
     private fun label(intent: TutorIntent, language: String): String = if (language == "zh") when (intent) {
-        TutorIntent.START -> "按我的摸底结果开始讲解"; TutorIntent.REPHRASE -> "换个说法"; TutorIntent.EXAMPLE -> "举个例子"; TutorIntent.CONTINUE -> "继续讲解"; TutorIntent.REVISIT -> "再讲一遍这个概念"; else -> "追问"
+        TutorIntent.START -> "按我答的情况开始讲解"; TutorIntent.REPHRASE -> "换个说法"; TutorIntent.EXAMPLE -> "举个例子"; TutorIntent.CONTINUE -> "继续讲解"; TutorIntent.REVISIT -> "再讲一遍这个概念"; else -> "追问"
     } else when (intent) {
-        TutorIntent.START -> "Start with my results"; TutorIntent.REPHRASE -> "Rephrase"; TutorIntent.EXAMPLE -> "Give an example"; TutorIntent.CONTINUE -> "Continue"; TutorIntent.REVISIT -> "Explain that one again"; else -> "Ask"
+        TutorIntent.START -> "Start from my answers"; TutorIntent.REPHRASE -> "Rephrase"; TutorIntent.EXAMPLE -> "Give an example"; TutorIntent.CONTINUE -> "Continue"; TutorIntent.REVISIT -> "Explain that one again"; else -> "Ask"
     }
 
     /** A concept name taken from the passage itself, so the route shows what the step is about. Test fixtures are labelled by the client, not in the title. */
@@ -171,12 +171,12 @@ class TutorService(
         val excerpts = sources.flatMap { c -> c.text.split(Regex("(?<=[.!?。！？])\\s+")).filter { it.length >= 16 }.map { c to it.take(600) } }.take(3)
         if (excerpts.isEmpty()) throw GenerationException.failed("Not enough text for an introductory diagnostic.")
         return TutorBlueprint(concepts = excerpts.mapIndexed { i, (c, quote) ->
-            val options = listOf(TutorOption("source", quote), TutorOption("unsupported", if (zh) "这段材料没有任何可阅读的文字。" else "The material contains no readable text."))
+            val options = listOf(TutorOption("source", quote), TutorOption("unsupported", if (zh) "文档里没有这样的内容。" else "The document doesn't say this."))
             TutorConcept(TutorQuestion("q${i + 1}", "concept${i + 1}", headline(quote, zh),
                 if (zh) "哪一项出现在文档的这段基础内容中？" else "Which statement appears in this document?", if (i % 2 == 0) options else options.reversed(), listOf(SourceRef(c.chunkId, quote))),
-                "source", if (zh) "文档原文写道：$quote\n这是规则生成的测试讲解，不是 AI 概念分析。" else "The source says: $quote\nThis is rule-based test teaching, not AI analysis.",
-                if (zh) "先抓住这句话：$quote\nmock 模式只能引用原文，不能真正改写其含义。" else "Focus on this statement: $quote\nMock mode quotes rather than interprets it.",
-                if (zh) "演示学习方法：先读这句话，合上文档，用自己的话复述，再对照原文。此例演示阅读动作，不是从文档推导的新事实。" else "A study example: read the statement, close the document, paraphrase, then compare. This demonstrates reading, not a new factual inference.")
+                "source", if (zh) "文档原文写道：$quote\n这段讲解由练习用服务器按固定规则生成，不是 AI 写的。" else "The source says: $quote\nThis explanation comes from a fixed rule on the practice server, not from AI.",
+                if (zh) "先抓住这句话：$quote\n练习用服务器只能引用原文，没法换种说法。" else "Focus on this statement: $quote\nThe practice server can only quote the text, not put it in other words.",
+                if (zh) "学习小技巧：先读这句话，合上文档，用自己的话复述，再对照原文。这只是一种学习方法，不是文档里的新内容。" else "A study tip: read the sentence, close the document, say it in your own words, then compare with the original. This is a way to study, not something new from the document.")
         })
     }
 }

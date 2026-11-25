@@ -189,7 +189,7 @@ class GenerationJourneyTest : JourneyTest() {
             waitForText("Crossed off 8 lockers")
             systemBack()
             tap(rule.onNodeWithTag("tab_PLAYGROUND"))
-            waitForText("Test provider · fixture-game")
+            waitForText(str(R.string.games_fixture, "fixture-game"))
             assertTrue(awaitIo { container.generation.list().single().installed })
             val checkpoint = awaitIo { requireNotNull(container.learningProgress.checkpoint(version)) }
             org.robolectric.RuntimeEnvironment.setQualifiers("+zh")
@@ -214,7 +214,7 @@ class GenerationJourneyTest : JourneyTest() {
         }
         launch(); chooseGuest(); tap(rule.onNodeWithTag("tab_PLAYGROUND"))
         waitForText("Imported lockers")
-        rule.onAllNodesWithText("Test provider · fixture-game").assertCountEquals(0)
+        rule.onAllNodesWithText(str(R.string.games_fixture, "fixture-game")).assertCountEquals(0)
         rule.onNodeWithText(str(R.string.games_imported)).assertExists()
     }
 }

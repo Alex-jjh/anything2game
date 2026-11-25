@@ -1,5 +1,7 @@
 package com.anything2game.app.ui.game
 
+import com.anything2game.app.ui.common.problemCode
+import com.anything2game.app.ui.common.problemText
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -60,7 +62,7 @@ internal class GameViewModel(private val content: ContentLibrary, private val pr
         viewModelScope.launch {
             try { error = null; run = operation() }
             catch (e: CancellationException) { throw e }
-            catch (e: Exception) { error = e.message ?: e.javaClass.simpleName }
+            catch (e: Exception) { error = problemCode(e) }
             finally { busy = false }
         }
     }
@@ -97,7 +99,7 @@ internal fun GameScreen(deps: AppDependencies, version: ContentVersion, onBack: 
             }
             if (vm.busy && run == null) LinearProgressIndicator(Modifier.fillMaxWidth())
             vm.error?.let {
-                Text(if (run == null) stringResource(R.string.activity_missing) + " " + it else stringResource(R.string.games_save_failed, it), color = A2g.skin.wrong)
+                Text(if (run == null) stringResource(R.string.activity_missing) + " " + problemText(it) else stringResource(R.string.games_save_failed, problemText(it)), color = A2g.skin.wrong)
                 OutlinedButton({ vm.load() }) { Text(stringResource(R.string.home_retry)) }
             }
             if (run != null) {

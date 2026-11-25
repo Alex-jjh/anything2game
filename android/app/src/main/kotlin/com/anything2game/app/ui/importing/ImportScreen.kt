@@ -1,5 +1,7 @@
 package com.anything2game.app.ui.importing
 
+import com.anything2game.app.ui.common.problemCode
+import com.anything2game.app.ui.common.problemText
 import android.text.format.Formatter
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -36,7 +38,7 @@ internal fun importErrorMessage(code: String): String = when (code) {
     ErrorCodes.ENCRYPTED_PDF -> stringResource(R.string.import_encrypted_pdf)
     ErrorCodes.NO_TEXT_LAYER -> stringResource(R.string.import_scanned_pdf)
     "FILE_UNAVAILABLE" -> stringResource(R.string.import_unreadable_pdf)
-    else -> stringResource(R.string.tutor_import_error, code)
+    else -> stringResource(R.string.tutor_import_error, problemText(code))
 }
 
 /**

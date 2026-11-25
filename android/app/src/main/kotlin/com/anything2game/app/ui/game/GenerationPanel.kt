@@ -1,5 +1,7 @@
 package com.anything2game.app.ui.game
 
+import com.anything2game.app.ui.common.problemCode
+import com.anything2game.app.ui.common.problemText
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -45,7 +47,7 @@ internal fun GenerationPanel(repository: GenerationRepository, accepts: (Generat
         scope.launch {
             try { error = null; work() }
             catch (e: CancellationException) { throw e }
-            catch (e: Exception) { offline = e is ApiException && e.retryable; error = e.message ?: e.javaClass.simpleName }
+            catch (e: Exception) { offline = e is ApiException && e.retryable; error = problemCode(e) }
             finally { busy = false; epoch++ }
         }
     }
@@ -67,7 +69,7 @@ internal fun GenerationPanel(repository: GenerationRepository, accepts: (Generat
                         autoOpen = null
                         try { install(it) } catch (e: CancellationException) { throw e } catch (e: Exception) {
                             offline = e is ApiException && e.retryable
-                            error = e.message ?: e.javaClass.simpleName
+                            error = problemCode(e)
                         }
                     }
                     if (tickets.none { it.state?.isTerminal != true }) break
@@ -75,7 +77,7 @@ internal fun GenerationPanel(repository: GenerationRepository, accepts: (Generat
                 } catch (e: CancellationException) { throw e }
                 catch (e: Exception) {
                     refreshOffline = e is ApiException && e.retryable
-                    refreshError = e.message ?: e.javaClass.simpleName
+                    refreshError = problemCode(e)
                     delayMs = (delayMs * 2).coerceAtMost(12000)
                 }
                 delay(delayMs)
@@ -83,7 +85,7 @@ internal fun GenerationPanel(repository: GenerationRepository, accepts: (Generat
         }
     }
     input(busy) { build -> perform { autoOpen = repository.enqueue(build()).id } }
-    (error ?: refreshError)?.let { Text(if (if (error != null) offline else refreshOffline) stringResource(R.string.job_offline) + " " + it else stringResource(R.string.job_problem, it), color = A2g.skin.wrong) }
+    (error ?: refreshError)?.let { Text(if (if (error != null) offline else refreshOffline) stringResource(R.string.job_offline) + " " + problemText(it) else stringResource(R.string.job_problem, problemText(it)), color = A2g.skin.wrong) }
     tickets.filterNot { it.installed }.forEach { t ->
         key(t.id) { PaperCard {
             (t.request.input as? GenerationInput.ConceptGame)?.let { Text(it.topic, style = MaterialTheme.typography.titleMedium) }
@@ -103,7 +105,7 @@ internal fun GenerationPanel(repository: GenerationRepository, accepts: (Generat
             }
             Text(stringResource(label), Modifier.testTag("generation_status"))
             val problem = t.admissionError ?: t.status?.error
-            problem?.let { Text(if (it.code == "UNSUPPORTED_TOPIC") stringResource(R.string.job_unsupported) else it.message, color = A2g.skin.wrong) }
+            problem?.let { Text(if (it.code == "UNSUPPORTED_TOPIC") stringResource(R.string.job_unsupported) else problemText(it.code), color = A2g.skin.wrong) }
             t.status?.modelId?.let { Text(stringResource(if (t.status.fixture) R.string.games_fixture else R.string.games_generated, it)) }
             when {
                 state == CompileJobState.READY -> Button({ perform { install(t) } }, enabled = !busy) { Text(stringResource(R.string.job_install)) }

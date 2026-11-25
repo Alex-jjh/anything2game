@@ -2,9 +2,9 @@
 <resources>
     <string name="app_name">万物成关</string>
     <string name="share_target_label">变成游戏</string>
-    <string name="library_title">你的案卷</string>
-    <string name="library_subtitle">要读的东西，五分钟打成一关。</string>
-    <string name="badge_pre_generated">预生成示例</string>
+    <string name="library_title">你的练习</string>
+    <string name="library_subtitle">要读的东西，五分钟就能练一遍。</string>
+    <string name="badge_pre_generated">现成示例</string>
     <string name="language_en">英文</string>
     <string name="language_zh">中文</string>
     <string name="level_label">第 %1$d 关</string>
@@ -14,8 +14,8 @@
     <string name="import_title">导入你的资料</string>
     <string name="import_body">在任意 App 里点「分享」发送 PDF 或文字，或者直接选文件。</string>
     <string name="import_pick_pdf">选择 PDF</string>
-    <string name="empty_library">还没有学习包。</string>
-    <string name="load_failed">无法加载学习包：%1$s</string>
+    <string name="empty_library">这里还没有内容。</string>
+    <string name="load_failed">打不开这份练习。%1$s</string>
     <string name="play_progress">第 %1$d / %2$d 题</string>
     <string name="action_back">返回</string>
     <string name="action_hint">提示</string>
@@ -24,7 +24,7 @@
     <string name="action_submit">确定</string>
     <string name="action_next">下一题</string>
     <string name="action_finish">结案</string>
-    <string name="action_show_evidence">调证据</string>
+    <string name="action_show_evidence">查看原文</string>
     <string name="result_correct">答对了</string>
     <string name="result_partial">对了 %1$d / %2$d</string>
     <string name="result_wrong">还差一点</string>
@@ -42,8 +42,8 @@
     <string name="evidence_page">第 %1$s 页</string>
     <string name="evidence_close">回到案卷</string>
     <string name="ask_title">就这里提问</string>
-    <string name="ask_unavailable_server">提问需要连接服务器，这个版本还没有接入。你的进度会保留。</string>
-    <string name="ask_unavailable_offline">当前离线，联网后再提问。</string>
+    <string name="ask_unavailable_server">这个版本暂时还不能提问。你的进度已保存。</string>
+    <string name="ask_unavailable_offline">现在没有网络，联网后再提问。</string>
     <string name="paused_title">走路中，已暂停</string>
     <string name="paused_body">先看路，进度已保存。停下来再继续。</string>
     <string name="paused_continue">我停下了，继续</string>
@@ -172,10 +172,10 @@
     <string name="profile_sample_body">林同学已经用了几天：玩过三门课，今天有一条线索要复习，还有一个案子查到一半。</string>
     <string name="profile_sample_action">以林同学继续</string>
     <string name="profile_guest_title">从零开始</string>
-    <string name="profile_guest_body">以访客身份，直接玩预设课程。</string>
+    <string name="profile_guest_body">以访客身份，直接玩现成的课程。</string>
     <string name="profile_guest_action">以访客开始</string>
-    <string name="profile_local_note">不需要账号。每个身份的进度都单独保存在这台手机上，切换不会删除任何内容。</string>
-    <string name="profile_switch">切换身份</string>
+    <string name="profile_local_note">不需要账号。每个用户的进度都单独保存在这部手机上，切换不会删除任何内容。</string>
+    <string name="profile_switch">切换用户</string>
     <!-- Frames by what you do and when they fit (docs/product/frames.md) -->
     <string name="frame_classic_best">适合：等车两分钟的快速复习。</string>
     <string name="frame_case_best">适合：读过了，想检验自己是不是真懂。</string>

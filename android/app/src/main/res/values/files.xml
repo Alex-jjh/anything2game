@@ -3,12 +3,12 @@
     <string name="material_open">Open file</string>
     <string name="material_more">More for %1$s</string>
     <string name="material_explain">Explain this</string>
-    <string name="material_practice">Practise</string>
+    <string name="material_practice">Practice</string>
     <string name="material_practice_hide">Hide practice</string>
     <string name="file_kind_pdf">PDF</string>
     <string name="file_kind_slides">Slides</string>
     <string name="file_kind_text">Text</string>
-    <string name="file_kind_course">Course pack</string>
+    <string name="file_kind_course">Course</string>
     <plurals name="file_pages">
         <item quantity="one">%d page</item>
         <item quantity="other">%d pages</item>

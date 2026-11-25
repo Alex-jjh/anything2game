@@ -1,5 +1,7 @@
 package com.anything2game.app.ui.space
 
+import com.anything2game.app.ui.common.problemCode
+import com.anything2game.app.ui.common.problemText
 import android.content.Intent
 import android.net.Uri
 import androidx.core.net.toUri
@@ -85,7 +87,7 @@ internal fun LazyListScope.materialItems(deps: AppDependencies, vm: SpaceViewMod
             if (member in vm.practising) courses.forEach { course -> key(course.localPack) {
                 Column(Modifier.fillMaxWidth().padding(start = 12.dp).testTag("practice_${memberTag(member)}")) {
                     PaperCard {
-                        if (courses.size > 1) Text("${course.title} · ${course.localPack?.contentVersion}")
+                        if (courses.size > 1) Text(course.title)
                         PracticeList(deps, course, nav, library)
                     }
                 }
@@ -300,9 +302,9 @@ private fun PracticeList(deps: AppDependencies, material: Material, nav: Navigat
                     frames = frames, selectedFrame = deps.framePreferences.get(local.packageId)?.takeIf { it in frames } ?: FrameId.CLASSIC,
                     tutorProgress = deps.tutors.progressFor(local.packageId, local.contentVersion))
             }
-        } catch (e: CancellationException) { throw e } catch (e: Exception) { error = e.message }
+        } catch (e: CancellationException) { throw e } catch (e: Exception) { error = problemCode(e) }
     }
-    error?.let { Text(stringResource(R.string.spaces_error, it)) }
+    error?.let { Text(stringResource(R.string.spaces_error, problemText(it))) }
     entry?.let { e ->
         if (e.frames.size > 1) PlayAs(e.frames, explicit ?: e.selectedFrame) { frame -> explicit = frame; library.selectFrame(e.summary.packageId, frame) }
         e.levels.forEach { level ->

@@ -240,8 +240,8 @@ object TutorRules {
         val c = blueprint.concepts.first { it.question.id == q.id }
         val zh = session.language == "zh"
         if (intent == TutorIntent.QUESTION) return TutorMessage("m${session.revision + 1}a", "tutor",
-            if (zh) "这门课我只能按事先准备好的讲解来讲，没法回答新的问题。你的问题已记在记录里。"
-            else "I can only walk through the prepared explanation here, so I can't answer new questions on this course. Your question is saved in the log.")
+            if (zh) "这份讲解是提前写好的，没法回答新的问题。你的问题已记在对话记录里。"
+            else "This explanation was written in advance, so I can't answer new questions here. Your question is saved in History.")
         val evidence = session.assessment.first { it.questionId == q.id }.evidence
         val body = when (intent) {
             TutorIntent.REPHRASE -> c.simpler

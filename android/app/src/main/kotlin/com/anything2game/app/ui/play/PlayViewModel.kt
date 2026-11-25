@@ -1,5 +1,7 @@
 package com.anything2game.app.ui.play
 
+import com.anything2game.app.ui.common.problemCode
+import com.anything2game.app.ui.common.problemText
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.anything2game.app.AppDependencies
@@ -103,7 +105,7 @@ class PlayViewModel(
             val pinned = version?.let { deps.packages.load(packageId, it) }
             val loaded = if (contentVersion != null || pinned?.isSuccess == true) requireNotNull(pinned) else deps.packages.load(packageId)
             val pkg = loaded.getOrElse {
-                _state.value = PlayUiState.Failed(it.message ?: it::class.simpleName.orEmpty())
+                _state.value = PlayUiState.Failed(problemCode(it))
                 return@withLock
             }
             // A frame whose overlay is missing falls back to Classic, so the level always plays.
@@ -148,7 +150,7 @@ class PlayViewModel(
                     }
                 } catch (e: kotlinx.coroutines.CancellationException) { throw e }
                 catch (e: Exception) {
-                    _state.value = PlayUiState.Failed(e.message ?: "Could not save practice")
+                    _state.value = PlayUiState.Failed(problemCode(e))
                     return@withLock
                 }
                 for (record in changed) mastery[record.unitId] = record

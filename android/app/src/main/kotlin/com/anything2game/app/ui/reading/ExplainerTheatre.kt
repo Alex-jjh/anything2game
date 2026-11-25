@@ -1,5 +1,7 @@
 package com.anything2game.app.ui.reading
 
+import com.anything2game.app.ui.common.problemCode
+import com.anything2game.app.ui.common.problemText
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
@@ -401,7 +403,7 @@ private fun Notices(offline: Boolean, problem: String?, busy: Boolean, onRetry: 
     if (offline) Text(stringResource(R.string.tutor_offline), color = skin.hint, style = MaterialTheme.typography.bodySmall)
     if (problem != null) Card(colors = CardDefaults.cardColors(containerColor = skin.card), border = BorderStroke(1.dp, skin.wrong)) {
         Column(Modifier.padding(12.dp)) {
-            Text(stringResource(R.string.tutor_error, problem), color = skin.wrong, style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.tutor_error, problemText(problem)), color = skin.wrong, style = MaterialTheme.typography.bodyMedium)
             Row { TextButton(onClick = onRetry, enabled = !busy) { Text(stringResource(R.string.home_retry)) }; TextButton(onClick = onReload, enabled = !busy) { Text(stringResource(R.string.tutor_reload)) } }
         }
     }

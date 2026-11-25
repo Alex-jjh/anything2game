@@ -1,5 +1,7 @@
 package com.anything2game.app.ui.reading
 
+import com.anything2game.app.ui.common.problemCode
+import com.anything2game.app.ui.common.problemText
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -119,7 +121,7 @@ fun ReadingContent(deps: AppDependencies, packageId: String, conceptId: String? 
             }
             if (state.problem != null && !state.unsupported) item {
                 PaperCard {
-                    Text(stringResource(R.string.tutor_error, state.problem!!), color = skin.wrong)
+                    Text(stringResource(R.string.tutor_error, problemText(state.problem)), color = skin.wrong)
                     Row { TextButton(onClick = vm::retry, enabled = !state.busy) { Text(stringResource(R.string.home_retry)) }; TextButton(onClick = vm::reload, enabled = !state.busy) { Text(stringResource(R.string.tutor_reload)) } }
                 }
             }
