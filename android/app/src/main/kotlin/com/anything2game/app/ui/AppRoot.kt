@@ -68,7 +68,7 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator) {
     val tabsState = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
     LaunchedEffect(navigator, current.id) { navigator.initializeTab(deps.homePreferences.lastTab); deps.homePreferences.lastTab = navigator.tab.value.name }
     val language = if (androidx.compose.ui.platform.LocalConfiguration.current.locales[0].language == "zh") "zh" else "en"
-    val library = viewModel(key = "library:${current.id}") { LibraryViewModel(deps) }
+    val library = viewModel(key = "library:${current.id}") { LibraryViewModel.of(deps) }
     // Demo controls: the context simulator, and the real (server) game generation, which the Playground itself no longer offers.
     val profileTools: (@Composable () -> Unit)? = simulator?.let { sim ->
         { sim(); com.anything2game.app.ui.game.DeveloperGameTools(deps, language) { navigator.openGame(it.contentId, it.contentVersion) } }
@@ -100,7 +100,7 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator) {
         is Route.Game -> {
             val parentId = navigator.parentSpaceId
             val parentTitle by androidx.compose.runtime.produceState<String?>(null, parentId, current.id) {
-                value = parentId?.let { id -> runCatching { deps.spaces?.list()?.firstOrNull { it.spaceId == id }?.title }.getOrNull() }
+                value = parentId?.let { id -> runCatching { deps.spaces.list()?.firstOrNull { it.spaceId == id }?.title }.getOrNull() }
             }
             GameScreen(deps, ContentVersion(r.id, r.version), navigator::back, backTo = parentTitle)
         }
@@ -109,7 +109,7 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator) {
             ReadingContent(deps, r.packageId, r.conceptId, r.sourcePackage ?: r.packageId, r.contentVersion, navigator::back)
         }
         is Route.Play -> {
-            val vm = viewModel(key = "play:${current.id}:${r.packageId}:${r.version}:${r.levelId}:${r.frameId}:${r.run}") { PlayViewModel(deps, r.packageId, r.levelId, r.frameId, r.version, r.resumeFrame) }
+            val vm = viewModel(key = "play:${current.id}:${r.packageId}:${r.version}:${r.levelId}:${r.frameId}:${r.run}") { PlayViewModel.of(deps, r.packageId, r.levelId, r.frameId, r.version, r.resumeFrame) }
             // A level that is no longer on screen must not keep reacting to the phone's sensors (it would rewrite the course's one saved session).
             androidx.compose.runtime.DisposableEffect(vm) { vm.listenToContext(); onDispose { vm.stopListeningToContext() } }
             val state by vm.state.collectAsStateWithLifecycle()
@@ -139,9 +139,9 @@ fun AppRoot(deps: AppDependencies, navigator: Navigator) {
             val cancel = { vm.cancel(); navigator.toHome() }
             BackHandler(onBack = cancel)
             suspend fun openImported(id: String) {
-                val catalog = requireNotNull(deps.materials).materials()
+                val catalog = deps.materials.materials()
                 val source = catalog.firstOrNull { it.tutorKey == id || (it.member as? com.anything2game.contract.space.SpaceMember.LocalPackRef)?.packageId == id }
-                val parent = requireNotNull(deps.spaces).list().firstOrNull { source?.member in it.members }
+                val parent = deps.spaces.list().firstOrNull { source?.member in it.members }
                 navigator.selectTab(HomeTab.SPACES)
                 if (parent != null && source != null) {
                     navigator.openSpace(parent.spaceId, true)

@@ -23,7 +23,7 @@ class ResumeJourneysTest : JourneyTest() {
         startLevel(attentionTitle, level1)
         return Level("demo_attention", FrameId.CLASSIC)
     }
-    private fun inProgressText(l: Level) = l.session()!!.let { str(R.string.level_status_in_progress, it.position + 1, it.queue.size) }
+    private fun inProgressText(l: Level) = l.session()!!.let { str(R.string.status_in_progress, it.position + 1, it.queue.size) }
 
     @Test fun back_button_mid_level_then_resume_shows_the_same_step() {
         val level = startClassic()
@@ -123,7 +123,7 @@ class ResumeJourneysTest : JourneyTest() {
         assertEquals(Phase.Recap, level.session()!!.phase)
         tapText(str(R.string.recap_library))
         waitForTag("space_materials")
-        waitFor("Practice to refresh") { levelStatus(attentionTitle, level1) != str(R.string.level_status_new) }
+        waitFor("Practice to refresh") { levelStatus(attentionTitle, level1) != str(R.string.status_new) }
         startLevel(attentionTitle, level1)
         // A fresh run: first clue, nothing answered yet — not the old recap.
         waitFor("a fresh session on disk") { level.session()!!.let { it.phase == Phase.Presenting && it.position == 0 && it.results.isEmpty() } }

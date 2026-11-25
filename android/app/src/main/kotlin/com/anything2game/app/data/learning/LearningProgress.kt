@@ -7,6 +7,8 @@ import com.anything2game.contract.progress.*
 import com.anything2game.contract.space.ActivityRef
 import com.anything2game.contract.tutor.TutorSession
 import com.anything2game.engine.game.*
+import com.anything2game.engine.mastery.LeitnerPolicy
+import com.anything2game.engine.mastery.MasteryPolicy
 import com.anything2game.engine.ports.Clock
 import com.anything2game.engine.progress.ProgressProjection
 import com.anything2game.engine.session.Phase
@@ -16,20 +18,33 @@ import kotlinx.serialization.Serializable
 import java.io.File
 import java.time.ZoneId
 
-@Serializable
-private data class LearningLedger(val checkpoints: List<GameCheckpoint> = emptyList(), val events: List<CompletionRecord> = emptyList())
+/** A game's saved attempt (null when none) and the most stars ever earned on it. */
+data class GameState(val checkpoint: GameCheckpoint?, val stars: Int)
 
-/** One committed snapshot is the source of truth for checkpoints, completion, mastery and historical days. */
+/** The most stars ever earned on one game. A new attempt never lowers it. */
+@Serializable
+private data class GameStars(val gameId: String, val gameVersion: String, val stars: Int)
+
+@Serializable
+private data class LearningLedger(val checkpoints: List<GameCheckpoint> = emptyList(), val events: List<CompletionRecord> = emptyList(),
+    val stars: List<GameStars> = emptyList())
+
+/**
+ * One committed snapshot is the source of truth for checkpoints, completion, mastery, game stars and historical days.
+ * [policy] is the mastery rule the projection applies. [legacyStars] reads the stars older versions kept in preferences;
+ * they are moved into the snapshot the first time they are read, and the preferences are left as they were.
+ */
 class LearningProgress(file: File, val profileId: String, private val clock: Clock = Clock.SYSTEM,
     private val zone: () -> ZoneId = ZoneId::systemDefault, private val tutorHistory: suspend () -> List<TutorSession> = { emptyList() },
-    private val beforeProjection: suspend () -> Unit = {}) {
+    private val beforeProjection: suspend () -> Unit = {}, private val policy: MasteryPolicy = LeitnerPolicy(),
+    private val legacyStars: (ContentVersion) -> Int = { 0 }) {
     private val store = AtomicSnapshot(file, LearningLedger.serializer(), ::LearningLedger)
     @Volatile private var checkedLegacyReads = false
     suspend fun projection(): com.anything2game.engine.progress.ActivityProgress {
         beforeProjection()
         val ledger = store.read()
         val identified = if (checkedLegacyReads) ledger else identifyLegacyReads(ledger)
-        val progress = ProgressProjection.from(profileId, identified.events)
+        val progress = ProgressProjection.from(profileId, identified.events, policy)
         // An unidentified historical read still contributes its recorded study day, but cannot satisfy a lesson prerequisite.
         return progress.copy(completed = progress.completed.filterNot { it.activityKind == ActivityKind.TUTOR && it.tutorSessionId == null }.toSet())
     }
@@ -56,6 +71,31 @@ class LearningProgress(file: File, val profileId: String, private val clock: Clo
     suspend fun checkpoint(version: ContentVersion) = store.read().checkpoints.singleOrNull {
         it.gameId == version.contentId && it.gameVersion == version.contentVersion
     }
+
+    private fun LearningLedger.starsOf(game: ContentVersion) =
+        stars.firstOrNull { it.gameId == game.contentId && it.gameVersion == game.contentVersion }?.stars ?: 0
+    private fun LearningLedger.withStars(game: ContentVersion, earned: Int): LearningLedger =
+        if (earned <= starsOf(game)) this
+        else copy(stars = stars.filterNot { it.gameId == game.contentId && it.gameVersion == game.contentVersion } + GameStars(game.contentId, game.contentVersion, earned))
+
+    /** The best star count ever earned on [game] (0 = none yet). */
+    suspend fun bestStars(game: ContentVersion): Int = gameStates(listOf(game)).getValue(game).stars
+
+    /** Keeps the better of the stored and the new count. */
+    suspend fun recordStars(game: ContentVersion, stars: Int) {
+        val earned = stars.coerceIn(0, MAX_STARS)
+        if (earned == 0) return
+        store.update { it.withStars(game, earned) }
+    }
+
+    /** What a game's tile needs: its saved attempt and its stars. One read of the ledger for the whole shelf, moving older preference stars in. */
+    suspend fun gameStates(games: Collection<ContentVersion>): Map<ContentVersion, GameState> {
+        var ledger = store.read()
+        val legacy = games.associateWith { legacyStars(it).coerceIn(0, MAX_STARS) }.filter { (game, old) -> old > ledger.starsOf(game) }
+        if (legacy.isNotEmpty()) ledger = store.update { current -> legacy.entries.fold(current) { acc, (game, old) -> acc.withStars(game, old) } }
+        return games.associateWith { game -> GameState(ledger.checkpoints.singleOrNull { it.gameId == game.contentId && it.gameVersion == game.contentVersion }, ledger.starsOf(game)) }
+    }
+
     private fun GameCheckpoint.matches(spec: GameSpec) = gameId == spec.gameId && gameVersion == spec.gameVersion
     private fun event(id: String, ref: ActivityRef, outcome: ActivityOutcome, time: Long = clock.now(), zoneId: String = zone().id) =
         CompletionRecord.at(id, ref.key(profileId), outcome, time, zoneId)
@@ -128,4 +168,6 @@ class LearningProgress(file: File, val profileId: String, private val clock: Clo
         val id = stableId("practice", state.attemptId, ref.contentId, ref.contentVersion, ref.activityId)
         store.update { it.add(event(id, ref, outcome, time, zoneId)) }
     }
+
+    private companion object { const val MAX_STARS = 3 }
 }

@@ -3,6 +3,9 @@ package com.anything2game.engine.progress
 import com.anything2game.contract.progress.*
 import com.anything2game.contract.game.ContentVersion
 import com.anything2game.contract.space.*
+import com.anything2game.engine.mastery.MasteryPolicy
+import com.anything2game.engine.mastery.MasteryRecord
+import com.anything2game.engine.mastery.Outcome
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -65,5 +68,54 @@ class ProgressProjectionTest {
         assertTrue(ProgressProjection.from("p", listOf(event("x", ActivityOutcome.PLAYED))).days.isEmpty())
         assertTrue(ProgressProjection.from("other", listOf(two)).completed.isEmpty())
         assertFalse(a.copy(contentVersion = "2") in view.completed)
+    }
+
+    private val day = 24 * 3_600_000L
+
+    @Test fun `standing is one rule for new, needs practice, done, due and learned`() {
+        fun standing(now: Long, vararg events: CompletionRecord) = ProgressProjection.from("p", events.toList()).standing(a, now)
+        assertEquals(Standing.NEW, standing(0))
+        assertEquals(Standing.NEW, standing(0, event("played", ActivityOutcome.PLAYED)))
+        assertEquals(Standing.NEEDS_PRACTICE, standing(0, event("w", ActivityOutcome.WRONG)))
+        val first = event("one", ActivityOutcome.INDEPENDENT)
+        assertEquals(Standing.DONE, standing(1_000, first))
+        assertEquals(Standing.DUE, standing(day + 1, first))
+        assertEquals(Standing.LEARNED, standing(3 * day, first, event("two", ActivityOutcome.INDEPENDENT, 24)))
+        // A read has no mastery record: it is simply done.
+        val tutor = ActivityKey("p", ActivityKind.TUTOR, "pdf", "1", "lesson", 1, "s")
+        val read = CompletionRecord.at("r", tutor, ActivityOutcome.READ, 0, "UTC")
+        assertEquals(Standing.DONE, ProgressProjection.from("p", listOf(read)).standing(tutor, Long.MAX_VALUE))
+    }
+
+    @Test fun `a route status is the standing plus prerequisites and what is installed`() {
+        val ref = ActivityRef.Game("doors", "1", "transfer")
+        val path = LearningPath("route", "1", "space", "Route", "en", listOf(PathNode("first", "Doors", ref),
+            PathNode("next", "Read", ActivityRef.Tutor("pdf", "1", "one"), listOf("first"))))
+        val progress = ProgressProjection.from("p", listOf(event("done", ActivityOutcome.INDEPENDENT)))
+        for (now in listOf(0L, day + 1, 5 * day)) {
+            val standing = progress.standings("p", path, now)
+            val route = progress.nodes("p", path, path.dependencies, now)
+            assertEquals(standing.getValue("first") == Standing.DUE, route["first"] == NodeStatus.REVIEW)
+            assertEquals(standing.getValue("first") in setOf(Standing.DONE, Standing.LEARNED), route["first"] == NodeStatus.COMPLETE)
+            assertEquals(NodeStatus.AVAILABLE, route["next"])
+        }
+    }
+
+    @Test fun `the mastery policy comes from the caller, not from the projection`() {
+        val never = object : MasteryPolicy {
+            override fun update(record: MasteryRecord, outcome: Outcome, now: Long) = record.copy(box = 0, attempts = record.attempts + 1, dueAt = Long.MAX_VALUE)
+        }
+        val events = listOf(event("a", ActivityOutcome.INDEPENDENT), event("b", ActivityOutcome.INDEPENDENT, 24))
+        assertEquals(Standing.LEARNED, ProgressProjection.from("p", events).standing(a, 2 * day))
+        assertEquals(Standing.DONE, ProgressProjection.from("p", events, never).standing(a, 2 * day))
+    }
+
+    @Test fun `a saved session shows its place and otherwise the status is the standing`() {
+        val progress = ProgressProjection.from("p", listOf(event("a", ActivityOutcome.INDEPENDENT)))
+        assertEquals(ActivityStatus(Standing.DONE), progress.status(a, 1_000))
+        val open = progress.status(a, 1_000, 2 to 5)
+        assertTrue(open.inProgress)
+        assertEquals(Standing.DONE, open.standing)
+        assertEquals(2 to 5, open.position to open.total)
     }
 }

@@ -8,9 +8,6 @@
     <string name="language_en">英文</string>
     <string name="language_zh">中文</string>
     <string name="level_label">第 %1$d 关</string>
-    <string name="level_status_new">未开始</string>
-    <string name="level_status_in_progress">进行中 · %1$d/%2$d</string>
-    <string name="level_status_done">已完成</string>
     <string name="import_title">导入你的资料</string>
     <string name="import_body">在任意 App 里点「分享」发送 PDF 或文字，或者直接选文件。</string>
     <string name="import_pick_pdf">选择 PDF</string>
@@ -183,7 +180,6 @@
     <string name="frame_rookie_best">适合：已经会了——讲给别人听最考验理解。</string>
     <string name="frame_companion_best">适合：还没读，第一次接触。</string>
     <string name="practice_play_as">玩法</string>
-    <string name="level_status_cleared">已通关 · 明天复习一次就更牢</string>
     <string name="setting_pause_walking">走路时暂停</string>
     <string name="setting_pause_walking_body">关闭：走路时只切换成单手布局。打开：等你停下再继续。</string>
     <string name="sort_put_in">放入「%1$s」</string>

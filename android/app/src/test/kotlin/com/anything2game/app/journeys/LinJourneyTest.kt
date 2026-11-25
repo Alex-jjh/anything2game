@@ -21,14 +21,14 @@ class LinJourneyTest : JourneyTest() {
         chooseLin()
         openPractice()
 
-        // Lin has history: Attention needs practice, ResNet is half-way.
-        assertEquals(str(R.string.home_needs_review), levelStatus(attentionTitle, "Why the Transformer Replaces Recurrence"))
+        // Lin has history: Attention is due for review (one miss, answered with help), ResNet is half-way.
+        assertEquals(str(R.string.status_due), levelStatus(attentionTitle, "Why the Transformer Replaces Recurrence"))
         val resnet = Level("demo_resnet", FrameId.CASE)
         val open = resnet.session()!!
         assertFalse(open.isFinished)
         val resnetLevel = resnet.pkg.level(open.levelId)!!
         openMaterial(Level("demo_resnet", FrameId.CASE).pkg.title); unfoldPractice(Level("demo_resnet", FrameId.CASE).pkg.title)
-        scrollPracticeTo(str(R.string.level_status_in_progress, open.position + 1, open.queue.size))
+        scrollPracticeTo(str(R.string.status_in_progress, open.position + 1, open.queue.size))
         val before = resnet.mastery()
 
         tapText(str(R.string.home_resume))

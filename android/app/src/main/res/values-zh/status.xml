@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="status_new">未开始</string>
+    <string name="status_in_progress">进行中 · %1$d/%2$d</string>
+    <string name="status_needs_practice">待巩固</string>
+    <string name="status_done">已完成</string>
+    <string name="status_due">待复习</string>
+    <string name="status_learned">已巩固</string>
+    <string name="status_done_hint">之后再复习一次，就更牢了。</string>
+</resources>

@@ -133,10 +133,7 @@
     <string name="route_kind_rookie">Rookie practice</string>
     <string name="route_kind_escape">Escape practice</string>
     <string name="route_kind_game">Game</string>
-    <string name="route_state_done">done</string>
-    <string name="route_state_review">due for review</string>
     <string name="route_state_current">up next</string>
-    <string name="route_state_available">open</string>
     <string name="route_state_locked">locked</string>
     <string name="route_state_update">needs an update</string>
     <string name="route_step_description">Step %1$d: %2$s. %3$s, %4$s</string>

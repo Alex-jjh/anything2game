@@ -16,13 +16,11 @@
     <string name="home_upload_body">Choose a PDF. After you confirm, it is sent to our server, which prepares a few starting questions and an explanation of it.</string>
     <string name="home_read_first_action">Read the original</string>
     <string name="home_classic">BY FILE · CHOOSE HOW TO PLAY</string>
-    <string name="home_level_solid">Learned</string>
     <string name="home_resume">Pick up where you left off</string>
     <string name="home_practice_action">Start practice</string>
     <string name="home_progress">Your progress</string>
     <string name="home_stat_documents">Files</string>
     <string name="home_stat_practiced">Topics practiced</string>
-    <string name="home_stat_review">Due for review</string>
     <string name="home_stats_note">Counted from this phone, including the sample courses. Practiced doesn\'t mean you\'ve learned it.</string>
     <string name="home_go_practice">Go to practice</string>
     <string name="home_account_title">On this device</string>
@@ -35,5 +33,4 @@
     <string name="home_save">Save</string>
     <string name="home_identity_note">Choose a study companion and make sense of the paper together.</string>
     <string name="reading_source">View source passages</string>
-    <string name="home_needs_review">Needs practice</string>
 </resources>

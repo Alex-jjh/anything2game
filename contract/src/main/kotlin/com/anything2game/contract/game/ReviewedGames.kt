@@ -26,6 +26,9 @@ object ReviewedGames {
     /** Every reviewed game for [language], the two original ones first (their ids are referenced by saved progress). */
     fun all(language: String): List<GameSpec> = catalog.map { it.spec(language) }
 
+    /** The catalog entry [spec] was built from, or null for a game that is not one of them (generated, imported). Ids are "key-language". */
+    fun entryFor(spec: GameSpec): ReviewedGameEntry? = catalog.firstOrNull { spec.gameId == it.key + "-" + spec.language }
+
     /** The best catalog entry for free text, or null when nothing in it is related. Deterministic and offline. */
     fun find(topic: String): ReviewedGameEntry? {
         val q = normalise(topic)

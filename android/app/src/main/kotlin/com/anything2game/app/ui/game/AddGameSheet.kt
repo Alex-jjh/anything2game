@@ -30,12 +30,16 @@ import com.anything2game.app.ui.theme.A2g
 import com.anything2game.contract.game.ContentVersion
 import com.anything2game.contract.game.ReviewedGames
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 
 private const val INPUT = 0
 private const val GENERATING = 1
 private const val CHOOSING = 2
 private val steps = listOf(R.string.gen_step_read, R.string.gen_step_mechanic, R.string.gen_step_levels, R.string.gen_step_check)
 internal const val STEP_MILLIS = 700L
+/** How long the sequence waits for a shelf that is still loading before it offers the choice instead. */
+private const val SHELF_WAIT_MILLIS = 3_000L
 
 /**
  * "Add a game". The sequence is a demonstration, not a server call: it shows the steps the generator takes, then opens the closest
@@ -43,7 +47,7 @@ internal const val STEP_MILLIS = 700L
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun AddGameSheet(presets: List<InstalledGame>, language: String, onClose: () -> Unit, onOpen: (ContentVersion) -> Unit,
+internal fun AddGameSheet(presets: List<InstalledGame>, loaded: Boolean, language: String, onClose: () -> Unit, onOpen: (ContentVersion) -> Unit,
     previewStep: Int? = null, previewTopic: String? = null) {
     val skin = A2g.skin
     val reduced = rememberReducedMotion()
@@ -51,14 +55,17 @@ internal fun AddGameSheet(presets: List<InstalledGame>, language: String, onClos
     // A sequence in flight cannot survive recreation, so the phase is not saved; the typed topic is.
     var phase by remember { mutableIntStateOf(if (previewStep != null) GENERATING else INPUT) }
     var step by remember { mutableIntStateOf(previewStep ?: 0) }
-    val installed = presets.associateBy { it.spec.gameId }
+    // The shelf may still be loading when the sequence ends; it answers from the games as they are then, not as they were when it began.
+    val installed by rememberUpdatedState(presets.associateBy { it.spec.gameId })
+    val shelfLoaded by rememberUpdatedState(loaded)
     BackHandler { if (phase == GENERATING) phase = INPUT else onClose() }
     // previewStep freezes the sequence at one step, for screenshots.
     if (phase == GENERATING && previewStep == null) LaunchedEffect(Unit) {
         for (i in steps.indices) { step = i; if (!reduced) delay(STEP_MILLIS) }
         step = steps.size
         if (!reduced) delay(250)
-        val match = ReviewedGames.find(topic)?.spec(language)?.gameId?.let(installed::get)
+        if (!shelfLoaded) withTimeoutOrNull(SHELF_WAIT_MILLIS) { snapshotFlow { shelfLoaded }.first { it } }
+        val match = ReviewedGames.find(topic)?.spec(language)?.gameId?.let { installed[it] }
         if (match != null) { topic = ""; onOpen(match.version) } else phase = CHOOSING
     }
     Box(Modifier.fillMaxSize().testTag("add_sheet")) {

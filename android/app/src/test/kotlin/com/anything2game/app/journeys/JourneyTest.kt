@@ -171,7 +171,7 @@ abstract class JourneyTest {
     protected fun openMaterial(courseTitle: String) {
         if (exists(hasTestTag("space_materials")) && openCourse == courseTitle) return
         openPractice()
-        val id = awaitIo { requireNotNull(deps.spaces).list().first { it.title == courseTitle }.spaceId }
+        val id = awaitIo { deps.spaces.list().first { it.title == courseTitle }.spaceId }
         val tag = "open_space_$id"
         waitFor("Space for $courseTitle") { runCatching { rule.onNodeWithTag("home_SPACES").performScrollToNode(hasTestTag(tag)); true }.getOrDefault(false) }
         tap(rule.onNodeWithTag(tag))

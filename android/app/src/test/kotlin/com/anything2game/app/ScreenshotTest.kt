@@ -6,13 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.anything2game.app.importing.ImportRequest
-import com.anything2game.app.ui.common.ContextSimulator
 import com.anything2game.app.ui.importing.ImportContent
-import com.anything2game.app.ui.library.LevelEntry
-import com.anything2game.app.ui.library.LevelStatus
-import com.anything2game.app.ui.library.LibraryContent
-import com.anything2game.app.ui.library.LibraryEntry
-import com.anything2game.app.ui.library.LibraryUiState
 import com.anything2game.app.ui.play.PlayContent
 import com.anything2game.app.ui.play.PlayUiState
 import com.anything2game.app.ui.theme.A2g
@@ -34,7 +28,6 @@ import com.anything2game.engine.grading.GraderRegistry
 import com.anything2game.engine.grading.SortAnswer
 import com.anything2game.engine.grading.SwipeAnswer
 import com.anything2game.engine.mastery.LeitnerPolicy
-import com.anything2game.engine.ports.PackageSummary
 import com.anything2game.engine.session.Action
 import com.anything2game.engine.session.LevelSession
 import com.anything2game.engine.session.SessionState
@@ -91,32 +84,6 @@ class ScreenshotTest {
 
     private fun play(name: String, pkg: LearningPackage, s: SessionState, ctx: ContextDecision = still) =
         shot(name) { PlayContent(ready(pkg, s, ctx), onAction = {}, onBack = {}, onRestart = {}) }
-
-    private fun library() = LibraryUiState(
-        loading = false,
-        entries = listOf(en, zh).map { p ->
-            LibraryEntry(
-                PackageSummary(p.packageId, p.title, p.language, p.levels.size, preGenerated = true),
-                p.levels.mapIndexed { i, l -> LevelEntry(l.levelId, i + 1, l.title, if (p === en) LevelStatus.InProgress(2, 3) else LevelStatus.New) },
-                frames = FrameId.entries, selectedFrame = if (p === en) FrameId.CASE else FrameId.ESCAPE,
-            )
-        },
-    )
-
-    @Test fun library_en() = shot("01_library_en") {
-        LibraryContent(library(), onOpenLevel = { _, _, _ -> }, onSelectFrame = { _, _ -> }, onPickPdf = {}, footer = {
-            ContextSimulator(ContextSignals(activity = ContextSignals.Activity.STILL), {}, {})
-        })
-    }
-
-    @Test fun library_character_picker() = shot("01_library_picker_en") {
-        LibraryContent(library(), onOpenLevel = { _, _, _ -> }, onSelectFrame = { _, _ -> }, onPickPdf = {}, avatarId = "pip", onSelectAvatar = {})
-    }
-
-    @Test fun library_zh() {
-        RuntimeEnvironment.setQualifiers("+zh")
-        shot("01_library_zh") { LibraryContent(library(), onOpenLevel = { _, _, _ -> }, onSelectFrame = { _, _ -> }, onPickPdf = {}) }
-    }
 
     @Test fun swipe_question() = play("02_swipe_question_en", en, engine(en).start("L1").act(en, Action.RevealHint))
 

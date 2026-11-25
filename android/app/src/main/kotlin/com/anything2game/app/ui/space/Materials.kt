@@ -60,6 +60,8 @@ import com.anything2game.contract.FrameId
 import com.anything2game.contract.game.ContentVersion
 import com.anything2game.contract.pack.PackOrigin
 import com.anything2game.contract.space.*
+import com.anything2game.app.ui.common.StatusBadge
+import com.anything2game.engine.progress.Standing
 import com.anything2game.engine.ports.PackageSummary
 import kotlinx.coroutines.CancellationException
 
@@ -274,20 +276,23 @@ private fun AddExistingDialog(vm: SpaceViewModel, space: Space, close: () -> Uni
 private fun PracticeList(deps: AppDependencies, material: Material, nav: Navigator, library: LibraryViewModel) {
     val local = material.localPack
     var entry by remember(material) { mutableStateOf<LibraryEntry?>(null) }
+    var levels by remember(material) { mutableStateOf<List<PracticeLevel>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
     var explicit by rememberSaveable(local?.packageId, local?.contentVersion) { mutableStateOf<FrameId?>(null) }
     LaunchedEffect(material) {
         try {
             if (local != null) {
-                val content = requireNotNull(deps.content)
+                val content = deps.content
                 val version = ContentVersion(local.packageId, local.contentVersion)
                 val course = requireNotNull(content.course(version))
                 val pkg = course.pkg
                 val manifest = course.manifest
                 val frames = offeredFrames(pkg, content.available(version))
                 val summary = PackageSummary(pkg.packageId, pkg.title, pkg.language, pkg.levels.size, manifest.origin == PackOrigin.PRESET)
-                entry = libraryEntry(summary, pkg, deps.sessions.load(local.packageId, local.contentVersion),
-                    deps.mastery.all(local.packageId, local.contentVersion), deps.clock.now()).copy(
+                val saved = deps.sessions.load(local.packageId, local.contentVersion)
+                val now = deps.clock.now()
+                levels = practiceLevels(pkg, saved, deps.learningProgress.projection(), deps.learningProgress.profileId, now)
+                entry = libraryEntry(summary, pkg, saved, deps.mastery.all(local.packageId, local.contentVersion), now).copy(
                     frames = frames, selectedFrame = deps.framePreferences.get(local.packageId)?.takeIf { it in frames } ?: FrameId.CLASSIC,
                     tutorProgress = deps.tutors.progressFor(local.packageId, local.contentVersion))
             }
@@ -296,20 +301,15 @@ private fun PracticeList(deps: AppDependencies, material: Material, nav: Navigat
     error?.let { Text(stringResource(R.string.spaces_error, problemText(it))) }
     entry?.let { e ->
         if (e.frames.size > 1) PlayAs(e.frames, explicit ?: e.selectedFrame) { frame -> explicit = frame; library.selectFrame(e.summary.packageId, frame) }
-        e.levels.forEach { level ->
+        levels.forEach { level ->
             HorizontalDivider()
             Text(level.title, style = MaterialTheme.typography.titleMedium)
-            val status = level.status
-            Text(when(status) {
-                LevelStatus.New -> stringResource(R.string.level_status_new)
-                LevelStatus.NeedsReview -> stringResource(R.string.home_needs_review)
-                LevelStatus.Done -> stringResource(R.string.home_level_solid)
-                LevelStatus.Cleared -> stringResource(R.string.level_status_cleared)
-                is LevelStatus.InProgress -> stringResource(R.string.level_status_in_progress, status.position, status.total)
-            }, Modifier.testTag("level_status_${e.summary.packageId}_${level.levelId}"))
+            StatusBadge(level.status, Modifier.testTag("level_status_${e.summary.packageId}_${level.levelId}"))
+            if (level.status.standing == Standing.DONE && !level.status.inProgress)
+                Text(stringResource(R.string.status_done_hint), style = MaterialTheme.typography.bodySmall, color = A2g.skin.inkMuted)
             Button({ nav.openPlay(e.summary.packageId, level.levelId, explicit ?: e.frameFor(level.levelId), local?.contentVersion, explicit == null) },
                 Modifier.fillMaxWidth().testTag("play_${e.summary.packageId}_${level.levelId}")) {
-                Text(stringResource(if (status is LevelStatus.InProgress) R.string.home_resume else R.string.home_practice_action))
+                Text(stringResource(if (level.status.inProgress) R.string.home_resume else R.string.home_practice_action))
             }
         }
     }

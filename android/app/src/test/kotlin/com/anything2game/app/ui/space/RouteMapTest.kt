@@ -5,7 +5,9 @@ import com.anything2game.contract.game.EvidenceRef
 import com.anything2game.contract.space.ActivityRef
 import com.anything2game.contract.space.LearningPath
 import com.anything2game.contract.space.PathNode
+import com.anything2game.contract.space.Space
 import com.anything2game.engine.progress.NodeStatus
+import com.anything2game.engine.progress.Standing
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -15,8 +17,12 @@ class RouteMapTest {
     private fun node(id: String, title: String, activity: ActivityRef, after: String? = null, chapter: String? = null, evidence: List<EvidenceRef> = emptyList()) =
         PathNode(id, title, activity, listOfNotNull(after), evidence = evidence, chapter = chapter)
     private fun path(vararg nodes: PathNode) = LearningPath("p", "1", "space", "Space", "en", nodes.toList())
+    /** The standing a status implies, for tests that only care about the route's own states. */
+    private fun standings(status: Map<String, NodeStatus>) = status.mapValues { (_, s) ->
+        when (s) { NodeStatus.COMPLETE -> Standing.DONE; NodeStatus.REVIEW -> Standing.DUE; else -> Standing.NEW }
+    }
     private fun map(path: LearningPath, status: Map<String, NodeStatus>, material: (PathNode) -> MaterialInfo? = { null }) =
-        routeMap(path, status, material) { _, _ -> null }
+        routeMap(path, status, standings(status), material) { _, _ -> null }
 
     private val chain = path(
         node("a", "Why ditch recurrence", tutor("a", "c1"), chapter = "Level one"),
@@ -109,9 +115,21 @@ class RouteMapTest {
     @Test fun a_step_with_a_cited_page_carries_its_source() {
         val cite = EvidenceRef.Pdf("e1", "doc", "v1", "c1", "quote", 4, "5")
         val path = path(node("a", "Cited", tutor("a", "c1"), evidence = listOf(cite)), node("b", "Plain", tutor("b", "c2"), "a"))
-        val m = routeMap(path, path.nodes.associate { it.nodeId to NodeStatus.AVAILABLE }, { null }) { _, _ -> "paper.pdf" }
+        val status = path.nodes.associate { it.nodeId to NodeStatus.AVAILABLE }
+        val m = routeMap(path, status, standings(status), { null }) { _, _ -> "paper.pdf" }
         assertEquals("5", m.steps[0].source?.page)
         assertEquals("paper.pdf", m.steps[0].source?.material)
         assertNull(m.steps[1].source)
+    }
+
+    @Test fun a_step_carries_the_standing_it_was_given_and_the_card_reads_the_same_map() {
+        val status = mapOf("a" to NodeStatus.COMPLETE, "b" to NodeStatus.AVAILABLE, "c" to NodeStatus.LOCKED, "d" to NodeStatus.LOCKED)
+        val m = routeMap(chain, status, mapOf("a" to Standing.LEARNED, "b" to Standing.NEEDS_PRACTICE), { null }) { _, _ -> null }
+        assertEquals(listOf(Standing.LEARNED, Standing.NEEDS_PRACTICE, Standing.NEW, Standing.NEW), m.steps.map { it.standing })
+        val card = SpaceCard(Space("s", "Space", 0), chain, m)
+        assertEquals("b", card.next?.nodeId)
+        assertEquals(m.done, card.completed)
+        assertEquals(m.total, card.total)
+        assertEquals(0, SpaceCard(Space("s", "Space", 0), null, null).total)
     }
 }

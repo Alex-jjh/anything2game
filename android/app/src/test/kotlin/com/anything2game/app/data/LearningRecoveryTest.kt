@@ -71,7 +71,7 @@ class LearningRecoveryTest {
                     it.activity.activityId == case.levelId && it.activity.contentVersion == case.contentVersion }
                 (deps.materials.resolve(node.activity) as OpenActivity.Practice).activity
             }
-            val vm = PlayViewModel(deps, activity.contentId, activity.activityId, activity.frame, activity.contentVersion)
+            val vm = PlayViewModel.of(deps, activity.contentId, activity.activityId, activity.frame, activity.contentVersion)
             val resumed = ready(vm).session
             assertEquals(FrameId.CASE, resumed.frameId)
             assertEquals(case.position, resumed.position)
@@ -84,7 +84,7 @@ class LearningRecoveryTest {
         val deps = AndroidAppContainer(app)
         val pkg = runBlocking { deps.packages.load(EXAMPLE_TUTOR_PACKAGE).getOrThrow() }
         val level = pkg.levels.first().levelId
-        val active = PlayViewModel(deps, pkg.packageId, level, FrameId.CLASSIC)
+        val active = PlayViewModel.of(deps, pkg.packageId, level, FrameId.CLASSIC)
         val initial = ready(active)
         val blocked = CompletableDeferred<Unit>()
         val release = CompletableDeferred<Unit>()
@@ -97,7 +97,7 @@ class LearningRecoveryTest {
                 }
             }
         }
-        val opening = PlayViewModel(slow, pkg.packageId, level, FrameId.CLASSIC, pkg.contentVersion)
+        val opening = PlayViewModel.of(slow, pkg.packageId, level, FrameId.CLASSIC, pkg.contentVersion)
         val end = System.nanoTime() + 10_000_000_000L
         while (!blocked.isCompleted && System.nanoTime() < end) { ShadowLooper.idleMainLooper(); Thread.sleep(5) }
         assertTrue(blocked.isCompleted)
@@ -118,7 +118,7 @@ class LearningRecoveryTest {
         val deps = AndroidAppContainer(app)
         val pkg = runBlocking { deps.packages.load(EXAMPLE_TUTOR_PACKAGE).getOrThrow() }
         val level = pkg.levels.first().levelId
-        val vm = PlayViewModel(deps, pkg.packageId, level, FrameId.CLASSIC)
+        val vm = PlayViewModel.of(deps, pkg.packageId, level, FrameId.CLASSIC)
         val initial = ready(vm)
         val change = Action.Submit(ScriptedPlayer.correctAnswer(initial.item!!))
         val folder = File(app.filesDir, "sessions/versioned")
@@ -136,7 +136,7 @@ class LearningRecoveryTest {
         assertEquals(1, intermediate.getValue(initial.unit!!.unitId).attempts)
         vm.stopListeningToContext()
         val reopened = AndroidAppContainer(app)
-        val next = ready(PlayViewModel(reopened, pkg.packageId, level, FrameId.CLASSIC))
+        val next = ready(PlayViewModel.of(reopened, pkg.packageId, level, FrameId.CLASSIC))
         assertTrue(next.session.phase is Phase.Feedback)
         assertEquals(1, next.session.results.size)
         val unit = initial.unit.unitId
@@ -492,7 +492,7 @@ class LearningRecoveryTest {
             }
             val selected = object : AppDependencies by deps { override val pdfImports = queue() }
             for (lang in listOf("en", "zh")) {
-                val vm = com.anything2game.app.ui.space.SpaceViewModel(selected, lang, space.spaceId)
+                val vm = com.anything2game.app.ui.space.SpaceViewModel.of(selected, lang, space.spaceId)
                 val request = ImportRequest.PdfFile("Paper", Uri.parse("content://qa/$lang"), null)
                 var journaled = false
                 vm.importFiles(space.spaceId, listOf(request), "batch-$lang") { journaled = true; throw CancellationException("stopped") }
@@ -561,7 +561,7 @@ class LearningRecoveryTest {
             repeat(20) { spaces.add(spaces.create("Group $it").spaceId, material.member) }
         }
         inventoryReads = 0
-        val vm = com.anything2game.app.ui.space.SpaceViewModel(dependencies, "en", null)
+        val vm = com.anything2game.app.ui.space.SpaceViewModel.of(dependencies, "en", null)
         vm.perform()
         val end = System.nanoTime() + 15_000_000_000L
         while (vm.busy && System.nanoTime() < end) { ShadowLooper.idleMainLooper(); Thread.sleep(5) }

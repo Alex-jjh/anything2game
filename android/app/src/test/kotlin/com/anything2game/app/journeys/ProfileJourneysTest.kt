@@ -13,7 +13,7 @@ class ProfileJourneysTest : JourneyTest() {
     private val level1 = "Why the Transformer Replaces Recurrence"
 
     private data class Me(val documents: Int, val practiced: Int, val due: Int)
-    private fun me(): Me = Me(stat(R.string.home_stat_documents), stat(R.string.home_stat_practiced), stat(R.string.home_stat_review))
+    private fun me(): Me = Me(stat(R.string.home_stat_documents), stat(R.string.home_stat_practiced), stat(R.string.status_due))
 
     @Test fun switching_profile_never_mixes_progress_and_a_restart_keeps_the_chosen_profile() {
         launch()
@@ -24,7 +24,7 @@ class ProfileJourneysTest : JourneyTest() {
         assertTrue("Lin has history", lin.practiced > 0)
         openPractice()
         val resume = Level("demo_resnet", FrameId.CASE).session()!!
-        val resumeText = str(R.string.level_status_in_progress, resume.position + 1, resume.queue.size)
+        val resumeText = str(R.string.status_in_progress, resume.position + 1, resume.queue.size)
         openMaterial(Level("demo_resnet", FrameId.CASE).pkg.title); unfoldPractice(Level("demo_resnet", FrameId.CASE).pkg.title)
         scrollPracticeTo(resumeText)
 
@@ -34,7 +34,7 @@ class ProfileJourneysTest : JourneyTest() {
         chooseGuest()
         openPractice()
         assertFalse("Lin's open case leaks into the guest", textShown(str(R.string.home_resume)))
-        assertEquals("a guest's course is brand new", str(R.string.level_status_new), levelStatus(attentionTitle, level1))
+        assertEquals("a guest's course is brand new", str(R.string.status_new), levelStatus(attentionTitle, level1))
         openMe()
         assertFalse("Lin's name leaks into the guest", textShown("Lin"))
         assertTrue(textShown(str(R.string.home_guest)))
@@ -53,7 +53,7 @@ class ProfileJourneysTest : JourneyTest() {
         switchProfile()
         chooseLin()
         openPractice()
-        waitFor("Lin's Attention to read 'Needs practice'") { levelStatus(attentionTitle, level1) == str(R.string.home_needs_review) }
+        waitFor("Lin's Attention to read 'Due for review'") { levelStatus(attentionTitle, level1) == str(R.string.status_due) }
         openMaterial(Level("demo_resnet", FrameId.CASE).pkg.title); unfoldPractice(Level("demo_resnet", FrameId.CASE).pkg.title)
         scrollPracticeTo(resumeText)
         openMe()
@@ -91,7 +91,7 @@ class ProfileJourneysTest : JourneyTest() {
         val seeded = resnet.session()!!
         // Lin finishes the open case ...
         openMaterial(Level("demo_resnet", FrameId.CASE).pkg.title); unfoldPractice(Level("demo_resnet", FrameId.CASE).pkg.title)
-        scrollPracticeTo(str(R.string.level_status_in_progress, seeded.position + 1, seeded.queue.size))
+        scrollPracticeTo(str(R.string.status_in_progress, seeded.position + 1, seeded.queue.size))
         tapText(str(R.string.home_resume))
         waitFor("play screen") { exists(androidx.compose.ui.test.hasContentDescription(str(R.string.action_back))) }
         resnet.play()

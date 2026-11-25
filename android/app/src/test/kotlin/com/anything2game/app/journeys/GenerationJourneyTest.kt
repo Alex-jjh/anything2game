@@ -131,7 +131,7 @@ class GenerationJourneyTest : JourneyTest() {
             tap(rule.onNodeWithTag("generate_game"))
             waitForText(str(com.anything2game.app.R.string.job_unsupported))
             rule.onNodeWithTag("concept_input").assertTextContains("orbital dynamics")
-            assertTrue(awaitIo { deps.generation!!.list().single().admissionError?.code == "UNSUPPORTED_TOPIC" })
+            assertTrue(awaitIo { deps.generation.list().single().admissionError?.code == "UNSUPPORTED_TOPIC" })
             tap(rule.onNodeWithTag("tab_PLAYGROUND"))
             waitForTag("game_partition"); openGame(rule.onNodeWithTag("game_partition"))
             waitForTag("cut_8")
@@ -210,7 +210,7 @@ class GenerationJourneyTest : JourneyTest() {
         val pkg = ReviewedGames.partition("en").copy(gameId = "independent-game", gameVersion = "1", title = "Imported lockers")
         val pack = PackCodec.build(pkg, PackOrigin.SERVER)
         awaitIo {
-            deps.content!!.install(PackCodec.toBytes(pack.copy(manifest = pack.manifest.copy(modelId = "fixture-game", fixture = true))).inputStream())
+            deps.content.install(PackCodec.toBytes(pack.copy(manifest = pack.manifest.copy(modelId = "fixture-game", fixture = true))).inputStream())
         }
         launch(); chooseGuest(); tap(rule.onNodeWithTag("tab_PLAYGROUND"))
         waitForText("Imported lockers")

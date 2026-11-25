@@ -2,7 +2,6 @@ package com.anything2game.app.data.tutor
 
 import android.content.Context
 import com.anything2game.app.AndroidAppContainer
-import com.anything2game.app.data.Familiarity
 import com.anything2game.contract.ContractJson
 import com.anything2game.contract.tutor.*
 import kotlinx.coroutines.runBlocking
@@ -45,8 +44,7 @@ class TutorPersistenceTest {
     }
     @Test fun `answers and conversation survive repository recreation and preserve old preferences`() = runBlocking {
         val deps = AndroidAppContainer(context)
-        deps.homePreferences.setFamiliarity(EXAMPLE_TUTOR_PACKAGE, "1", "L1", Familiarity.KNOWN)
-        deps.homePreferences.markPrepared(EXAMPLE_TUTOR_PACKAGE, "1")
+        context.getSharedPreferences("home", Context.MODE_PRIVATE).edit().putString("familiarity:${EXAMPLE_TUTOR_PACKAGE.length}:$EXAMPLE_TUTOR_PACKAGE", "KNOWN").putBoolean("prepared:old", true).commit()
         val oldPrefs = context.getSharedPreferences("home", Context.MODE_PRIVATE).all.toMap()
         val untouched = File(context.filesDir, "sessions/legacy-progress.json").also { it.parentFile!!.mkdirs(); it.writeText("legacy bytes") }
         val repo = deps.tutors

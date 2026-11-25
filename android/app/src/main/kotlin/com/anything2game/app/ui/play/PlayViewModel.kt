@@ -5,6 +5,14 @@ import com.anything2game.app.ui.common.problemText
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.anything2game.app.AppDependencies
+import com.anything2game.app.data.learning.PracticeStore
+import com.anything2game.app.platform.ContextSource
+import com.anything2game.engine.context.ContextPolicy
+import com.anything2game.engine.grading.Grading
+import com.anything2game.engine.mastery.MasteryPolicy
+import com.anything2game.engine.ports.Clock
+import com.anything2game.engine.ports.FrameRepository
+import com.anything2game.engine.ports.PackageRepository
 import com.anything2game.contract.FrameId
 import com.anything2game.contract.FrameOverlay
 import com.anything2game.contract.Item
@@ -57,26 +65,38 @@ sealed interface PlayUiState {
  * Every transition is saved before the UI sees it, so process death resumes at the same step.
  */
 class PlayViewModel(
-    private val deps: AppDependencies,
+    private val packages: PackageRepository,
+    private val frames: FrameRepository,
+    /** Every save of a level goes through this one journalled store: answer, mastery and activity record commit together or not at all. */
+    private val practice: PracticeStore,
+    private val grading: Grading,
+    private val masteryPolicy: MasteryPolicy,
+    private val clock: Clock,
+    private val contextSource: ContextSource,
+    private val contextPolicy: ContextPolicy,
     private val packageId: String,
     private val levelId: String,
     private val frameId: FrameId,
     private val contentVersion: String? = null,
     private val resumeSavedFrame: Boolean = contentVersion != null,
 ) : ViewModel() {
+    companion object {
+        /** The level's ports, picked out of the container. */
+        fun of(deps: AppDependencies, packageId: String, levelId: String, frameId: FrameId, contentVersion: String? = null,
+            resumeSavedFrame: Boolean = contentVersion != null) =
+            PlayViewModel(deps.packages, deps.frames, deps.practiceCommits, deps.grading, deps.masteryPolicy, deps.clock,
+                deps.contextSource, deps.contextPolicy, packageId, levelId, frameId, contentVersion, resumeSavedFrame)
+    }
+
     private val _state = MutableStateFlow<PlayUiState>(PlayUiState.Loading)
     val state: StateFlow<PlayUiState> = _state.asStateFlow()
 
-    private val sessions = deps.sessions
-    private val masteryStore = deps.mastery
-    private val progress = deps.learningProgress
-    private val practiceCommits = deps.practiceCommits
     private val mutex = Mutex()
     private var engine: LevelSession? = null
     private val mastery = mutableMapOf<String, MasteryRecord>()
     private var overlay: FrameOverlay? = null
     private var activeFrame: FrameId = FrameId.CLASSIC
-    private var context: ContextDecision = deps.contextPolicy.decide(deps.contextSource.signals.value)
+    private var context: ContextDecision = contextPolicy.decide(contextSource.signals.value)
 
     private var contextJob: kotlinx.coroutines.Job? = null
 
@@ -89,8 +109,8 @@ class PlayViewModel(
     fun listenToContext() {
         if (contextJob?.isActive == true) return
         contextJob = viewModelScope.launch {
-            deps.contextSource.signals.collect { signals ->
-                context = deps.contextPolicy.decide(signals)
+            contextSource.signals.collect { signals ->
+                context = contextPolicy.decide(signals)
                 val reason = context.pauseReason
                 if (context.pause && reason != null) dispatch(Action.Pause(reason)) else refreshContext()
             }
@@ -100,29 +120,28 @@ class PlayViewModel(
 
     private suspend fun load() = mutex.withLock {
         while (true) {
-            val prior = sessions.load(packageId)
+            val prior = practice.load(packageId)
             val version = contentVersion ?: prior?.takeIf { !it.isFinished && it.levelId == levelId && it.frameId == frameId }?.contentVersion
-            val pinned = version?.let { deps.packages.load(packageId, it) }
-            val loaded = if (contentVersion != null || pinned?.isSuccess == true) requireNotNull(pinned) else deps.packages.load(packageId)
+            val pinned = version?.let { packages.load(packageId, it) }
+            val loaded = if (contentVersion != null || pinned?.isSuccess == true) requireNotNull(pinned) else packages.load(packageId)
             val pkg = loaded.getOrElse {
                 _state.value = PlayUiState.Failed(problemCode(it))
                 return@withLock
             }
             // A frame whose overlay is missing falls back to Classic, so the level always plays.
-            val priorVersion = sessions.load(packageId, pkg.contentVersion)
+            val priorVersion = practice.load(packageId, pkg.contentVersion)
             val checkpoint = priorVersion?.takeIf { it.levelId == levelId && !it.isFinished }
             val requestedFrame = if (resumeSavedFrame) checkpoint?.frameId ?: frameId else frameId
-            val overlay = deps.frames.load(packageId, pkg.contentVersion, requestedFrame)
+            val overlay = frames.load(packageId, pkg.contentVersion, requestedFrame)
             val frame = Frames.of(requestedFrame).takeIf { it.isPlayable(overlay) } ?: Frames.CLASSIC
-            val e = LevelSession(pkg, deps.grading, deps.masteryPolicy, deps.clock, frame = frame, overlay = overlay?.takeIf { frame.id == requestedFrame })
+            val e = LevelSession(pkg, grading, masteryPolicy, clock, frame = frame, overlay = overlay?.takeIf { frame.id == requestedFrame })
             val saved = checkpoint?.takeIf(e::canResume)
             var session = saved ?: e.start(levelId)
             if (session.attemptId.isEmpty()) session = session.copy(attemptId = java.util.UUID.randomUUID().toString())
             val reason = context.pauseReason
             if (context.pause && reason != null) session = e.reduce(session, Action.Pause(reason)).state
             else if (session.isPaused) session = e.reduce(session, Action.Resume).state // a pause saved by an earlier run is stale once the phone is still
-            val records = if (practiceCommits != null) practiceCommits.initialize(priorVersion, session) ?: continue
-                else masteryStore.all(packageId, pkg.contentVersion).also { sessions.save(session) }
+            val records = practice.initialize(priorVersion, session) ?: continue
             engine = e
             this.overlay = overlay?.takeIf { frame.id == requestedFrame }
             activeFrame = frame.id
@@ -142,12 +161,7 @@ class PlayViewModel(
                 if (t.state == ready.session && t.effects.isEmpty()) return@withLock
                 val changed = t.effects.filterIsInstance<Effect.MasteryChanged>().map { it.record }
                 try {
-                    if (practiceCommits != null) practiceCommits.commit(ready.session, t.state, changed)
-                    else {
-                        for (record in changed) masteryStore.put(packageId, ready.pkg.contentVersion, record)
-                        progress?.practice(t.state)
-                        sessions.save(t.state)
-                    }
+                    practice.commit(ready.session, t.state, changed)
                 } catch (e: kotlinx.coroutines.CancellationException) { throw e }
                 catch (e: Exception) {
                     _state.value = PlayUiState.Failed(problemCode(e))
@@ -167,7 +181,7 @@ class PlayViewModel(
                 // Replay asks what was missed in another form where the course has one (the cold-case screen promises it).
                 val missed = ready.session.results.filter { it.slot.kind == com.anything2game.engine.session.SlotKind.UNIT && !it.grade.correct }.map { it.slot.unitId }.toSet()
                 val s = e.start(levelId, missed).copy(attemptId = java.util.UUID.randomUUID().toString())
-                sessions.save(s)
+                practice.save(s)
                 publish(ready.pkg, e, s)
             }
         }

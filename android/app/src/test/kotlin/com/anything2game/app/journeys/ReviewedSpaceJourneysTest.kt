@@ -28,13 +28,13 @@ class ReviewedSpaceJourneysTest : LearnJourneyBase() {
 
     private fun selectLaterConcept() {
         val (space, node) = awaitIo {
-            val mat = deps.materials!!.materials().single { it.localPack?.packageId == attention }
-            val parent = deps.spaces!!.list().first { mat.member in it.members }
+            val mat = deps.materials.materials().single { it.localPack?.packageId == attention }
+            val parent = deps.spaces.list().first { mat.member in it.members }
             val target = mat.nodes.filter { it.activity is ActivityRef.Tutor }.last()
             mat.nodes.takeWhile { it.nodeId != target.nodeId }.forEach { before ->
-                deps.learningProgress!!.record(before.activity, if (before.activity is ActivityRef.Tutor) ActivityOutcome.READ else ActivityOutcome.INDEPENDENT, 1_000_000L)
+                deps.learningProgress.record(before.activity, if (before.activity is ActivityRef.Tutor) ActivityOutcome.READ else ActivityOutcome.INDEPENDENT, 1_000_000L)
             }
-            credited = deps.learningProgress!!.projection().completed.size
+            credited = deps.learningProgress.projection().completed.size
             parent to target
         }
         waitFor("parent Space card") { runCatching { rule.onNodeWithTag("home_SPACES").performScrollToNode(hasTestTag("open_space_${space.spaceId}")); true }.getOrDefault(false) }
@@ -62,7 +62,7 @@ class ReviewedSpaceJourneysTest : LearnJourneyBase() {
         assertTrue("nobody was asked, so nothing is claimed about what they know", session.assessment.all { it.evidence == Understanding.NOT_ASKED })
         assertEquals(last + 1, session.conceptsIntroduced)
         // Only the requested concept was read: the lessons the route credited before it are not read or credited again.
-        assertEquals(credited + 1, awaitIo { deps.learningProgress!!.projection().completed.size })
+        assertEquals(credited + 1, awaitIo { deps.learningProgress.projection().completed.size })
         val messages = session.messages.size
         scenario!!.recreate()
         waitFor("the same lesson after recreation", 5000) { has("explainer_stage") }
@@ -90,7 +90,7 @@ class ReviewedSpaceJourneysTest : LearnJourneyBase() {
     }
 
     @Test fun shared_pdf_waits_for_a_selected_space_and_survives_rotation_before_confirmation() {
-        val id = awaitIo { deps.profiles.choose(LocalProfile.GUEST); deps.spaces!!.create("Selected Space").spaceId }
+        val id = awaitIo { deps.profiles.choose(LocalProfile.GUEST); deps.spaces.create("Selected Space").spaceId }
         val file = File(app.cacheDir, "shared.pdf").apply { writeText("invalid PDF") }
         val intent = Intent(app, MainActivity::class.java).setAction(Intent.ACTION_SEND)
             .setType("application/pdf").putExtra(Intent.EXTRA_STREAM, Uri.fromFile(file))
@@ -101,17 +101,17 @@ class ReviewedSpaceJourneysTest : LearnJourneyBase() {
         waitForTag("confirm_pdfs")
         scenario!!.recreate()
         waitForTag("confirm_pdfs")
-        assertTrue(awaitIo { deps.pdfImports!!.list().isEmpty() })
+        assertTrue(awaitIo { deps.pdfImports.list().isEmpty() })
         waitFor("restored confirmation enabled") { runCatching { rule.onNodeWithTag("confirm_pdfs").assertIsEnabled(); true }.getOrDefault(false) }
         tap(rule.onNodeWithTag("confirm_pdfs"))
-        waitFor("one row owned by selected space") { awaitIo { deps.pdfImports!!.list().singleOrNull()?.spaceId == id } }
+        waitFor("one row owned by selected space") { awaitIo { deps.pdfImports.list().singleOrNull()?.spaceId == id } }
     }
 
     @Test fun shared_pdf_confirmation_stays_visible_in_a_previously_scrolled_space_and_after_rotation() {
         val title = "Research notes"
         val id = awaitIo {
             deps.profiles.choose(LocalProfile.GUEST)
-            val spaces = requireNotNull(deps.spaces)
+            val spaces = deps.spaces
             val id = spaces.create(title).spaceId
             for (page in 1..20) spaces.add(id, SpaceMember.ServerDocumentRef("paper-$page", "1"))
             id
@@ -137,7 +137,7 @@ class ReviewedSpaceJourneysTest : LearnJourneyBase() {
             rule.onAllNodes(isDialog()).assertCountEquals(1)
             rule.onNodeWithTag("confirm_pdfs").assertIsDisplayed()
             rule.onNodeWithText(file.name).assertIsDisplayed()
-            assertTrue(awaitIo { deps.pdfImports!!.list().isEmpty() })
+            assertTrue(awaitIo { deps.pdfImports.list().isEmpty() })
         }
         assertOnePendingConfirmation()
         scenario!!.recreate()
@@ -145,7 +145,7 @@ class ReviewedSpaceJourneysTest : LearnJourneyBase() {
         waitFor("confirmed destination ready") { runCatching { rule.onNodeWithTag("confirm_pdfs").assertIsEnabled(); true }.getOrDefault(false) }
         tap(rule.onNodeWithTag("confirm_pdfs"))
         waitFor("one imported row in the chosen Space") {
-            awaitIo { deps.pdfImports!!.list().singleOrNull()?.let { it.spaceId == id && it.title == file.name } == true }
+            awaitIo { deps.pdfImports.list().singleOrNull()?.let { it.spaceId == id && it.title == file.name } == true }
         }
     }
 
@@ -182,7 +182,7 @@ class ReviewedSpaceJourneysTest : LearnJourneyBase() {
         awaitIo {
             deps.profiles.choose(LocalProfile.GUEST)
             val spec = ReviewedGames.partition("en")
-            val original = deps.learningProgress!!.start(spec, 52).checkpoint
+            val original = deps.learningProgress.start(spec, 52).checkpoint
             val exhausted = original.copy(actions = List(MechanicRegistry.MAX_ACTIONS) { GameAction.Help })
             val ledger = File(app.filesDir, "learning.json")
             val json = ContractJson.json
@@ -193,7 +193,7 @@ class ReviewedSpaceJourneysTest : LearnJourneyBase() {
         waitForTag("game_partition"); openGame(rule.onNodeWithTag("game_partition"))
         waitFor("new attempt offered on exhausted checkpoint", 5000) { has("restart_game") }
         tap(rule.onNodeWithTag("restart_game"))
-        waitFor("new attempt with no actions") { awaitIo { deps.learningProgress!!.checkpoint(ContentVersion("locker-search-en","1"))?.let { it.seed != 52L && it.actions.isEmpty() } == true } }
-        assertTrue(awaitIo { deps.learningProgress!!.projection().days.isEmpty() })
+        waitFor("new attempt with no actions") { awaitIo { deps.learningProgress.checkpoint(ContentVersion("locker-search-en","1"))?.let { it.seed != 52L && it.actions.isEmpty() } == true } }
+        assertTrue(awaitIo { deps.learningProgress.projection().days.isEmpty() })
     }
 }

@@ -96,7 +96,7 @@ class PresetAttachTest {
         }
     }
 
-    private fun contentPresets(dir: File = File(tmp.root, "source-documents")) = PresetSources(deps.content!!, SourceDocumentStore(dir))
+    private fun contentPresets(dir: File = File(tmp.root, "source-documents")) = PresetSources(deps.content, SourceDocumentStore(dir))
 
     private fun attention() = awaitIo { deps.packages.load("demo_attention").getOrThrow() }
     private fun quoteOf(c: SourceChunk) = c.text.split(Regex("\\s+")).take(6).joinToString(" ")

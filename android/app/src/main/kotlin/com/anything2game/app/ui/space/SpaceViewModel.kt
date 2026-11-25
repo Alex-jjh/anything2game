@@ -14,27 +14,33 @@ import com.anything2game.contract.game.ContentVersion
 import com.anything2game.contract.game.EvidenceRef
 import com.anything2game.contract.game.GenerationInput
 import com.anything2game.contract.space.*
-import com.anything2game.engine.progress.NodeStatus
+import com.anything2game.engine.ports.Clock
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.DayOfWeek
 import java.time.temporal.TemporalAdjusters
 
-/** [contentLanguage] is the language of the Space's materials ("en", "zh"), or null when they do not say. */
-internal data class SpaceCard(val space: Space, val path: LearningPath?, val status: Map<String, NodeStatus>, val contentLanguage: String? = null) {
-    val next get() = path?.nodes?.firstOrNull { status[it.nodeId] == NodeStatus.AVAILABLE }
-        ?: path?.nodes?.firstOrNull { status[it.nodeId] == NodeStatus.REVIEW }
-    val completed get() = status.values.count { it == NodeStatus.COMPLETE || it == NodeStatus.REVIEW }
+/**
+ * One Space on the Spaces tab. What is next, how many steps are finished and how many there are all come from [map], the same
+ * reading the route screen draws, so the card and the map cannot disagree. [contentLanguage] is the language of the Space's
+ * materials ("en", "zh"), or null when they do not say.
+ */
+internal data class SpaceCard(val space: Space, val path: LearningPath?, val map: RouteMap?, val contentLanguage: String? = null) {
+    val next get() = map?.current?.node
+    val completed get() = map?.done ?: 0
+    val total get() = map?.total ?: 0
 }
 
-internal class SpaceViewModel(deps: AppDependencies, private val language: String, private val detail: String?) : ViewModel() {
-    val spaces = requireNotNull(deps.spaces)
-    val catalog = requireNotNull(deps.materials)
-    val generation = requireNotNull(deps.generation)
-    private val queue = requireNotNull(deps.pdfImports)
-    private val progress = requireNotNull(deps.learningProgress)
-    private val clock = deps.clock
+internal class SpaceViewModel(
+    val spaces: SpaceRepository, val catalog: MaterialCatalog, val generation: GenerationRepository,
+    private val queue: PdfImportQueue, private val progress: LearningProgress, private val clock: Clock,
+    private val language: String, private val detail: String?,
+) : ViewModel() {
+    companion object {
+        fun of(deps: AppDependencies, language: String, detail: String?) =
+            SpaceViewModel(deps.spaces, deps.materials, deps.generation, deps.pdfImports, deps.learningProgress, deps.clock, language, detail)
+    }
     var cards by mutableStateOf(emptyList<SpaceCard>()); private set
     var materials by mutableStateOf(emptyList<Material>()); private set
     var imports by mutableStateOf(emptyList<PdfImportItem>()); private set
@@ -68,7 +74,8 @@ internal class SpaceViewModel(deps: AppDependencies, private val language: Strin
         cards = all.filter { detail == null || it.spaceId == detail }.map { space ->
             val path = spaces.route(space, language, inventory.materials)
             val own = inventory.materials.filter { it.member in space.members || it.localPack?.let(space.members::contains) == true }
-            SpaceCard(space, path, path?.let { inventory.statuses(it, progress.profileId, projection, now) }.orEmpty(),
+            SpaceCard(space, path, path?.let { routeMap(it, inventory.statuses(it, progress.profileId, projection, now),
+                inventory.standings(it, progress.profileId, projection, now), ::materialInfo, ::sourceTitle) },
                 own.map { it.language.substringBefore('-').lowercase() }.filter { it.isNotBlank() }.groupingBy { it }.eachCount().maxByOrNull { it.value }?.key)
         }.let { list -> if (detail != null) list else
             // First impression: Spaces in the reader's own language first; stable, so the saved order holds within each group.

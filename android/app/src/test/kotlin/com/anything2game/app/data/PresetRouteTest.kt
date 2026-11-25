@@ -20,7 +20,7 @@ class PresetRouteTest {
     private val deps = AndroidAppContainer(ApplicationProvider.getApplicationContext())
     private fun material(pkg: String) = runBlocking {
         deps.profiles.choose(LocalProfile.GUEST)
-        deps.materials!!.materials().single { it.localPack?.packageId == pkg }
+        deps.materials.materials().single { it.localPack?.packageId == pkg }
     }
     private fun levels(pkg: String) = runBlocking { deps.packages.load(pkg).getOrThrow().levels }
 
@@ -68,16 +68,16 @@ class PresetRouteTest {
     @Test fun the_practice_step_opens_in_the_frame_the_player_prefers() {
         runBlocking { deps.profiles.choose(LocalProfile.GUEST) }
         deps.framePreferences.set("demo_attention", com.anything2game.contract.FrameId.CASE)
-        val practice = runBlocking { deps.materials!!.materials().single { it.localPack?.packageId == "demo_attention" } }.nodes.map { it.activity }.filterIsInstance<ActivityRef.Practice>()
+        val practice = runBlocking { deps.materials.materials().single { it.localPack?.packageId == "demo_attention" } }.nodes.map { it.activity }.filterIsInstance<ActivityRef.Practice>()
         assertTrue(practice.all { it.frame == com.anything2game.contract.FrameId.CASE })
     }
 
     @Test fun the_sample_student_arrives_with_a_lived_in_map() {
         val statuses = runBlocking {
             deps.profiles.choose(LocalProfile.SAMPLE)
-            val material = deps.materials!!.materials().single { it.localPack?.packageId == "demo_attention" }
-            val path = deps.spaces!!.route(deps.spaces!!.list().first { material.member in it.members }, "en", listOf(material))!!
-            deps.materials!!.nodeStatuses(path, deps.learningProgress!!, System.currentTimeMillis())
+            val material = deps.materials.materials().single { it.localPack?.packageId == "demo_attention" }
+            val path = deps.spaces.route(deps.spaces.list().first { material.member in it.members }, "en", listOf(material))!!
+            deps.materials.nodeStatuses(path, deps.learningProgress, System.currentTimeMillis())
         }
         val done = statuses.values.count { it == com.anything2game.engine.progress.NodeStatus.COMPLETE || it == com.anything2game.engine.progress.NodeStatus.REVIEW }
         assertEquals(2, done)
@@ -112,14 +112,14 @@ class PresetRouteTest {
     @Test fun finishing_the_game_from_the_playground_credits_its_route_step_and_the_sample_map_still_opens_part_way() {
         val progress = runBlocking {
             deps.profiles.choose(LocalProfile.SAMPLE)
-            val material = deps.materials!!.materials().single { it.localPack?.packageId == "demo_resnet" }
-            val path = deps.spaces!!.route(deps.spaces!!.list().first { material.member in it.members }, "en", listOf(material))!!
+            val material = deps.materials.materials().single { it.localPack?.packageId == "demo_resnet" }
+            val path = deps.spaces.route(deps.spaces.list().first { material.member in it.members }, "en", listOf(material))!!
             val game = path.nodes.single { it.activity is ActivityRef.Game }
-            val before = deps.materials!!.nodeStatuses(path, deps.learningProgress!!, System.currentTimeMillis())
+            val before = deps.materials.nodeStatuses(path, deps.learningProgress, System.currentTimeMillis())
             assertEquals("the map opens part-way: the game waits behind the half-played practice", com.anything2game.engine.progress.NodeStatus.LOCKED, before.getValue(game.nodeId))
             assertEquals(1, before.values.count { it == com.anything2game.engine.progress.NodeStatus.AVAILABLE })
-            deps.learningProgress!!.record(game.activity, com.anything2game.contract.progress.ActivityOutcome.INDEPENDENT, System.currentTimeMillis())
-            deps.materials!!.nodeStatuses(path, deps.learningProgress!!, System.currentTimeMillis()).getValue(game.nodeId)
+            deps.learningProgress.record(game.activity, com.anything2game.contract.progress.ActivityOutcome.INDEPENDENT, System.currentTimeMillis())
+            deps.materials.nodeStatuses(path, deps.learningProgress, System.currentTimeMillis()).getValue(game.nodeId)
         }
         assertEquals(com.anything2game.engine.progress.NodeStatus.COMPLETE, progress)
     }

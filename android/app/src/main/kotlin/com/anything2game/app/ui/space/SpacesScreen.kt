@@ -32,6 +32,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import com.anything2game.app.ui.character.LocalAvatar
+import com.anything2game.app.ui.common.StatusBadge
 import com.anything2game.app.ui.character.Mood
 import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.testTag
@@ -52,12 +53,12 @@ import com.anything2game.app.ui.library.LibraryViewModel
 import com.anything2game.app.ui.theme.A2g
 import com.anything2game.contract.game.*
 import com.anything2game.contract.space.*
-import com.anything2game.engine.progress.NodeStatus
+import com.anything2game.engine.progress.ActivityStatus
 
 @Composable
 internal fun spaceModel(deps: AppDependencies, language: String, detail: String? = null): SpaceViewModel {
     val profile by deps.profiles.active.collectAsStateWithLifecycle()
-    val vm = viewModel(key = "spaces:${profile?.id}:$language:$detail") { SpaceViewModel(deps, language, detail) }
+    val vm = viewModel(key = "spaces:${profile?.id}:$language:$detail") { SpaceViewModel.of(deps, language, detail) }
     LifecycleResumeEffect(vm) { vm.perform(); onPauseOrDispose {} }
     return vm
 }
@@ -98,10 +99,9 @@ internal fun SpacesHome(deps: AppDependencies, language: String, padding: Paddin
                         }
                     }
                 }
-                val count = card.path?.nodes?.size ?: 0
                 Text(stringResource(R.string.spaces_counts, pluralStringResource(R.plurals.spaces_material_count, card.space.members.size, card.space.members.size),
-                    pluralStringResource(R.plurals.spaces_activities_complete, count, card.completed, count)), Modifier.testTag("space_counts_${card.space.spaceId}"))
-                LinearProgressIndicator(progress = { if (count == 0) 0f else card.completed.toFloat()/count }, modifier = Modifier.fillMaxWidth())
+                    pluralStringResource(R.plurals.spaces_activities_complete, card.total, card.completed, card.total)), Modifier.testTag("space_counts_${card.space.spaceId}"))
+                LinearProgressIndicator(progress = { if (card.total == 0) 0f else card.completed.toFloat() / card.total }, modifier = Modifier.fillMaxWidth())
                 card.next?.let { Text(stringResource(R.string.spaces_next, it.title), color = A2g.skin.inkMuted) }
                 OutlinedButton({ nav.openSpace(card.space.spaceId) }, Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("open_space_${card.space.spaceId}")) {
                     Text(stringResource(R.string.spaces_open))
@@ -142,7 +142,7 @@ internal fun SpaceScreen(deps: AppDependencies, language: String, route: Route.S
         selectionId = null
         nav.clearPdfConfirmation(batchId)
     }
-    val map = remember(card?.path, card?.status, vm.materials) { card?.path?.let { path -> routeMap(path, card.status, vm::materialInfo, vm::sourceTitle) } }
+    val map = card?.map
     val sheet = map?.steps?.firstOrNull { it.id == selectedStep }
     // Like a course map, open where the learner is: at the unit of the next step, once per visit.
     var positioned by rememberSaveable(route.id) { mutableStateOf(false) }
@@ -244,12 +244,13 @@ internal fun SpaceScreen(deps: AppDependencies, language: String, route: Route.S
             AnimatedVisibility(sheet != null, Modifier.align(Alignment.BottomCenter), enter = slideInVertically { it } + fadeIn(), exit = slideOutVertically { it } + fadeOut()) {
                 last?.let { step ->
                     val material = vm.materialOf(step.node)
-                    val resumable by produceState(false, step.id, vm.cards) {
+                    val status by produceState(ActivityStatus(step.standing), step.id, vm.cards) {
                         val activity = step.node.activity
-                        value = activity is ActivityRef.Practice && runCatching { deps.sessions.load(activity.contentId, activity.contentVersion) }.getOrNull()
-                            ?.let { !it.isFinished && it.levelId == activity.activityId } == true
+                        val open = (activity as? ActivityRef.Practice)?.let { runCatching { deps.sessions.load(it.contentId, it.contentVersion) }.getOrNull() }
+                            ?.takeIf { !it.isFinished && it.levelId == activity.activityId }
+                        value = ActivityStatus(step.standing, open?.let { it.position + 1 }, open?.queue?.size)
                     }
-                    StepSheet(step, sectionAccent(map?.sections?.firstOrNull { s -> s.steps.any { it.id == step.id } }?.number?.minus(1) ?: 0), resumable, !vm.busy,
+                    StepSheet(step, status, sectionAccent(map?.sections?.firstOrNull { s -> s.steps.any { it.id == step.id } }?.number?.minus(1) ?: 0), !vm.busy,
                         onStart = { start(step.node) }, onDismiss = { selectedStep = null }, onSource = { selectedEvidence = step.id })
                     if (selectedEvidence == step.id) step.source?.let { source ->
                         ActivityEvidence(vm.catalog, deps.sources, source.evidence, material, (source.evidence as? EvidenceRef.Pdf)?.let { vm.sourceTitle(step.node, it) }) { selectedEvidence = null }
@@ -318,7 +319,7 @@ private fun ProgressStrip(map: RouteMap, materials: Int, days: Int) {
 
 /** What a tapped node offers: what it is, how long, where it comes from, and one big button. */
 @Composable
-private fun StepSheet(step: RouteStep, accent: Color, resumable: Boolean, enabled: Boolean, onStart: () -> Unit, onDismiss: () -> Unit, onSource: () -> Unit) {
+private fun StepSheet(step: RouteStep, status: ActivityStatus, accent: Color, enabled: Boolean, onStart: () -> Unit, onDismiss: () -> Unit, onSource: () -> Unit) {
     val skin = A2g.skin
     Column(Modifier.fillMaxWidth().widthIn(max = 560.dp).clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)).background(skin.card)
         .pointerInput(Unit) {}.padding(horizontal = 22.dp, vertical = 18.dp).navigationBarsPadding().testTag("route_sheet"),
@@ -334,6 +335,8 @@ private fun StepSheet(step: RouteStep, accent: Color, resumable: Boolean, enable
             }
             IconButton(onDismiss, Modifier.testTag("route_sheet_close")) { Icon(Icons.Filled.Close, stringResource(R.string.route_close)) }
         }
+        // Where the learner stands with this step, in the same words as everywhere else.
+        StatusBadge(status, Modifier.testTag("route_sheet_status"))
         step.source?.let { source ->
             AssistChip(onSource, { Text(stringResource(R.string.spaces_source_page, source.material ?: source.evidence.documentId, source.page)) },
                 Modifier.heightIn(min = 48.dp).testTag("route_sheet_source"), leadingIcon = { Icon(Icons.Filled.Description, null, Modifier.size(18.dp)) })
@@ -342,7 +345,7 @@ private fun StepSheet(step: RouteStep, accent: Color, resumable: Boolean, enable
             colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color.White), shape = RoundedCornerShape(16.dp)) {
             Text(stringResource(when {
                 step.state == StepState.DONE || step.state == StepState.REVIEW -> R.string.route_review
-                resumable -> R.string.route_continue
+                status.inProgress -> R.string.route_continue
                 else -> R.string.route_start
             }), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }

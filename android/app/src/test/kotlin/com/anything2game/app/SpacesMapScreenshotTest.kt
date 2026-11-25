@@ -39,9 +39,9 @@ class SpacesMapScreenshotTest {
         val deps = AndroidAppContainer(app)
         val spaceId = runBlocking {
             deps.profiles.choose(profile)
-            if (create != null) deps.spaces!!.create(create).spaceId else {
-                val material = deps.materials!!.materials().single { it.localPack?.packageId == pkg }
-                deps.spaces!!.list().first { material.member in it.members || it.members.any { m -> m.version().contentId == pkg } }.spaceId
+            if (create != null) deps.spaces.create(create).spaceId else {
+                val material = deps.materials.materials().single { it.localPack?.packageId == pkg }
+                deps.spaces.list().first { material.member in it.members || it.members.any { m -> m.version().contentId == pkg } }.spaceId
             }
         }
         val nav = Navigator(SavedStateHandle()).apply { openSpace(spaceId) }
@@ -69,8 +69,8 @@ class SpacesMapScreenshotTest {
     fun lin_zh_map() {
         val deps = open(LocalProfile.SAMPLE, "demo_zh_spaced")
         runBlocking {
-            val route = deps.materials!!.materials().single { it.localPack?.packageId == "demo_zh_spaced" }.nodes
-            route.take(2).forEach { deps.learningProgress!!.recordRead(it.activity as com.anything2game.contract.space.ActivityRef.Tutor, System.currentTimeMillis() - 3_600_000) }
+            val route = deps.materials.materials().single { it.localPack?.packageId == "demo_zh_spaced" }.nodes
+            route.take(2).forEach { deps.learningProgress.recordRead(it.activity as com.anything2game.contract.space.ActivityRef.Tutor, System.currentTimeMillis() - 3_600_000) }
         }
         ready(); shot("s2_zh_map")
     }

@@ -78,16 +78,16 @@ class PlainLanguageGuardTest : LearnJourneyBase() {
         norm(awaitIo {
             val packages = deps.packages.list().map { deps.packages.load(it.packageId).getOrThrow() }
             val scripts = packages.mapNotNull { deps.tutorScripts.scriptFor(it.packageId) }
-            val nodes = deps.materials?.materials()?.flatMap { it.nodes }.orEmpty()
-            listOf(packages, scripts, nodes, deps.spaces?.list().orEmpty(), ReviewedGames.all("en"), ReviewedGames.all("zh")).joinToString(" ") { it.toString() }
+            val nodes = deps.materials.materials()?.flatMap { it.nodes }.orEmpty()
+            listOf(packages, scripts, nodes, deps.spaces.list().orEmpty(), ReviewedGames.all("en"), ReviewedGames.all("zh")).joinToString(" ") { it.toString() }
         })
     }
     private val courseTitles: List<String> by lazy {
         awaitIo {
             val packages = deps.packages.list().map { deps.packages.load(it.packageId).getOrThrow() }
             (packages.flatMap { listOf(it.title) + it.levels.map { l -> l.title } } +
-                deps.materials?.materials().orEmpty().flatMap { m -> listOf(m.title) + m.nodes.map { it.title } } +
-                deps.spaces?.list().orEmpty().map { it.title } +
+                deps.materials.materials().orEmpty().flatMap { m -> listOf(m.title) + m.nodes.map { it.title } } +
+                deps.spaces.list().orEmpty().map { it.title } +
                 packages.mapNotNull { deps.tutorScripts.scriptFor(it.packageId) }.flatMap { s -> s.blueprint.concepts.map { it.question.concept } }).filter { it.length > 2 }.sortedByDescending { it.length }
         }
     }
@@ -112,8 +112,8 @@ class PlainLanguageGuardTest : LearnJourneyBase() {
         assertPlain("Spaces list", language)
 
         val (spaceId, nodeId) = awaitIo {
-            val mat = deps.materials!!.materials().single { it.localPack?.packageId == pkg }
-            deps.spaces!!.list().first { mat.member in it.members }.spaceId to mat.nodes.first().nodeId
+            val mat = deps.materials.materials().single { it.localPack?.packageId == pkg }
+            deps.spaces.list().first { mat.member in it.members }.spaceId to mat.nodes.first().nodeId
         }
         waitFor("the Space card") { runCatching { rule.onNodeWithTag("home_SPACES").performScrollToNode(hasTestTag("open_space_$spaceId")); true }.getOrDefault(false) }
         tap(rule.onNodeWithTag("open_space_$spaceId"))

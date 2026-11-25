@@ -16,13 +16,11 @@
     <string name="home_upload_body">选择一份 PDF。你确认后，它会发送到我们的服务器，由服务器准备几道开场小问题和对应的讲解。</string>
     <string name="home_read_first_action">查看资料原文</string>
     <string name="home_classic">按文件 · 选一种玩法</string>
-    <string name="home_level_solid">已巩固</string>
     <string name="home_resume">继续上次进度</string>
     <string name="home_practice_action">开始巩固</string>
     <string name="home_progress">学习足迹</string>
     <string name="home_stat_documents">文件</string>
     <string name="home_stat_practiced">已练知识点</string>
-    <string name="home_stat_review">待复习</string>
     <string name="home_stats_note">只统计这部手机上的记录，包括现成示例。练过不等于已经学会。</string>
     <string name="home_go_practice">前往巩固</string>
     <string name="home_account_title">数据留在这台设备</string>
@@ -35,5 +33,4 @@
     <string name="home_save">保存</string>
     <string name="home_identity_note">选一位学习伙伴，一起把论文读明白。</string>
     <string name="reading_source">查看对应原文</string>
-    <string name="home_needs_review">待巩固</string>
 </resources>

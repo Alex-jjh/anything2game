@@ -3,9 +3,21 @@ package com.anything2game.app.ui.library
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.anything2game.app.AppDependencies
+import com.anything2game.app.data.FramePreferences
+import com.anything2game.app.data.learning.LearningProgress
+import com.anything2game.app.data.tutor.TutorRepository
+import com.anything2game.app.data.tutor.TutorScripts
+import com.anything2game.engine.ports.Clock
+import com.anything2game.engine.ports.MasteryStore
+import com.anything2game.engine.ports.PackageRepository
+import com.anything2game.engine.ports.SessionStore
+import com.anything2game.engine.ports.FrameRepository
 import com.anything2game.contract.LearningPackage
 import com.anything2game.engine.mastery.MasteryRecord
+import com.anything2game.engine.progress.ActivityProgress
+import com.anything2game.engine.progress.ActivityStatus
 import com.anything2game.engine.session.SessionState
+import com.anything2game.contract.space.ActivityRef
 import kotlinx.coroutines.CancellationException
 import com.anything2game.contract.FrameId
 import com.anything2game.engine.ports.PackageSummary
@@ -25,10 +37,8 @@ data class LibraryUiState(
 
 data class LibraryEntry(
     val summary: PackageSummary,
-    val levels: List<LevelEntry>,
     val frames: List<FrameId> = listOf(FrameId.CLASSIC),
     val selectedFrame: FrameId = FrameId.CLASSIC,
-    val prepared: Boolean = false,
     val practicedUnits: Int = 0,
     val dueUnits: Int = 0,
     val resumableLevelId: String? = null,
@@ -44,85 +54,92 @@ data class LibraryEntry(
     fun frameFor(levelId: String): FrameId = if (levelId == resumableLevelId) resumeFrame else selectedFrame
 }
 
-data class LevelEntry(val levelId: String, val number: Int, val title: String, val status: LevelStatus)
+/** One row of a course's practice list. [status] is what the route would show for the same level. */
+data class PracticeLevel(val levelId: String, val number: Int, val title: String, val status: ActivityStatus)
 
-sealed interface LevelStatus {
-    data object New : LevelStatus
-    data class InProgress(val position: Int, val total: Int) : LevelStatus
-    data object NeedsReview : LevelStatus
-    /** Every clue right last time, but not yet solid (that needs a later review): a win, not "needs practice". */
-    data object Cleared : LevelStatus
-    data object Done : LevelStatus
-}
+class LibraryViewModel(
+    private val packages: PackageRepository, private val frames: FrameRepository, private val sessions: SessionStore, private val mastery: MasteryStore,
+    private val clock: Clock, private val framePreferences: FramePreferences, private val tutorScripts: TutorScripts, private val tutors: TutorRepository,
+    private val progress: LearningProgress,
+) : ViewModel() {
+    companion object {
+        fun of(deps: AppDependencies) = LibraryViewModel(deps.packages, deps.frames, deps.sessions, deps.mastery, deps.clock,
+            deps.framePreferences, deps.tutorScripts, deps.tutors, deps.learningProgress)
+    }
 
-class LibraryViewModel(private val deps: AppDependencies) : ViewModel() {
     private val _state = MutableStateFlow(LibraryUiState())
     val state: StateFlow<LibraryUiState> = _state.asStateFlow()
 
     init { refresh() }
 
     fun selectFrame(packageId: String, frameId: FrameId) {
-        deps.framePreferences.set(packageId, frameId)
+        framePreferences.set(packageId, frameId)
         refresh()
     }
 
     suspend fun preparePractice(sessionId: String) {
-        val session = deps.tutors.list().single { it.sessionId == sessionId }
-        deps.tutors.preparePractice(session)
+        val session = tutors.list().single { it.sessionId == sessionId }
+        tutors.preparePractice(session)
         refresh()
     }
 
     fun refresh() = viewModelScope.launch {
         var failed = false
         val entries = try {
-            deps.packages.list().mapNotNull { summary ->
+            packages.list().mapNotNull { summary ->
                 try {
-                    val pkg = deps.packages.load(summary.packageId).getOrThrow()
-                    val frames = com.anything2game.app.ui.play.offeredFrames(pkg, deps.frames.available(pkg.packageId))
-                    libraryEntry(summary, pkg, deps.sessions.load(summary.packageId, pkg.contentVersion), deps.mastery.all(summary.packageId, pkg.contentVersion), deps.clock.now())
-                        .copy(prepared = deps.homePreferences.isPrepared(pkg.packageId, pkg.contentVersion),
-                            frames = frames, selectedFrame = deps.framePreferences.get(pkg.packageId)?.takeIf { it in frames } ?: FrameId.CLASSIC)
+                    val pkg = packages.load(summary.packageId).getOrThrow()
+                    val offered = com.anything2game.app.ui.play.offeredFrames(pkg, frames.available(pkg.packageId))
+                    libraryEntry(summary, pkg, sessions.load(summary.packageId, pkg.contentVersion), mastery.all(summary.packageId, pkg.contentVersion), clock.now())
+                        .copy(frames = offered, selectedFrame = framePreferences.get(pkg.packageId)?.takeIf { it in offered } ?: FrameId.CLASSIC)
                 } catch (e: CancellationException) { throw e }
                 catch (_: Exception) { failed = true; null }
             }
         } catch (e: CancellationException) { throw e }
         catch (_: Exception) { failed = true; emptyList() }
-        val scripted = try { deps.tutorScripts.scriptedPackageIds().toSet() } catch (e: CancellationException) { throw e }
+        val scripted = try { tutorScripts.scriptedPackageIds().toSet() } catch (e: CancellationException) { throw e }
             catch (_: Exception) { emptySet() }
-        val tutorials = try { deps.tutors.list() } catch (e: CancellationException) { throw e }
+        val tutorials = try { tutors.list() } catch (e: CancellationException) { throw e }
             catch (_: Exception) { failed = true; emptyList() }
-        val progress = try { deps.learningProgress?.projection() } catch (e: CancellationException) { throw e } catch (_: Exception) { failed = true; null }
+        val projection = try { progress.projection() } catch (e: CancellationException) { throw e } catch (_: Exception) { failed = true; null }
         val history = entries.sumOf { entry ->
-            try { deps.mastery.legacyUnversioned(entry.summary.packageId).values.count { it.attempts > 0 } }
+            try { mastery.legacyUnversioned(entry.summary.packageId).values.count { it.attempts > 0 } }
             catch (e: CancellationException) { throw e }
             catch (_: Exception) { failed = true; 0 }
         }
-        _state.value = LibraryUiState(activityProgress = progress, legacyUnits = history, loading = false, entries = entries.map { e ->
+        _state.value = LibraryUiState(activityProgress = projection, legacyUnits = history, loading = false, entries = entries.map { e ->
             val has = e.summary.packageId in scripted
-            e.copy(hasTutor = has, tutorProgress = if (has) try { deps.tutors.progressFor(e.summary.packageId) } catch (c: CancellationException) { throw c } catch (_: Exception) { null } else null)
+            e.copy(hasTutor = has, tutorProgress = if (has) try { tutors.progressFor(e.summary.packageId) } catch (c: CancellationException) { throw c } catch (_: Exception) { null } else null)
         }, hasError = failed, tutorials = tutorials)
     }
 }
 
-/** UI progress counts only units belonging to this package, never failed attempts as completed mastery. */
+/** The Me tab's counts: only units belonging to this package, never failed attempts as completed mastery. */
 internal fun libraryEntry(
     summary: PackageSummary, pkg: LearningPackage, saved: SessionState?,
     mastery: Map<String, MasteryRecord>, now: Long,
 ): LibraryEntry {
-    val session = saved?.takeIf { it.contentVersion == pkg.contentVersion && !it.isFinished && pkg.level(it.levelId) != null }
+    val session = openSession(pkg, saved)
     val ids = pkg.levels.flatMap { it.units }.map { it.unitId }.toSet()
     val records = mastery.filterKeys { it in ids }.values.filter { it.attempts > 0 }
-    val levels = pkg.levels.mapIndexed { i, level ->
-        val status = when {
-            session?.levelId == level.levelId -> LevelStatus.InProgress(session.position + 1, session.queue.size)
-            level.units.isNotEmpty() && level.units.all { mastery[it.unitId]?.isSolid == true } -> LevelStatus.Done
-            level.units.isNotEmpty() && level.units.all { (mastery[it.unitId]?.box ?: 0) >= 1 } -> LevelStatus.Cleared
-            level.units.any { (mastery[it.unitId]?.attempts ?: 0) > 0 } -> LevelStatus.NeedsReview
-            else -> LevelStatus.New
-        }
-        LevelEntry(level.levelId, i + 1, level.title, status)
-    }
-    return LibraryEntry(summary, levels, practicedUnits = records.size,
+    return LibraryEntry(summary, practicedUnits = records.size,
         dueUnits = records.count { !it.isSolid && it.dueAt <= now },
         resumableLevelId = session?.levelId, resumeFrame = session?.frameId ?: FrameId.CLASSIC, documentId = pkg.documentId, mock = pkg.generation.model.contains("fake"))
+}
+
+/** The saved session of this course, when it is unfinished, of this content version and of a level that still exists. */
+private fun openSession(pkg: LearningPackage, saved: SessionState?) =
+    saved?.takeIf { it.contentVersion == pkg.contentVersion && !it.isFinished && pkg.level(it.levelId) != null }
+
+/**
+ * The practice list of one course: each level with the status the route shows for the same activity, from the same ledger
+ * projection ([progress]); a level with a saved session in progress says so with its place in it.
+ */
+internal fun practiceLevels(pkg: LearningPackage, saved: SessionState?, progress: ActivityProgress, profileId: String, now: Long): List<PracticeLevel> {
+    val session = openSession(pkg, saved)
+    return pkg.levels.mapIndexed { i, level ->
+        val key = ActivityRef.Practice(pkg.packageId, pkg.contentVersion, level.levelId).key(profileId)
+        val open = session?.takeIf { it.levelId == level.levelId }?.let { it.position + 1 to it.queue.size }
+        PracticeLevel(level.levelId, i + 1, level.title, progress.status(key, now, open))
+    }
 }

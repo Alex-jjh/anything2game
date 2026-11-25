@@ -51,13 +51,13 @@ import java.io.File
 
 /** Everything screens depend on. Screens see only interfaces, so tests and new adapters swap in freely. */
 interface AppDependencies {
-    val content: ContentLibrary? get() = null
-    val learningProgress: LearningProgress? get() = null
-    val practiceCommits: PracticeStore? get() = null
-    val materials: MaterialCatalog? get() = null
-    val spaces: SpaceRepository? get() = null
-    val generation: GenerationRepository? get() = null
-    val pdfImports: PdfImportQueue? get() = null
+    val content: ContentLibrary
+    val learningProgress: LearningProgress
+    val practiceCommits: PracticeStore
+    val materials: MaterialCatalog
+    val spaces: SpaceRepository
+    val generation: GenerationRepository
+    val pdfImports: PdfImportQueue
     val tutors: com.anything2game.app.data.tutor.TutorRepository
     val packages: PackageRepository
     val tutorScripts: com.anything2game.app.data.tutor.TutorScripts
@@ -100,8 +100,10 @@ class AndroidAppContainer(context: Context, private val apiBaseUrl: String = Bui
     /** Everything that belongs to one person on this phone, built from the same store classes for every profile. */
     private inner class UserScope(val profile: LocalProfile) {
         private val dir = profile.dir(app)
+        val homePreferences = HomePreferences(app, profile.prefs("home"))
         val progress: LearningProgress = LearningProgress(File(dir, "learning.json"), profile.id, clock,
-            tutorHistory = { tutors.savedHistory() }, beforeProjection = ::recoverProgress)
+            tutorHistory = { tutors.savedHistory() }, beforeProjection = ::recoverProgress, policy = masteryPolicy,
+            legacyStars = homePreferences::legacyStars)
         private suspend fun recoverProgress() {
             practice.recover()
             tutors.recoverPendingReads()
@@ -115,7 +117,6 @@ class AndroidAppContainer(context: Context, private val apiBaseUrl: String = Bui
         private val api = ActivityApi(transport)
         private val authenticated = AuthenticatedCourses(File(dir, "owned-courses.json"), content, transport::localOwnerKey)
         val framePreferences: FramePreferences = SharedPrefsFramePreferences(app, profile.prefs("frames"))
-        val homePreferences = HomePreferences(app, profile.prefs("home"))
         val avatarPreferences: AvatarPreferences = SharedPrefsAvatarPreferences(app, profile.prefs("avatar"))
         val explainerPreferences: ExplainerPreferences = SharedPrefsExplainerPreferences(app, profile.prefs("explainer"))
         val tutors = AndroidTutorRepository(app, packages, tutorScripts, authenticated::install, File(dir, "tutor-sessions"), profile.prefs("tutor_connection"), File(dir, "source-documents"), http, progress::tutorRead)

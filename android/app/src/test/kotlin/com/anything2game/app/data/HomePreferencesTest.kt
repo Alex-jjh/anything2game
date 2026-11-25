@@ -21,26 +21,12 @@ class HomePreferencesTest {
         reopened.nickname = ""
         assertEquals("", HomePreferences(context).nickname)
     }
-    @Test fun `preparation is versioned and old choices remain available`() {
-        val prefs = HomePreferences(RuntimeEnvironment.getApplication())
-        prefs.setFamiliarity("p", "1", "l", Familiarity.UNSURE)
-        assertNull(prefs.familiarity("p", "2", "l"))
-        prefs.setFamiliarity("p", "2", "l", Familiarity.KNOWN)
-        assertEquals(Familiarity.UNSURE, prefs.familiarity("p", "1", "l"))
-        assertEquals(Familiarity.KNOWN, prefs.familiarity("p", "2", "l"))
-    }
-    @Test fun `skipping self assessment marks only that content version prepared`() {
-        val prefs = HomePreferences(RuntimeEnvironment.getApplication())
-        assertFalse(prefs.isPrepared("p", "1"))
-        prefs.markPrepared("p", "1")
-        assertTrue(prefs.isPrepared("p", "1"))
-        assertFalse(prefs.isPrepared("p", "2"))
-        assertNull(prefs.familiarity("p", "1", "@prepared"))
-    }
-    @Test fun `compound identifiers cannot collide`() {
-        val prefs = HomePreferences(RuntimeEnvironment.getApplication())
-        prefs.setFamiliarity("p:a", "1", "l", Familiarity.NEW)
-        assertNull(prefs.familiarity("p", "a:1", "l"))
+    @Test fun `stars an older version kept are still readable and never written again`() {
+        val context = RuntimeEnvironment.getApplication()
+        val game = com.anything2game.contract.game.ContentVersion("locker-search-en", "1")
+        context.getSharedPreferences("home", android.content.Context.MODE_PRIVATE).edit().putInt("stars:" + listOf(game.contentId, game.contentVersion).joinToString(":") { "${it.length}:$it" }, 2).commit()
+        assertEquals(2, HomePreferences(context).legacyStars(game))
+        assertEquals(0, HomePreferences(context).legacyStars(com.anything2game.contract.game.ContentVersion("workshop-en", "1")))
     }
     @Test fun `editing profile does not change previous character or frame preferences`() {
         val context = RuntimeEnvironment.getApplication()

@@ -39,6 +39,7 @@ import com.anything2game.app.R
 import com.anything2game.app.ui.character.LocalAvatar
 import com.anything2game.app.ui.character.Mood
 import com.anything2game.app.ui.character.rememberReducedMotion
+import com.anything2game.app.ui.common.label
 import com.anything2game.app.ui.theme.A2g
 import com.anything2game.app.ui.theme.Skin
 import com.anything2game.app.ui.theme.castColor
@@ -67,15 +68,14 @@ internal fun StepKind.label() = stringResource(when (this) {
     StepKind.GAME -> R.string.route_kind_game
 })
 
+/** What a step says about itself: where it sits on the route when that is the news (up next, locked, needs an update), else how the learner is doing. */
 @Composable
-internal fun StepState.label() = stringResource(when (this) {
-    StepState.DONE -> R.string.route_state_done
-    StepState.REVIEW -> R.string.route_state_review
-    StepState.CURRENT -> R.string.route_state_current
-    StepState.AVAILABLE -> R.string.route_state_available
-    StepState.LOCKED -> R.string.route_state_locked
-    StepState.UPDATE -> R.string.route_state_update
-})
+internal fun RouteStep.statusLabel() = when (state) {
+    StepState.CURRENT -> stringResource(R.string.route_state_current)
+    StepState.LOCKED -> stringResource(R.string.route_state_locked)
+    StepState.UPDATE -> stringResource(R.string.route_state_update)
+    StepState.DONE, StepState.REVIEW, StepState.AVAILABLE -> standing.label()
+}
 
 internal fun StepKind.icon(): ImageVector = when (this) {
     StepKind.EXPLAIN -> Icons.AutoMirrored.Filled.MenuBook
@@ -196,7 +196,7 @@ private fun StepNode(step: RouteStep, accent: Color, size: Dp, avatarOnLeft: Boo
         StepState.AVAILABLE -> NodeLook(skin.card, accent, accent.copy(alpha = 0.55f), accent)
         StepState.LOCKED, StepState.UPDATE -> NodeLook(grey.compositeOver(skin.paper), skin.inkMuted, skin.outline.copy(alpha = 0.45f), null)
     }
-    val description = stringResource(R.string.route_step_description, step.number, step.title, step.kind.label(), state.label())
+    val description = stringResource(R.string.route_step_description, step.number, step.title, step.kind.label(), step.statusLabel())
     Box(Modifier.size(size)
         .onGloballyPositioned { centre(it.positionInRoot() + Offset(it.size.width / 2f, it.size.height / 2f)) }
         .drawBehind { drawCircle(edge, radius = this.size.minDimension / 2f, center = Offset(this.size.width / 2f, this.size.height / 2f + Depth.toPx())) },

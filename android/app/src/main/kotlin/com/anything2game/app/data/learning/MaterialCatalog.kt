@@ -15,6 +15,7 @@ import com.anything2game.contract.pack.*
 import com.anything2game.contract.space.*
 import com.anything2game.contract.tutor.TutorQuestion
 import com.anything2game.engine.progress.NodeStatus
+import com.anything2game.engine.progress.Standing
 import com.anything2game.engine.progress.ActivityProgress
 import com.anything2game.engine.game.completionActivity
 
@@ -46,11 +47,17 @@ internal class MaterialInventory(val materials: List<Material>, games: List<Cont
     private val versions = keys.map { ContentVersion(it.contentId, it.contentVersion) }.toSet()
     fun contains(ref: ActivityRef) = ref.key("") in keys
 
+    private fun bind(path: LearningPath) = path.copy(nodes = path.nodes.map { it.bindTutor(materials, path.language) })
+
     fun statuses(path: LearningPath, profile: String, progress: ActivityProgress, now: Long): Map<String, NodeStatus> {
-        val bound = path.copy(nodes = path.nodes.map { it.bindTutor(materials, path.language) })
+        val bound = bind(path)
         val projected = progress.nodes(profile, bound, versions, now)
         return bound.nodes.associate { node -> node.nodeId to if (contains(node.activity)) projected.getValue(node.nodeId) else NodeStatus.NEEDS_UPDATE }
     }
+
+    /** How each node of [path] is going, by the same rule as [statuses] and the practice list. */
+    fun standings(path: LearningPath, profile: String, progress: ActivityProgress, now: Long): Map<String, Standing> =
+        progress.standings(profile, bind(path), now)
 }
 
 sealed interface OpenActivity {

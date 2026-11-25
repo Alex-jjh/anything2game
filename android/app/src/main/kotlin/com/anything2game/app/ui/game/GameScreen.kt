@@ -26,6 +26,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.anything2game.app.AppDependencies
 import com.anything2game.app.R
+import com.anything2game.app.data.HomePreferences
 import com.anything2game.app.data.content.ContentLibrary
 import com.anything2game.app.data.learning.LearningProgress
 import com.anything2game.app.ui.character.LocalAvatar
@@ -42,12 +43,21 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 
+/**
+ * One game on screen: loads or resumes its run, applies moves, and keeps what outlives the screen: the stars earned (in the
+ * learning ledger, so a fresh attempt never loses them), the game last played, and whether its Quick look has been seen.
+ */
 internal class GameViewModel(private val content: ContentLibrary, private val progress: LearningProgress,
-    private val version: ContentVersion) : ViewModel() {
+    private val home: HomePreferences, private val version: ContentVersion) : ViewModel() {
+    companion object {
+        fun of(deps: AppDependencies, version: ContentVersion) = GameViewModel(deps.content, deps.learningProgress, deps.homePreferences, version)
+    }
     var run by mutableStateOf<GameRun?>(null); private set
     var origin by mutableStateOf<PackOrigin?>(null); private set
     var busy by mutableStateOf(false); private set
     var error by mutableStateOf<String?>(null); private set
+    /** The most stars ever earned on this game, up to date with the run on screen. */
+    var bestStars by mutableIntStateOf(0); private set
     init { load() }
     fun load(replay: Boolean = false) = save {
         val spec = requireNotNull(content.game(version))
@@ -56,39 +66,48 @@ internal class GameViewModel(private val content: ContentLibrary, private val pr
         if (checkpoint == null) progress.start(spec, Random.nextLong()) else GameRuntime.replay(spec, checkpoint)
     }
     fun move(expected: GameRun, action: GameAction) = save { progress.apply(expected.spec, expected.checkpoint, action) }
+    /** The Quick look opens by itself the first time a game is opened (per profile). */
+    fun introSeen() = home.introSeen(version)
+    fun markIntroSeen() = home.markIntroSeen(version)
     private fun save(operation: suspend () -> GameRun) {
         if (busy) return
         busy = true
         viewModelScope.launch {
-            try { error = null; run = operation() }
-            catch (e: CancellationException) { throw e }
-            catch (e: Exception) { error = problemCode(e) }
-            finally { busy = false }
+            val next = try { error = null; operation().also { run = it } }
+                catch (e: CancellationException) { throw e }
+                catch (e: Exception) { error = problemCode(e); null }
+                finally { busy = false }
+            if (next != null) keepProgress(next)
         }
+    }
+
+    /** What outlives this attempt, kept once the run is on screen: the game played last, and the stars (kept the moment a game is completed, so a fresh attempt never loses them). */
+    private suspend fun keepProgress(shown: GameRun) {
+        try {
+            home.lastGame = version
+            GameScore.stars(shown)?.let { progress.recordStars(version, it) }
+            bestStars = progress.bestStars(version)
+        } catch (e: CancellationException) { throw e }
+        catch (e: Exception) { error = problemCode(e) }
     }
 }
 
 @Composable
 internal fun GameScreen(deps: AppDependencies, version: ContentVersion, onBack: () -> Unit, backTo: String? = null) {
     val profile by deps.profiles.active.collectAsStateWithLifecycle()
-    val vm = viewModel(key = "game:${profile?.id}:$version") {
-        GameViewModel(requireNotNull(deps.content), requireNotNull(deps.learningProgress), version)
-    }
+    val vm = viewModel(key = "game:${profile?.id}:$version") { GameViewModel.of(deps, version) }
     BackHandler { if (!vm.busy) onBack() }
     val run = vm.run
-    LaunchedEffect(run?.spec, version) { if (run != null) deps.homePreferences.lastGame = version }
-    // Stars are kept per profile the moment a game is completed, so starting a fresh attempt never loses them.
-    LaunchedEffect(run?.checkpoint) { run?.let { r -> GameScore.stars(r)?.let { deps.homePreferences.recordStars(version, it) } } }
     var evidence by rememberSaveable { mutableStateOf<String?>(null) }
     // The Quick look opens by itself the first time a game is opened (per profile), and again whenever the player asks for it.
     var introDone by rememberSaveable(version) { mutableStateOf(false) }
     var introAgain by rememberSaveable(version) { mutableStateOf(false) }
-    val showIntro = run != null && run.spec.intro.isNotEmpty() && (introAgain || (!introDone && !deps.homePreferences.introSeen(version)))
+    val showIntro = run != null && run.spec.intro.isNotEmpty() && (introAgain || (!introDone && !vm.introSeen()))
     if (showIntro && run != null) {
-        val finish = { deps.homePreferences.markIntroSeen(version); introDone = true; introAgain = false }
+        val finish = { vm.markIntroSeen(); introDone = true; introAgain = false }
         GameIntro(run.spec, replay = introAgain, onPlay = finish, onSkip = finish, onExit = { if (introAgain) introAgain = false else onBack() },
             onSource = { evidence = it.evidenceId })
-        run.spec.evidenceRefs.firstOrNull { it.evidenceId == evidence }?.let { ref -> ActivityEvidence(requireNotNull(deps.materials), deps.sources, ref) { evidence = null } }
+        run.spec.evidenceRefs.firstOrNull { it.evidenceId == evidence }?.let { ref -> ActivityEvidence(deps.materials, deps.sources, ref) { evidence = null } }
         return
     }
     Scaffold(containerColor = A2g.skin.paper) { padding ->
@@ -103,11 +122,11 @@ internal fun GameScreen(deps: AppDependencies, version: ContentVersion, onBack: 
                 OutlinedButton({ vm.load() }) { Text(stringResource(R.string.home_retry)) }
             }
             if (run != null) {
-                GameBody(run, vm.origin, vm.busy, deps.homePreferences.bestStars(version), onMove = { vm.move(run, it) }, onRestart = { vm.load(true) },
+                GameBody(run, vm.origin, vm.busy, vm.bestStars, onMove = { vm.move(run, it) }, onRestart = { vm.load(true) },
                     backTo = backTo, onBackTo = onBack, onQuickLook = if (run.spec.intro.isEmpty()) null else ({ introAgain = true })) {
                     run.spec.evidenceRefs.filter { it.evidenceId in run.stage.evidenceIds }.forEach { ref ->
                         PixelButton(stringResource(R.string.source_open), { evidence = ref.evidenceId })
-                        if (evidence == ref.evidenceId) ActivityEvidence(requireNotNull(deps.materials), deps.sources, ref) { evidence = null }
+                        if (evidence == ref.evidenceId) ActivityEvidence(deps.materials, deps.sources, ref) { evidence = null }
                     }
                 }
             }
@@ -134,7 +153,7 @@ internal fun GameBody(run: GameRun, origin: PackOrigin?, busy: Boolean, bestStar
     Column(Modifier.testTag("game_body"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(run.spec.title, style = MaterialTheme.typography.headlineMedium)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            ReviewedGames.catalog.firstOrNull { run.spec.gameId.startsWith(it.key + "-") }?.let {
+            ReviewedGames.entryFor(run.spec)?.let {
                 PixelTag(it.conceptName(run.spec.language), Modifier.testTag("concept_chip"), fill = skin.card)
             }
             if (origin == PackOrigin.PRESET) PixelTag(stringResource(R.string.games_demo_badge), fill = skin.card, ink = skin.inkMuted,

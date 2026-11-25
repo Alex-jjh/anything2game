@@ -47,7 +47,7 @@ class FrameJourneysTest : JourneyTest() {
         val units = level.pkg.level("L1")!!.units.size
         waitFor("Me tab to count the practised clues") { stat(R.string.home_stat_practiced) == units }
         assertEquals("documents on the shelf do not change", documents0, stat(R.string.home_stat_documents))
-        assertEquals("nothing is due right after a clean run", 0, stat(R.string.home_stat_review))
+        assertEquals("nothing is due right after a clean run", 0, stat(R.string.status_due))
     }
 
     @Test fun rookie_teach_back_wrong_answer_neither_brings_the_clue_back_nor_touches_mastery() {

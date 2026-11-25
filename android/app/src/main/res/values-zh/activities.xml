@@ -128,10 +128,7 @@
     <string name="route_kind_rookie">带新人练习</string>
     <string name="route_kind_escape">密室练习</string>
     <string name="route_kind_game">游戏</string>
-    <string name="route_state_done">已完成</string>
-    <string name="route_state_review">待复习</string>
     <string name="route_state_current">下一步</string>
-    <string name="route_state_available">可开始</string>
     <string name="route_state_locked">未解锁</string>
     <string name="route_state_update">需要更新</string>
     <string name="route_step_description">第 %1$d 步：%2$s。%3$s，%4$s</string>

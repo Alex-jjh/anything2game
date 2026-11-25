@@ -40,10 +40,10 @@ class DemoPathJourneyTest : LearnJourneyBase() {
     // ---- helpers ------------------------------------------------------------------------------------------
 
     private fun tagPrefix(p: String) = SemanticsMatcher("tag $p*") { it.config.getOrNull(SemanticsProperties.TestTag)?.startsWith(p) == true }
-    private fun nodesOf(pkg: String): List<PathNode> = awaitIo { deps.materials!!.materials().single { it.localPack?.packageId == pkg }.nodes }
+    private fun nodesOf(pkg: String): List<PathNode> = awaitIo { deps.materials.materials().single { it.localPack?.packageId == pkg }.nodes }
     private fun spaceIdOf(pkg: String): String = awaitIo {
-        val mat = deps.materials!!.materials().single { it.localPack?.packageId == pkg }
-        deps.spaces!!.list().first { mat.member in it.members }.spaceId
+        val mat = deps.materials.materials().single { it.localPack?.packageId == pkg }
+        deps.spaces.list().first { mat.member in it.members }.spaceId
     }
     private fun desc(nodeId: String): String {
         rule.onNodeWithTag("space_route").performScrollToNode(hasTestTag("route_node_$nodeId")); rule.waitForIdle()
@@ -51,14 +51,14 @@ class DemoPathJourneyTest : LearnJourneyBase() {
     }
     private fun state(nodeId: String): String {
         val d = desc(nodeId)
-        return listOf(R.string.route_state_review, R.string.route_state_done, R.string.route_state_current, R.string.route_state_available,
-            R.string.route_state_locked, R.string.route_state_update).map { str(it) }.first { d.endsWith(it) }
+        return listOf(R.string.status_due, R.string.status_done, R.string.status_learned, R.string.status_needs_practice, R.string.route_state_current,
+            R.string.status_new, R.string.route_state_locked, R.string.route_state_update).map { str(it) }.first { d.endsWith(it) }
     }
     private fun scrollHomeTo(tag: String) = waitFor("home tile $tag") { runCatching { rule.onNodeWithTag("home_SPACES").performScrollToNode(hasTestTag(tag)); true }.getOrDefault(false) }
     private fun openSpaceCard(spaceId: String) { scrollHomeTo("open_space_$spaceId"); tap(rule.onNodeWithTag("open_space_$spaceId")); waitForMap() }
     private fun waitForMap() = waitFor("route map") { exists(tagPrefix("route_node_")) || exists(hasTestTag("route_empty")) }
     private fun back() { systemBack(); rule.waitForIdle() }
-    private fun doneCount(nodes: List<PathNode>) = nodes.count { state(it.nodeId).let { s -> s == str(R.string.route_state_done) || s == str(R.string.route_state_review) } }
+    private fun doneCount(nodes: List<PathNode>) = nodes.count { state(it.nodeId).let { s -> s == str(R.string.status_done) || s == str(R.string.status_due) } }
     private fun assertRouteProgress(done: Int, total: Int) {
         waitFor("route progress $done/$total") {
             runCatching { rule.onNodeWithTag("space_route").performScrollToNode(hasTestTag("route_progress")); true }.getOrDefault(false) &&
@@ -67,7 +67,7 @@ class DemoPathJourneyTest : LearnJourneyBase() {
     }
     private fun meRecord(): String {
         openMe()
-        val p = awaitIo { deps.learningProgress!!.projection() }
+        val p = awaitIo { deps.learningProgress.projection() }
         val expected = completedDays(p.completed.size, p.days.size)
         scrollMeTo(expected)
         return expected
@@ -81,7 +81,7 @@ class DemoPathJourneyTest : LearnJourneyBase() {
             if (r != null && ((0 until r.lineCount).any { r.isLineEllipsized(it) } || r.getLineEnd(r.lineCount - 1, visibleEnd = true) < r.layoutInput.text.length))
                 (n.config.getOrNull(SemanticsProperties.TestTag) ?: "(no tag)").take(22) + ": " + n.config.getOrNull(SemanticsProperties.Text)?.joinToString("") { it.text } else null
         }
-    private fun projectionNow() = awaitIo { deps.learningProgress!!.projection() }
+    private fun projectionNow() = awaitIo { deps.learningProgress.projection() }
 
     /** All texts on screen, scrolling the given list from top to bottom so lazily composed rows are included. */
     private fun collectAllText(list: String): List<String> {
@@ -128,12 +128,12 @@ class DemoPathJourneyTest : LearnJourneyBase() {
 
         // Spaces home: the card of the Attention Space already shows progress.
         scrollHomeTo("open_space_$spaceId")
-        val preDone = awaitIo { deps.spaces!!.route(spaceId, "en")!!.nodes.size }   // sanity: route and material agree
+        val preDone = awaitIo { deps.spaces.route(spaceId, "en")!!.nodes.size }   // sanity: route and material agree
         assertEquals(total, preDone)
 
         openSpaceCard(spaceId)
         val states = nodes.map { state(it.nodeId) }
-        val doneBefore = nodes.count { state(it.nodeId) == str(R.string.route_state_done) || state(it.nodeId) == str(R.string.route_state_review) }
+        val doneBefore = nodes.count { state(it.nodeId) == str(R.string.status_done) || state(it.nodeId) == str(R.string.status_due) }
         assertTrue("a lived-in map has finished steps", doneBefore in 1 until total)
         assertEquals("exactly one current step: $states", 1, states.count { it == str(R.string.route_state_current) })
         assertTrue("locked steps lie ahead", states.any { it == str(R.string.route_state_locked) })
@@ -163,7 +163,7 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         waitFor("map after the explanation") { has("space_route") }
 
         // The map advanced: that node is done, the next one is the current step, and nothing else moved.
-        waitFor("the finished node to show done") { state(current.nodeId) == str(R.string.route_state_done) }
+        waitFor("the finished node to show done") { state(current.nodeId) == str(R.string.status_done) }
         waitFor("the next node to become current") { state(next.nodeId) == str(R.string.route_state_current) }
         assertEquals(1, nodes.count { state(it.nodeId) == str(R.string.route_state_current) })
         assertRouteProgress(doneBefore + 1, total)
@@ -199,7 +199,7 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         val nodes = nodesOf(attention)
         openSpaceCard(spaceIdOf(attention))
         val current = nodes.first { state(it.nodeId) == str(R.string.route_state_current) }
-        val doneTitles = nodes.filter { state(it.nodeId) == str(R.string.route_state_done) }.map { it.title }
+        val doneTitles = nodes.filter { state(it.nodeId) == str(R.string.status_done) }.map { it.title }
         tap(rule.onNodeWithTag("route_node_${current.nodeId}")); waitForTag("route_sheet")
         startFromSheet(current)
         waitFor("the explanation of the step") { has("explainer_stage") }
@@ -245,7 +245,7 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         // Back home from the recap: the student expects the map they started from.
         waitFor("a Space screen") { has("space_route") || has("space_materials") }
         assertTrue("the recap's 'Back home' returns to the route map the node was opened from", has("space_route"))
-        waitFor("the practice node to be done") { state(current.nodeId).let { it == str(R.string.route_state_done) || it == str(R.string.route_state_review) } }
+        waitFor("the practice node to be done") { state(current.nodeId).let { it == str(R.string.status_done) || it == str(R.string.status_due) } }
         assertRouteProgress(doneBefore + 1, total)
     }
 
@@ -280,7 +280,7 @@ class DemoPathJourneyTest : LearnJourneyBase() {
     private fun shelfLoaded() { waitForTag("game_partition"); waitForTag("game_allocation"); rule.waitForIdle() }
     private fun specOf(id: String): GameSpec = ReviewedGames.all(id.substringAfterLast('-')).first { it.gameId == id }
     private fun versionOf(id: String) = specOf(id).let { ContentVersion(it.gameId, it.gameVersion) }
-    private fun run(id: String) = awaitIo { deps.learningProgress!!.checkpoint(versionOf(id)) }?.let { GameRuntime.replay(specOf(id), it) }
+    private fun run(id: String) = awaitIo { deps.learningProgress.checkpoint(versionOf(id)) }?.let { GameRuntime.replay(specOf(id), it) }
     private fun badgeOn(tag: String, label: String) = rule.onAllNodes(hasText(label) and hasAnyAncestor(hasTestTag(tag)), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
 
     /** One question per tap: the middle cut, then Ask. Plays the current stage to its end. */
@@ -343,7 +343,7 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         waitForText(str(R.string.games_transfer))
         playPartitionStage(id)
         waitForText(str(R.string.games_complete)); waitForTag("game_stars")
-        val stars = deps.homePreferences.bestStars(versionOf(id))
+        val stars = awaitIo { deps.learningProgress.bestStars(versionOf(id)) }
         assertTrue("a completed game has stars ($stars)", stars in 1..3)
         back(); waitForTag("home_PLAYGROUND"); shelfLoaded()
         assertFalse("a finished game is no longer 'Continue'", has("resume_game"))
@@ -376,7 +376,7 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         waitForText("0 helpers left")
         tap(rule.onNodeWithTag("allocation_submit"))
         waitForText(str(R.string.games_complete)); waitForTag("game_stars")
-        val stars = deps.homePreferences.bestStars(versionOf(id))
+        val stars = awaitIo { deps.learningProgress.bestStars(versionOf(id)) }
         assertTrue(stars in 1..3)
         back(); waitForTag("home_PLAYGROUND"); shelfLoaded()
         waitFor("stars on the tile") { rule.onAllNodes(hasContentDescription(str(R.string.playground_stars_cd, stars))).fetchSemanticsNodes().isNotEmpty() }
@@ -395,7 +395,7 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         assertFalse(has("game_stars")); assertFalse(has("game_advance"))
         assertTrue(textShown(str(R.string.games_lost)) || textShown(str(R.string.games_stamp_miss)))
         tap(rule.onNodeWithTag("retry_round")); waitForText("6 helpers left")
-        assertEquals(0, deps.homePreferences.bestStars(versionOf("workshop-en")))
+        assertEquals(0, awaitIo { deps.learningProgress.bestStars(versionOf("workshop-en")) })
         assertTrue(projectionNow().completed.isEmpty())
     }
 
@@ -698,7 +698,7 @@ class DemoPathJourneyTest : LearnJourneyBase() {
     /** Credits everything before [node] the way a student who got that far would have, so the step can be tapped. */
     private fun creditBefore(nodes: List<PathNode>, node: PathNode) = awaitIo {
         nodes.takeWhile { it.nodeId != node.nodeId }.forEach { before ->
-            deps.learningProgress!!.record(before.activity, if (before.activity is ActivityRef.Tutor) ActivityOutcome.READ else ActivityOutcome.INDEPENDENT, 1_000_000L)
+            deps.learningProgress.record(before.activity, if (before.activity is ActivityRef.Tutor) ActivityOutcome.READ else ActivityOutcome.INDEPENDENT, 1_000_000L)
         }
     }
 
@@ -747,7 +747,7 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         assertEquals(id, (game.activity as ActivityRef.Game).contentId)
         creditBefore(nodes, game)
         val spaceId = spaceIdOf(pkg)
-        val spaceTitle = awaitIo { deps.spaces!!.list().first { it.spaceId == spaceId }.title }
+        val spaceTitle = awaitIo { deps.spaces.list().first { it.spaceId == spaceId }.title }
         openSpaceCard(spaceId)
         assertEquals(str(R.string.route_state_current), state(game.nodeId))
         val doneBefore = doneCount(nodes)
@@ -773,7 +773,7 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         assertTrue(textShown(str(R.string.games_replay)))
         tap(rule.onNodeWithTag("back_to_space"))
         waitFor("the map of that Space") { has("space_route") }
-        waitFor("the game step to show done") { state(game.nodeId).let { it == str(R.string.route_state_done) || it == str(R.string.route_state_review) } }
+        waitFor("the game step to show done") { state(game.nodeId).let { it == str(R.string.status_done) || it == str(R.string.status_due) } }
         assertRouteProgress(doneBefore + 1, nodes.size)
         assertEquals(1, projectionNow().completed.count { it.activityKind == com.anything2game.contract.progress.ActivityKind.GAME })
     }
@@ -807,7 +807,7 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         return seen.keys.toList()
     }
     private fun languageOf(spaceId: String): String = awaitIo<String> {
-        val inventory = deps.materials!!.materials(); val space = deps.spaces!!.list().first { it.spaceId == spaceId }
+        val inventory = deps.materials.materials(); val space = deps.spaces.list().first { it.spaceId == spaceId }
         inventory.filter { it.member in space.members || it.localPack?.let { p -> p in space.members } == true }.map { it.language }.first()
     }
 
@@ -850,7 +850,7 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         // On screen: a Space with exactly one material says "1 material", one with two says "2 materials".
         val (one, two) = awaitIo {
             deps.profiles.choose(com.anything2game.app.data.profile.LocalProfile.GUEST)
-            val spaces = deps.spaces!!
+            val spaces = deps.spaces
             val a = spaces.create("One doc").spaceId; spaces.add(a, SpaceMember.ServerDocumentRef("doc-a", "1"))
             val b = spaces.create("Two docs").spaceId
             spaces.add(b, SpaceMember.ServerDocumentRef("doc-b", "1")); spaces.add(b, SpaceMember.ServerDocumentRef("doc-c", "1"))

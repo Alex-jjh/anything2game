@@ -87,7 +87,7 @@ fun ProfileContent(
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Stat((state.entries.map { it.documentId.ifBlank { it.summary.packageId } } + state.tutorials.map { it.documentId }).distinct().size, R.string.home_stat_documents, Modifier.weight(1f))
                     Stat(state.entries.sumOf { it.practicedUnits }, R.string.home_stat_practiced, Modifier.weight(1f))
-                    Stat(state.entries.sumOf { it.dueUnits }, R.string.home_stat_review, Modifier.weight(1f))
+                    Stat(state.entries.sumOf { it.dueUnits }, R.string.status_due, Modifier.weight(1f))
                 }
                 Text(stringResource(R.string.home_stats_note), style = MaterialTheme.typography.bodySmall, color = skin.inkMuted)
                 OutlinedButton(onClick = onSpaces, modifier = Modifier.fillMaxWidth()) {

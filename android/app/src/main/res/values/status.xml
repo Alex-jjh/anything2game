@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- One word for each state of an activity, on every screen: the route, the practice list, Me. -->
+    <string name="status_new">New</string>
+    <string name="status_in_progress">In progress · %1$d/%2$d</string>
+    <string name="status_needs_practice">Needs practice</string>
+    <string name="status_done">Done</string>
+    <string name="status_due">Due for review</string>
+    <string name="status_learned">Learned</string>
+    <string name="status_done_hint">Come back for a quick review to make it stick.</string>
+</resources>
