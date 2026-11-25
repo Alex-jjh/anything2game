@@ -17,7 +17,7 @@ import com.anything2game.contract.game.PartitionConfig
 private val ink = Color(0xFF2A2630)
 
 /** Sky, ground and mood per game, from its main icon, so the tiles on the Playground are told apart at a glance. */
-private fun sceneColours(icon: String): Pair<Color, Color> = when (icon) {
+internal fun sceneColours(icon: String): Pair<Color, Color> = when (icon) {
     "locker" -> Color(0xFFDCE8F2) to Color(0xFFB6C9DB)
     "commit" -> Color(0xFFE0F0DE) to Color(0xFFB5D6B0)
     "page" -> Color(0xFFF6EBD3) to Color(0xFFDDC79A)

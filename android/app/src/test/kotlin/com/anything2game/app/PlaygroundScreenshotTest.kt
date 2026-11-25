@@ -66,7 +66,7 @@ class PlaygroundScreenshotTest {
         val state = mutableStateOf(initial)
         host(scale) {
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 24.dp)) {
-                GameBody(state.value, PackOrigin.PRESET, false, best, onMove = { state.value = GameRuntime.apply(state.value, it) }, onRestart = {}, backTo = backTo) {}
+                GameBody(state.value, PackOrigin.PRESET, false, best, onMove = { state.value = GameRuntime.apply(state.value, it) }, onRestart = {}, backTo = backTo, onQuickLook = {}) {}
             }
         }
         return state

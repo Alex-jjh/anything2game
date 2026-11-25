@@ -78,6 +78,17 @@ internal fun GameScreen(deps: AppDependencies, version: ContentVersion, onBack: 
     // Stars are kept per profile the moment a game is completed, so starting a fresh attempt never loses them.
     LaunchedEffect(run?.checkpoint) { run?.let { r -> GameScore.stars(r)?.let { deps.homePreferences.recordStars(version, it) } } }
     var evidence by rememberSaveable { mutableStateOf<String?>(null) }
+    // The Quick look opens by itself the first time a game is opened (per profile), and again whenever the player asks for it.
+    var introDone by rememberSaveable(version) { mutableStateOf(false) }
+    var introAgain by rememberSaveable(version) { mutableStateOf(false) }
+    val showIntro = run != null && run.spec.intro.isNotEmpty() && (introAgain || (!introDone && !deps.homePreferences.introSeen(version)))
+    if (showIntro && run != null) {
+        val finish = { deps.homePreferences.markIntroSeen(version); introDone = true; introAgain = false }
+        GameIntro(run.spec, replay = introAgain, onPlay = finish, onSkip = finish, onExit = { if (introAgain) introAgain = false else onBack() },
+            onSource = { evidence = it.evidenceId })
+        run.spec.evidenceRefs.firstOrNull { it.evidenceId == evidence }?.let { ref -> ActivityEvidence(requireNotNull(deps.materials), ref) { evidence = null } }
+        return
+    }
     Scaffold(containerColor = A2g.skin.paper) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 10.dp).testTag("game_board"),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -91,7 +102,7 @@ internal fun GameScreen(deps: AppDependencies, version: ContentVersion, onBack: 
             }
             if (run != null) {
                 GameBody(run, vm.origin, vm.busy, deps.homePreferences.bestStars(version), onMove = { vm.move(run, it) }, onRestart = { vm.load(true) },
-                    backTo = backTo, onBackTo = onBack) {
+                    backTo = backTo, onBackTo = onBack, onQuickLook = if (run.spec.intro.isEmpty()) null else ({ introAgain = true })) {
                     run.spec.evidenceRefs.filter { it.evidenceId in run.stage.evidenceIds }.forEach { ref ->
                         PixelButton(stringResource(R.string.source_open), { evidence = ref.evidenceId })
                         if (evidence == ref.evidenceId) ActivityEvidence(requireNotNull(deps.materials), ref) { evidence = null }
@@ -106,7 +117,7 @@ internal fun GameScreen(deps: AppDependencies, version: ContentVersion, onBack: 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun GameBody(run: GameRun, origin: PackOrigin?, busy: Boolean, bestStars: Int, onMove: (GameAction) -> Unit, onRestart: () -> Unit,
-    backTo: String? = null, onBackTo: () -> Unit = {}, source: @Composable () -> Unit) {
+    backTo: String? = null, onBackTo: () -> Unit = {}, onQuickLook: (() -> Unit)? = null, source: @Composable () -> Unit) {
     val skin = A2g.skin
     val playing = !busy && !run.actionLimitReached && run.status == StageStatus.PLAYING
     val stageScores = remember(run.checkpoint) { GameScore.stages(run.spec, run.checkpoint) }
@@ -118,13 +129,17 @@ internal fun GameBody(run: GameRun, origin: PackOrigin?, busy: Boolean, bestStar
         lastAction == GameAction.Help -> Mood.THINKING
         else -> Mood.IDLE
     }
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(Modifier.testTag("game_body"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(run.spec.title, style = MaterialTheme.typography.headlineMedium)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            PixelTag(stringResource(if (run.board is PartitionBoard) R.string.mechanism_partition else R.string.mechanism_allocation), fill = skin.card)
+            ReviewedGames.catalog.firstOrNull { run.spec.gameId.startsWith(it.key + "-") }?.let {
+                PixelTag(it.conceptName(run.spec.language), Modifier.testTag("concept_chip"), fill = skin.card)
+            }
             if (origin == PackOrigin.PRESET) PixelTag(stringResource(R.string.games_demo_badge), fill = skin.card, ink = skin.inkMuted,
                 modifier = Modifier.testTag("demo_badge"))
         }
+        if (onQuickLook != null) PixelButton(stringResource(R.string.intro_quick_look), onQuickLook, Modifier.testTag("quick_look"),
+            leading = { PixelSprite(Sprites.sparkle, 20.dp) })
         LevelStrip(run, stageScores)
         if (run.stage.transfer && lastAction == GameAction.Advance) NewConditions(run)
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
@@ -138,7 +153,8 @@ internal fun GameBody(run: GameRun, origin: PackOrigin?, busy: Boolean, bestStar
             is AllocationBoard -> AllocationBoardView(b, run.stage.config as AllocationConfig, lastAction, run.status, playing, onMove)
         }
         if (lastAction == GameAction.Help) PixelPanel(Modifier.fillMaxWidth(), fill = skin.hintSoft) {
-            Text(stringResource(if (run.board is PartitionBoard) R.string.games_split_hint else R.string.games_token_hint), color = skin.ink)
+            val token = (run.stage.config as? AllocationConfig)?.look()?.token.orEmpty()
+            Text(if (run.board is PartitionBoard) stringResource(R.string.games_split_hint) else stringResource(R.string.games_token_hint, token), color = skin.ink)
         }
         if (run.status == StageStatus.PLAYING && !run.actionLimitReached) Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             PixelButton(stringResource(R.string.games_help), { onMove(GameAction.Help) }, enabled = playing)
@@ -222,7 +238,8 @@ private fun Result(run: GameRun, busy: Boolean, stars: Int?, best: Int, mood: Mo
                     animate = !reduced, big = run.completed)
             } else Stamp(stringResource(R.string.games_stamp_miss), StampKind.NO, skin.wrong, animate = !reduced)
         }
-        Text(stringResource(when { run.completed -> R.string.games_complete; won -> R.string.games_won; else -> R.string.games_lost }),
+        Text(stringResource(when { run.completed -> R.string.games_complete; won -> R.string.games_won
+            run.board is AllocationBoard -> R.string.games_lost_allocation; else -> R.string.games_lost }),
             style = MaterialTheme.typography.titleLarge, modifier = Modifier.testTag("game_verdict"), color = skin.ink)
         if (won && stars != null) {
             val earned = stringResource(R.string.games_stars_earned, stars)
@@ -261,7 +278,9 @@ private fun CompletedMoves(run: GameRun) {
     if (expanded) turns.forEach { (action, board) ->
         when {
             action is GameAction.Split && board is PartitionBoard -> Text(stringResource(R.string.games_trace_split, action.after, board.eliminated, board.low, board.high))
-            board is AllocationBoard -> Text(stringResource(R.string.games_trace_output, board.firstOutput, board.secondOutput))
+            board is AllocationBoard -> (run.stage.config as? AllocationConfig)?.look()?.let { look ->
+                Text(stringResource(R.string.games_trace_output, board.firstOutput, look.firstGoods, board.secondOutput, look.secondGoods))
+            }
         }
     }
 }

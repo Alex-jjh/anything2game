@@ -32,6 +32,11 @@ class HomePreferences(context: Context, name: String = "home") {
     }
     private fun starKey(game: com.anything2game.contract.game.ContentVersion) = "stars:" + listOf(game.contentId, game.contentVersion).joinToString(":") { "${it.length}:$it" }
 
+    /** Whether the player has already been through (or skipped) a game's "Quick look". Kept per profile. */
+    fun introSeen(game: com.anything2game.contract.game.ContentVersion): Boolean = prefs.getBoolean("intro:" + keyOf(game), false)
+    fun markIntroSeen(game: com.anything2game.contract.game.ContentVersion) { prefs.edit { putBoolean("intro:" + keyOf(game), true) } }
+    private fun keyOf(game: com.anything2game.contract.game.ContentVersion) = listOf(game.contentId, game.contentVersion).joinToString(":") { "${it.length}:$it" }
+
     // Length prefixes avoid collisions; versioning retains old answers without applying them to new content.
     private fun key(pkg: String, version: String, level: String) =
         listOf("familiarity", pkg, version, level).joinToString(":") { "${it.length}:$it" }

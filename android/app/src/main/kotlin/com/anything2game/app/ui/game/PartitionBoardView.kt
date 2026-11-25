@@ -77,7 +77,8 @@ internal fun PartitionBoardView(b: PartitionBoard, config: PartitionConfig, stat
             HeartsRow(config.queryBudget, b.queriesLeft, description = queriesLeft)
             Text(queriesLeft, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = skin.ink)
         }
-        if (!found) Text(stringResource(R.string.games_range, look.items, b.low, b.high), color = skin.inkMuted)
+        if (!found) Text(look.whereIs(b.low, b.high) ?: stringResource(R.string.games_where, b.low, b.high), Modifier.testTag("partition_where"),
+            style = MaterialTheme.typography.titleSmall, color = skin.ink)
         TileGrid(b, config, look, split, choice, enabled, found, reduced) { choice = it }
         if (b.eliminated > 0 && !found) Text(stringResource(R.string.games_eliminated, b.eliminated, look.items), color = skin.correct,
             fontWeight = FontWeight.Bold)
@@ -90,8 +91,8 @@ internal fun PartitionBoardView(b: PartitionBoard, config: PartitionConfig, stat
                 val left = stringResource(R.string.games_less); val right = stringResource(R.string.games_more)
                 PixelButton("−", { choice = (split - 1).coerceAtLeast(b.low) }, Modifier.sizeIn(minWidth = 48.dp).semantics { contentDescription = left },
                     enabled = enabled && (choice == null || split > b.low))
-                Text(stringResource(R.string.games_split, split), Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    fontWeight = FontWeight.Bold)
+                Text(if (choice == null) "" else stringResource(R.string.games_pick, split), Modifier.weight(1f).testTag("partition_pick"),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center, fontWeight = FontWeight.Bold)
                 PixelButton("+", { choice = (split + 1).coerceAtMost(b.high - 1) }, Modifier.sizeIn(minWidth = 48.dp).semantics { contentDescription = right },
                     enabled = enabled && (choice == null || split < b.high - 1))
             }

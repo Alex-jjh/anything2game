@@ -133,7 +133,7 @@ class GenerationJourneyTest : JourneyTest() {
             rule.onNodeWithTag("concept_input").assertTextContains("orbital dynamics")
             assertTrue(awaitIo { deps.generation!!.list().single().admissionError?.code == "UNSUPPORTED_TOPIC" })
             tap(rule.onNodeWithTag("tab_PLAYGROUND"))
-            waitForTag("game_partition"); tap(rule.onNodeWithTag("game_partition"))
+            waitForTag("game_partition"); openGame(rule.onNodeWithTag("game_partition"))
             waitForTag("cut_8")
         } finally { server.stop(0) }
     }
@@ -184,9 +184,9 @@ class GenerationJourneyTest : JourneyTest() {
             assertEquals(before, polls.get())
             assertNull(awaitIo { container.content.game(version) })
             scenario!!.moveToState(Lifecycle.State.RESUMED)
-            waitForTag("game_board"); waitForText("Generated lockers")
+            waitForGame(); waitForText("Generated lockers")
             tap(rule.onNodeWithTag("cut_8")); tap(rule.onNodeWithTag("split_submit"))
-            waitForText("8 lockers ruled out")
+            waitForText("Crossed off 8 lockers")
             systemBack()
             tap(rule.onNodeWithTag("tab_PLAYGROUND"))
             waitForText("Test provider · fixture-game")
@@ -199,7 +199,7 @@ class GenerationJourneyTest : JourneyTest() {
                 waitForTag(tag)
                 tap(rule.onNodeWithTag(tag))
                 waitForText("Generated lockers")
-                waitForTag("game_board")
+                waitForGame()
                 assertEquals(checkpoint, awaitIo { container.learningProgress.checkpoint(version) })
                 systemBack()
             }

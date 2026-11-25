@@ -65,7 +65,7 @@ object ReviewedGames {
         listOf(card.cardId), listOf(card), if (zh) setupZh else setupEn,
         listOf(GameStage("practice", if (zh) practice.second else practice.first, practice.third, false, listOf(card.evidenceId)),
             GameStage("transfer", if (zh) transfer.second else transfer.first, transfer.third, true, listOf(card.evidenceId))),
-        partitionCapability())
+        partitionCapability(), intro = ReviewedIntros.of(base, zh), learn = ReviewedIntros.learn(base, zh))
 
     private fun allocationGame(zh: Boolean, base: String, titleEn: String, titleZh: String, card: EvidenceRef.Reviewed,
         setupEn: String, setupZh: String, practice: Triple<String, String, AllocationConfig>,
@@ -74,7 +74,7 @@ object ReviewedGames {
         listOf(card.cardId), listOf(card), if (zh) setupZh else setupEn,
         listOf(GameStage("practice", if (zh) practice.second else practice.first, practice.third, false, listOf(card.evidenceId)),
             GameStage("transfer", if (zh) transfer.second else transfer.first, transfer.third, true, listOf(card.evidenceId))),
-        allocationCapability())
+        allocationCapability(), intro = ReviewedIntros.of(base, zh), learn = ReviewedIntros.learn(base, zh))
 
     // ---- the two original games: same ids, numbers, titles and texts as before, plus a presentation theme -----------------
 
@@ -88,16 +88,17 @@ object ReviewedGames {
                 "对有序区间进行比较后，可以排除其中一半，再在剩余区间继续查找。"),
             t("Bundled source summary checked against the NIST definition.", "内置知识卡依据 NIST 的定义核对。"))
         fun theme() = PartitionTheme(item = t("locker", "扇柜门"), items = t("lockers", "扇柜门"), target = t("hidden locker", "目标柜门"),
-            query = t("questions", "次询问"), icon = "locker")
+            query = t("questions", "次提问"), ask = t("Is it locker {n} or lower?", "目标在 {n} 号或之前吗？"),
+            where = t("The hidden locker is one of lockers {from}–{to}.", "目标柜门在第 {from}–{to} 号之间。"), icon = "locker")
         GameSpec("locker-search-" + t("en", "zh"), "1", t("The locker search", "寻找神秘柜门"), t("en","zh"),
             listOf(card.cardId), listOf(card),
-            t("Teaching setup: the hidden locker is fixed for this run. A query tells you which side contains it.",
-                "教学设定：每局的目标柜门固定。一次询问可以确定目标位于分割点的哪一侧。"),
-            listOf(GameStage("practice", t("Find the hidden locker among 16 with four questions.", "在 16 扇柜门中，用 4 次询问找到目标。"),
+            t("Made-up numbers for practice. The hidden locker stays put for the whole round.",
+                "数字是为练习编的。一轮里，藏起来的那扇柜门不会变。"),
+            listOf(GameStage("practice", t("Find the hidden locker among 16. You win if you find it within 4 questions.", "在 16 扇柜门里找出藏起来的那一扇，4 次提问内找到就算赢。"),
                 PartitionConfig(16, 4, theme()), false, listOf(card.evidenceId)),
-                GameStage("transfer", t("Try a new row of 12 lockers and a new hidden target.", "换一排 12 扇柜门，查找新目标。"),
+                GameStage("transfer", t("A new row of 12 lockers and a new hidden one. Find it within 4 questions.", "换一排 12 扇柜门，藏的那扇也换了。同样 4 次提问内找到。"),
                     PartitionConfig(12, 4, theme()), true, listOf(card.evidenceId))),
-            partitionCapability())
+            partitionCapability(), intro = ReviewedIntros.of("locker-search", zh), learn = ReviewedIntros.learn("locker-search", zh))
     }
 
     private val WORKSHOPS = ReviewedGameEntry("workshop", MechanicRegistry.ALLOCATION, "Opportunity cost" to "机会成本",
@@ -112,16 +113,16 @@ object ReviewedGames {
             t("Bundled source summary checked against the lesson’s constant-cost example.", "内置知识卡依据课程中的固定机会成本示例核对。"))
         fun theme() = AllocationTheme(firstZone = t("Workshop A", "工坊 A"), secondZone = t("Workshop B", "工坊 B"),
             firstGood = t("bowl", "个碗"), firstGoods = t("bowls", "个碗"), secondGood = t("cup", "个杯子"), secondGoods = t("cups", "个杯子"),
-            token = t("token", "枚筹码"), tokens = t("tokens", "枚筹码"), firstIcon = "bowl", secondIcon = "cup", tokenIcon = "coin")
+            token = t("helper", "名帮手"), tokens = t("helpers", "名帮手"), firstIcon = "bowl", secondIcon = "cup", tokenIcon = "worker")
         GameSpec("workshop-" + t("en", "zh"), "1", t("Two workshops", "双工坊的取舍"), t("en","zh"),
             listOf(card.cardId), listOf(card),
-            t("Teaching setup: each token runs one workshop. Yields and delivery targets are invented for this model.",
-                "教学设定：一枚筹码只能分配给一个工坊。产能和交付目标均为本模型设定的数值。"),
-            listOf(GameStage("practice", t("Deliver 6 bowls and 9 cups with six tokens.", "用 6 枚筹码交付 6 个碗、9 个杯子。"),
+            t("Made-up numbers for practice. A helper can work in only one workshop.",
+                "数字是为练习编的。每名帮手只能在一个工坊干活。"),
+            listOf(GameStage("practice", t("Place 6 helpers so you make at least 6 bowls and 9 cups.", "把 6 名帮手分到两个工坊，至少做出 6 个碗和 9 个杯子。"),
                 AllocationConfig(6, 2, 3, 6, 9, theme()), false, listOf(card.evidenceId)),
-                GameStage("transfer", t("With four tokens and changed yields, deliver 9 bowls and 2 cups.", "产能变了：用 4 枚筹码交付 9 个碗、2 个杯子。"),
+                GameStage("transfer", t("Fewer helpers and new speeds: make at least 9 bowls and 2 cups with 4 helpers.", "只剩 4 名帮手，速度也变了：至少做出 9 个碗和 2 个杯子。"),
                     AllocationConfig(4, 3, 2, 9, 2, theme()), true, listOf(card.evidenceId))),
-            allocationCapability())
+            allocationCapability(), intro = ReviewedIntros.of("workshop", zh), learn = ReviewedIntros.learn("workshop", zh))
     }
 
     // ---- information partition: four new themes --------------------------------------------------------------------------
@@ -134,13 +135,14 @@ object ReviewedGames {
                 "git bisect 对提交历史做二分查找：给定一个已知正常和一个已知出错的提交，它每次挑中间的提交让你测试，不断缩小范围，直到找到第一个出错的提交。"),
             t("Editorial summary checked against the Description section of the manual.", "编辑摘要，依据手册 Description 一节核对。"))
         fun theme() = PartitionTheme(item = t("commit", "个提交"), items = t("commits", "个提交"), target = t("breaking commit", "出错的提交"),
-            query = t("test runs", "次测试"), ask = t("Test commit {n}", "测试第 {n} 个提交"), icon = "commit")
+            query = t("test runs", "次测试"), ask = t("Test commit {n}", "测试第 {n} 个提交"),
+            where = t("The culprit is one of commits {from}–{to}.", "元凶在第 {from}–{to} 个提交里。"), icon = "commit")
         partitionGame(zh, "git-bisect", "Hunt the broken commit", "追捕搞砸构建的提交", card,
-            "Teaching setup: every commit before the culprit passes the tests and every commit from the culprit onward fails, as git bisect assumes. The culprit is fixed for each run. The counts are invented.",
-            "教学设定：出错提交之前的每个提交都能通过测试，从它开始的每个提交都不能，这正是 git bisect 的假设。每局元凶固定。数量均为虚构。",
-            Triple("The build is red. Find the commit that broke it among 32, using 5 test runs.", "构建变红了。在 32 个提交中，用 5 次测试找出元凶。",
+            "Made-up numbers. Like git bisect, we assume every commit before the bad one passes and every commit from it onward fails.",
+            "数字是编的。和 git bisect 一样，我们假设出错提交之前的都通过，从它开始的都失败。",
+            Triple("Find the commit that broke the build among 32, using no more than 5 test runs.", "构建变红了。在 32 个提交里，用不超过 5 次测试找出搞坏它的那一个。",
                 PartitionConfig(32, 5, theme())),
-            Triple("A shorter history of 20 commits, the same 5 test runs and a new culprit.", "历史变短了：20 个提交，同样 5 次测试，换一个新的元凶。",
+            Triple("A shorter history: find the new culprit among 20 commits, using no more than 5 test runs.", "历史变短了：20 个提交，还是 5 次测试，元凶换了人。找出它。",
                 PartitionConfig(20, 5, theme())))
     }
 
@@ -153,12 +155,13 @@ object ReviewedGames {
                 "二分查找把目标与有序区间的中间值比较；若不相等，就排除不可能含有目标的那一半，在另一半中继续查找。"),
             t("Editorial summary of the Procedure section.", "编辑摘要，对应 Procedure 一节。"))
         fun theme() = PartitionTheme(item = t("number", "个数"), items = t("numbers", "个数"), target = t("secret number", "秘密数字"),
-            query = t("guesses", "次猜测"), ask = t("Is it {n} or lower?", "是 {n} 或更小吗？"), icon = "number")
+            query = t("guesses", "次猜测"), ask = t("Is it {n} or lower?", "是 {n} 或更小吗？"),
+            where = t("The number is between {from} and {to}.", "秘密数字在 {from} 到 {to} 之间。"), icon = "number")
         partitionGame(zh, "number-guess", "High or low?", "高了还是低了？", card,
-            "Teaching setup: a friend thinks of a number and only answers “is it N or lower?” with yes or no. The number is fixed for each run. The ranges are invented.",
-            "教学设定：朋友心里想好一个数，只回答“是 N 或更小吗？”。每局数字固定。范围均为虚构。",
-            Triple("Find the secret number from 1 to 32 in 5 guesses.", "在 1 到 32 中，用 5 次猜测找到秘密数字。", PartitionConfig(32, 5, theme())),
-            Triple("A smaller range, fewer guesses: 1 to 12 in 4 guesses.", "范围更小、机会更少：1 到 12，只有 4 次猜测。", PartitionConfig(12, 4, theme())))
+            "Made-up ranges. Your friend always answers truthfully, and the number stays the same for the whole round.",
+            "范围是编的。朋友每次都说实话，而且一轮里数字不会变。",
+            Triple("Find the secret number from 1 to 32 in 5 guesses or fewer.", "秘密数字在 1 到 32 之间，用不超过 5 次猜测找出它。", PartitionConfig(32, 5, theme())),
+            Triple("A smaller range and fewer guesses: find the number from 1 to 12 in 4 guesses or fewer.", "范围变小，机会也变少：1 到 12，最多猜 4 次。", PartitionConfig(12, 4, theme())))
     }
 
     private val DICTIONARY = ReviewedGameEntry("dictionary", MechanicRegistry.PARTITION, "Searching a sorted list" to "在有序列表中查找",
@@ -169,14 +172,15 @@ object ReviewedGames {
             t("Keeping items in sorted order makes searching faster; the article traces this idea to antiquity and notes that the Latin dictionary Catholicon (1286) was the first work to describe rules for alphabetical order.",
                 "把条目按顺序排列可以加快查找；文章把这一想法追溯到古代，并指出拉丁语词典 Catholicon（1286 年）是最早描述字母排序规则的著作。"),
             t("Editorial summary of the History section. The page counts are classroom numbers.", "编辑摘要，对应 History 一节；页数为课堂设定的数字。"))
-        fun theme() = PartitionTheme(item = t("page", "页"), items = t("pages", "页"), target = t("page with the word", "有这个词的那一页"),
-            query = t("flips", "次翻页"), ask = t("Open page {n}", "翻到第 {n} 页"), icon = "page")
+        fun theme() = PartitionTheme(item = t("page", "页"), items = t("pages", "页"), target = t("page with the word", "目标页"),
+            query = t("flips", "次翻页"), ask = t("Open page {n}", "翻到第 {n} 页"),
+            where = t("The word is somewhere in pages {from}–{to}.", "要找的词在第 {from}–{to} 页。"), icon = "page")
         partitionGame(zh, "dictionary", "Find the word", "翻词典找词", card,
-            "Teaching setup: entries are in alphabetical order, so on any page you can tell whether your word comes before or after it. The page holding the word is fixed for each run. The page counts are invented.",
-            "教学设定：词条按字母顺序排列，翻到任何一页都能知道要找的词在它前面还是后面。每局目标页固定。页数均为虚构。",
-            Triple("Find the page that holds today’s word in a 24-page dictionary, with 5 flips.", "在 24 页的词典里，用 5 次翻页找到今天要查的词所在的那一页。",
+            "Made-up page counts for practice. Words are in alphabetical order, so every page tells you if your word comes before or after it.",
+            "页数是编的。词按字母顺序排好，所以每翻一页，都能知道要找的词在它前面还是后面。",
+            Triple("Find the page with today’s word in a 24-page dictionary, using 5 flips or fewer.", "词典有 24 页，用不超过 5 次翻页，找到今天要查的词在哪一页。",
                 PartitionConfig(24, 5, theme())),
-            Triple("A pocket dictionary of 16 pages and only 4 flips.", "换成 16 页的袖珍词典，只能翻 4 次。", PartitionConfig(16, 4, theme())))
+            Triple("A pocket dictionary: only 16 pages and 4 flips. Find the page with the word.", "换成 16 页的袖珍词典，最多翻 4 次，找到词在哪一页。", PartitionConfig(16, 4, theme())))
     }
 
     private val LAYERS = ReviewedGameEntry("layer-fault", MechanicRegistry.PARTITION, "Debugging a deep network" to "排查深层网络",
@@ -190,13 +194,14 @@ object ReviewedGames {
             t("Checked against the abstract. The probe rule in the game is a teaching setup, not a claim of the paper.",
                 "依据摘要核对。游戏中的探针规则是教学设定，并非论文的结论。"))
         fun theme() = PartitionTheme(item = t("layer", "层"), items = t("layers", "层"), target = t("faulty layer", "出错的那一层"),
-            query = t("probes", "次探测"), ask = t("Probe layer {n}", "探测第 {n} 层"), icon = "layer")
+            query = t("probes", "次探测"), ask = t("Probe layer {n}", "探测第 {n} 层"),
+            where = t("The broken layer is one of layers {from}–{to}.", "出错的层在第 {from}–{to} 层。"), icon = "layer")
         partitionGame(zh, "layer-fault", "Which layer broke?", "哪一层坏了？", card,
-            "Teaching setup: a probe at a layer is clean if the fault lies after it and corrupted if the fault is at or before it, because the signal flows through the layers in order. The faulty layer is fixed for each run. The depths are invented.",
-            "教学设定：信号依次流过各层，所以故障在该层之后时探针读数正常，故障在该层或之前时读数异常。每局故障层固定。层数均为虚构。",
-            Triple("A 16-layer network outputs noise. Find the first faulty layer with 4 probes.", "一个 16 层的网络输出全是噪声。用 4 次探测找出第一个出错的层。",
+            "Made-up depths. A probe reads clean if the fault is after that layer, and corrupted if the fault is at or before it.",
+            "层数是编的。故障在该层之后，探测读数正常；故障在该层或更前面，读数异常。",
+            Triple("A 16-layer network outputs noise. Find the first broken layer using 4 probes or fewer.", "一个 16 层的网络输出全是噪声。用不超过 4 次探测，找出最先出错的那一层。",
                 PartitionConfig(16, 4, theme())),
-            Triple("Now a 32-layer network and 5 probes.", "现在是 32 层的网络，有 5 次探测。", PartitionConfig(32, 5, theme())))
+            Triple("Now 32 layers and 5 probes: find the first broken layer.", "现在是 32 层，最多探测 5 次，找出最先出错的那一层。", PartitionConfig(32, 5, theme())))
     }
 
     // ---- finite resource allocation: four new themes --------------------------------------------------------------------
@@ -213,11 +218,11 @@ object ReviewedGames {
             firstGood = t("barrel of wine", "桶酒"), firstGoods = t("barrels of wine", "桶酒"), secondGood = t("bolt of cloth", "匹布"), secondGoods = t("bolts of cloth", "匹布"),
             token = t("worker", "名工人"), tokens = t("workers", "名工人"), firstIcon = "wine", secondIcon = "cloth", tokenIcon = "worker")
         allocationGame(zh, "comparative-advantage", "Wine or cloth?", "酿酒还是织布？", card,
-            "Teaching setup: each worker is either in the vineyard or at the looms. The yields per worker and the delivery targets are invented for this model.",
-            "教学设定：每名工人要么在葡萄园，要么在织布坊。每人产量和交付目标均为本模型设定的数值。",
-            Triple("Eight workers: deliver 12 barrels of wine and 6 bolts of cloth.", "8 名工人：交付 12 桶酒和 6 匹布。", AllocationConfig(8, 3, 2, 12, 6, theme())),
-            Triple("The neighbouring land has 6 workers and other skills: deliver 3 barrels of wine and 12 bolts of cloth. Watch what a barrel costs here.",
-                "邻国只有 6 名工人，技能也不同：交付 3 桶酒和 12 匹布。留意这里一桶酒要付出什么。", AllocationConfig(6, 1, 4, 3, 12, theme())))
+            "Made-up numbers for practice. Each worker is either in the vineyard or at the looms.",
+            "数字是为练习编的。每名工人要么在葡萄园，要么在织布坊。",
+            Triple("Place 8 workers so you make at least 12 barrels of wine and 6 bolts of cloth.", "把 8 名工人分到葡萄园和织布坊，至少做出 12 桶酒和 6 匹布。", AllocationConfig(8, 3, 2, 12, 6, theme())),
+            Triple("The neighbouring land has 6 workers with other skills: make at least 3 barrels of wine and 12 bolts of cloth.",
+                "邻国只有 6 名工人，本事也不同：至少做出 3 桶酒和 12 匹布。", AllocationConfig(6, 1, 4, 3, 12, theme())))
     }
 
     private val REVISION = ReviewedGameEntry("exam-revision", MechanicRegistry.ALLOCATION, "Opportunity cost of time" to "时间的机会成本",
@@ -229,15 +234,15 @@ object ReviewedGames {
                 "资源有限时，一项选择的机会成本是被放弃的最佳替代方案的价值；用在一门课上的一小时，就不能再用在另一门课上。"),
             t("Editorial summary of the opening definition. The study yields are invented.", "编辑摘要，对应开头的定义；复习效率均为虚构。"))
         fun theme() = AllocationTheme(firstZone = t("Maths", "数学"), secondZone = t("History", "历史"),
-            firstGood = t("question solved", "道题"), firstGoods = t("questions solved", "道题"), secondGood = t("page revised", "页笔记"), secondGoods = t("pages revised", "页笔记"),
+            firstGood = t("question", "道题"), firstGoods = t("questions", "道题"), secondGood = t("page", "页笔记"), secondGoods = t("pages", "页笔记"),
             token = t("hour", "小时"), tokens = t("hours", "小时"), firstIcon = "scroll", secondIcon = "book", tokenIcon = "clock")
         allocationGame(zh, "exam-revision", "The revision planner", "复习时间怎么分", card,
-            "Teaching setup: an hour can go to one subject only. How much an hour yields, and what each exam needs, are invented for this model.",
-            "教学设定：每个小时只能用在一门课上。每小时的收获与每场考试的要求均为本模型设定的数值。",
-            Triple("Seven hours before the exams: solve 12 maths questions and revise 8 history pages.", "考前 7 小时：做完 12 道数学题，复习 8 页历史笔记。",
+            "Made-up numbers for practice. An hour can go to one subject only.",
+            "数字是为练习编的。每个小时只能用在一门课上。",
+            Triple("Use 7 hours to solve at least 12 maths questions and revise at least 8 history pages.", "用 7 小时，至少做 12 道数学题、看完 8 页历史笔记。",
                 AllocationConfig(7, 4, 2, 12, 8, theme())),
-            Triple("The exams moved up: only 5 hours, maths now gives 2 questions an hour and history 3 pages. Solve 4 and revise 9.",
-                "考试提前了：只剩 5 小时，数学每小时只做 2 道题，历史每小时能看 3 页。做 4 道题，复习 9 页。", AllocationConfig(5, 2, 3, 4, 9, theme())))
+            Triple("The exams moved up: 5 hours left, slower maths, faster history. Solve at least 4 questions and revise 9 pages.",
+                "考试提前了：只剩 5 小时，数学变慢、历史变快。至少做 4 道题、看 9 页笔记。", AllocationConfig(5, 2, 3, 4, 9, theme())))
     }
 
     private val GPU = ReviewedGameEntry("gpu-budget", MechanicRegistry.ALLOCATION, "Compute budget trade-offs" to "算力预算的取舍",
@@ -249,14 +254,14 @@ object ReviewedGames {
                 "在算力预算固定时，作者发现模型规模与训练数据量应按相同比例增长；把预算全部用来加大模型，会使模型训练不足。"),
             t("Checked against the abstract. The yields in the game are invented and far simpler than real scaling.", "依据摘要核对。游戏中的产出为虚构，远比真实的缩放规律简单。"))
         fun theme() = AllocationTheme(firstZone = t("Go deeper", "加深网络"), secondZone = t("Train longer", "训练更久"),
-            firstGood = t("layer", "层"), firstGoods = t("layers", "层"), secondGood = t("epoch", "轮训练"), secondGoods = t("epochs", "轮训练"),
+            firstGood = t("layer", "层"), firstGoods = t("layers", "层"), secondGood = t("training pass", "轮训练"), secondGoods = t("training passes", "轮训练"),
             token = t("GPU hour", "个 GPU 小时"), tokens = t("GPU hours", "个 GPU 小时"), firstIcon = "layers", secondIcon = "clock", tokenIcon = "chip")
         allocationGame(zh, "gpu-budget", "The GPU budget", "GPU 预算怎么花", card,
-            "Teaching setup: a GPU hour is spent either on a deeper network or on longer training. What an hour buys is invented for this model.",
-            "教学设定：一个 GPU 小时要么用来加深网络，要么用来训练更久。每小时能买到什么均为本模型设定的数值。",
-            Triple("Ten GPU hours: build 12 layers and run 14 epochs.", "10 个 GPU 小时：加到 12 层，并训练 14 轮。", AllocationConfig(10, 4, 2, 12, 14, theme())),
-            Triple("The cluster is shared and only 8 GPU hours are left, with new costs: build 6 layers and run 15 epochs.",
-                "集群要和别人共用，只剩 8 个 GPU 小时，成本也变了：加到 6 层，训练 15 轮。", AllocationConfig(8, 2, 3, 6, 15, theme())))
+            "Made-up numbers, much simpler than real training. A GPU hour goes either to a deeper network or to longer training.",
+            "数字是编的，比真实训练简单得多。一个 GPU 小时，要么用来加深网络，要么用来训练更久。",
+            Triple("Spend 10 GPU hours so you end up with at least 12 layers and 14 training passes.", "把 10 个 GPU 小时分出去，至少得到 12 层和 14 轮训练。", AllocationConfig(10, 4, 2, 12, 14, theme())),
+            Triple("The cluster is shared: only 8 GPU hours left and new prices. Reach at least 6 layers and 15 training passes.",
+                "集群要共用，只剩 8 个 GPU 小时，每小时的成果也变了：至少 6 层、15 轮训练。", AllocationConfig(8, 2, 3, 6, 15, theme())))
     }
 
     private val FARM = ReviewedGameEntry("farm-crops", MechanicRegistry.ALLOCATION, "Production possibilities" to "生产可能性",
@@ -271,11 +276,11 @@ object ReviewedGames {
             firstGood = t("sack of wheat", "袋小麦"), firstGoods = t("sacks of wheat", "袋小麦"), secondGood = t("crate of corn", "筐玉米"), secondGoods = t("crates of corn", "筐玉米"),
             token = t("plot", "块地"), tokens = t("plots", "块地"), firstIcon = "wheat", secondIcon = "corn", tokenIcon = "plot")
         allocationGame(zh, "farm-crops", "One farm, two crops", "一块地，两种庄稼", card,
-            "Teaching setup: a plot grows either wheat or corn this season. The harvest per plot and the orders to fill are invented for this model.",
-            "教学设定：每块地这一季只能种小麦或玉米。每块地的收成与订单数量均为本模型设定的数值。",
-            Triple("Nine plots: fill an order of 12 sacks of wheat and 10 crates of corn.", "9 块地：完成 12 袋小麦和 10 筐玉米的订单。", AllocationConfig(9, 3, 2, 12, 10, theme())),
-            Triple("A drought leaves 6 plots and changes the harvests: deliver 2 sacks of wheat and 12 crates of corn.",
-                "干旱后只剩 6 块地，收成也变了：交付 2 袋小麦和 12 筐玉米。", AllocationConfig(6, 1, 3, 2, 12, theme())))
+            "Made-up harvests for practice. A plot grows either wheat or corn this season.",
+            "收成是编的。每块地这一季只能种小麦或玉米。",
+            Triple("Plant 9 plots to harvest at least 12 sacks of wheat and 10 crates of corn.", "把 9 块地分给小麦和玉米，至少收 12 袋小麦和 10 筐玉米。", AllocationConfig(9, 3, 2, 12, 10, theme())),
+            Triple("A drought leaves 6 plots and new harvests: get at least 2 sacks of wheat and 12 crates of corn.",
+                "干旱后只剩 6 块地，收成也变了：至少收 2 袋小麦和 12 筐玉米。", AllocationConfig(6, 1, 3, 2, 12, theme())))
     }
 
     /** The two original games come first; the rest alternate mechanisms so the first screen of tiles is varied. */

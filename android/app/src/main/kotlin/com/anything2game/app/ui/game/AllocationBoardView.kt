@@ -201,6 +201,6 @@ private fun CostLine(last: GameAction?, config: AllocationConfig, look: Allocati
         Text(text, Modifier.fillMaxWidth().background(skin.hintSoft, pixelShape(5.dp)).border(1.5.dp, skin.hint, pixelShape(5.dp)).padding(10.dp)
             .testTag("cost_line"), color = skin.ink, fontWeight = FontWeight.Bold)
     } else if (b.available == config.tokens) {
-        Text(stringResource(R.string.games_drag_hint), color = skin.inkMuted, style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(R.string.games_drag_hint, look.token, look.firstZone, look.secondZone), color = skin.inkMuted, style = MaterialTheme.typography.bodyMedium)
     }
 }

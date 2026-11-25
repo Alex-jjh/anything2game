@@ -10,8 +10,11 @@ import com.anything2game.contract.game.PartitionTheme
 import java.util.Locale
 
 /** The words and pictures of a partition board. Each missing theme field falls back to the neutral locker wording of the first release. */
-internal class PartitionLook(val item: String, val items: String, val target: String, val query: String, private val ask: String, val icon: String) {
+internal class PartitionLook(val item: String, val items: String, val target: String, val query: String, private val ask: String, val icon: String,
+    private val where: String? = null) {
     fun askAbout(n: Int) = ask.replace("{n}", n.toString())
+    /** "The word is somewhere in pages 1–12", or null when the theme has no sentence for it (the client then uses a neutral one). */
+    fun whereIs(low: Int, high: Int) = where?.replace("{from}", low.toString())?.replace("{to}", high.toString())
 }
 
 internal class AllocationLook(val firstZone: String, val secondZone: String, val firstGood: String, val firstGoods: String,
@@ -27,7 +30,7 @@ internal fun PartitionConfig.look(): PartitionLook {
     val t = theme ?: PartitionTheme()
     return PartitionLook(t.item ?: stringResource(R.string.look_locker), t.items ?: t.item?.let { it } ?: stringResource(R.string.look_lockers),
         t.target ?: stringResource(R.string.look_locker_target), t.query ?: stringResource(R.string.look_questions),
-        t.ask ?: stringResource(R.string.games_ask), t.icon ?: "locker")
+        t.ask ?: stringResource(R.string.games_ask), t.icon ?: "locker", t.where)
 }
 
 @Composable
