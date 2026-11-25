@@ -114,6 +114,15 @@ abstract class JourneyTest {
     protected fun waitForText(t: String, timeoutMs: Long = 30_000) = waitFor("text \"$t\"", timeoutMs) { textShown(t) }
     protected fun waitForTag(tag: String) = waitFor("tag $tag") { rule.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }
 
+    /** A game opened for the first time starts with its Quick look; a player who wants the board skips it, as these journeys do. */
+    protected fun waitForGame() {
+        waitFor("a loaded game or its quick look") { exists(hasTestTag("game_body")) || exists(hasTestTag("game_intro")) }
+        if (exists(hasTestTag("game_intro"))) tap(rule.onNodeWithTag("intro_skip"))
+        waitForTag("game_board")
+    }
+
+    protected fun openGame(tile: SemanticsNodeInteraction) { tap(tile); waitForGame() }
+
     /** Click anything a finger could click; scroll it into view first when it sits in a scrolling column. */
     protected fun tap(node: SemanticsNodeInteraction) {
         runCatching { node.performScrollTo() }

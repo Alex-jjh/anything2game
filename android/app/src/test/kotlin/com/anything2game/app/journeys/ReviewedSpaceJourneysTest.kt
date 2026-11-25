@@ -164,7 +164,7 @@ class ReviewedSpaceJourneysTest : LearnJourneyBase() {
 
     @Test fun available_locker_numbers_have_readable_contrast_before_selecting_a_cut() {
         launch(); chooseGuest(); tap(rule.onNodeWithTag("tab_PLAYGROUND"))
-        waitForTag("game_partition"); tap(rule.onNodeWithTag("game_partition")); waitForTag("cut_1")
+        waitForTag("game_partition"); openGame(rule.onNodeWithTag("game_partition")); waitForTag("cut_1")
         val paper = CaseFileSkin.evidenceSoft.luminance()
         for (n in listOf("1","16")) {
             val layouts = mutableListOf<TextLayoutResult>()
@@ -186,7 +186,7 @@ class ReviewedSpaceJourneysTest : LearnJourneyBase() {
             ledger.writeText(JsonObject(snapshot + ("checkpoints" to JsonArray(listOf(json.encodeToJsonElement(exhausted))))).toString())
         }
         launch(); waitForTag("tab_PLAYGROUND"); tap(rule.onNodeWithTag("tab_PLAYGROUND"))
-        waitForTag("game_partition"); tap(rule.onNodeWithTag("game_partition"))
+        waitForTag("game_partition"); openGame(rule.onNodeWithTag("game_partition"))
         waitFor("new attempt offered on exhausted checkpoint", 5000) { has("restart_game") }
         tap(rule.onNodeWithTag("restart_game"))
         waitFor("new attempt with no actions") { awaitIo { deps.learningProgress!!.checkpoint(ContentVersion("locker-search-en","1"))?.let { it.seed != 52L && it.actions.isEmpty() } == true } }

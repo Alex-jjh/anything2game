@@ -88,10 +88,11 @@ sealed interface StageConfig {
  */
 @Serializable
 data class PartitionTheme(val item: String? = null, val items: String? = null, val target: String? = null,
-    val query: String? = null, val ask: String? = null, val icon: String? = null) {
+    val query: String? = null, val ask: String? = null, val icon: String? = null, val where: String? = null) {
     fun validate() {
-        listOfNotNull(item, items, target, query, ask).forEach(::requireThemeText)
+        listOfNotNull(item, items, target, query, ask, where).forEach(::requireThemeText)
         require(ask == null || "{n}" in ask) { "The question label must contain {n}" }
+        require(where == null || ("{from}" in where && "{to}" in where)) { "The range label must contain {from} and {to}" }
         require(icon == null || icon in GameIcons.partition) { "Unknown partition icon" }
     }
 }
@@ -109,7 +110,7 @@ data class AllocationTheme(val firstZone: String? = null, val secondZone: String
 }
 
 private fun requireThemeText(text: String) =
-    require(text.isNotBlank() && text.length <= 48 && text.none { it.isISOControl() }) { "Invalid theme text" }
+    require(text.isNotBlank() && text.length <= 60 && text.none { it.isISOControl() }) { "Invalid theme text" }
 
 /** The fixed set of drawable icon keys. A key outside the set is rejected rather than silently shown as a blank. */
 object GameIcons {
@@ -136,10 +137,39 @@ data class GameStage(val stageId: String, val goal: String, val config: StageCon
     val mechanicId get() = config.mechanicId
 }
 
+/** What a scene of the "Quick look" is for. The order of a reviewed game's scenes follows this order. */
+@Serializable
+enum class IntroKind { HOOK, STORY, IDEA, HOW_IT_WORKS, HOW_TO_PLAY }
+
+/**
+ * One screen of the short story told before a game: a hook question, a tiny everyday story, the idea in one plain sentence, a
+ * picture of how it works and how to play. [visual] names an animated picture the client knows ([IntroVisuals]); null lets the client
+ * choose by [kind]. A HOW_TO_PLAY body is up to four short lines (goal, play, win, stars) separated by a line break.
+ */
+@Serializable
+data class IntroScene(val kind: IntroKind, val title: String, val body: String, val visual: String? = null) {
+    fun validate() {
+        require(title.isNotBlank() && title.length <= 80 && body.isNotBlank() && body.length <= 500) { "Invalid intro scene" }
+        require(visual == null || visual in IntroVisuals.all) { "Unknown intro visual" }
+    }
+}
+
+object IntroVisuals {
+    /** A row of tiles that halves; two zones with a token moving between them. */
+    const val HALVING = "halving"
+    const val TRADE = "trade"
+    val all = setOf(HALVING, TRADE)
+}
+
+/**
+ * [intro] is the optional "Quick look" told before the first round (empty = none, which is what every older game decodes to);
+ * [learn] is the one line "what you will learn" shown on the game's tile. Neither one changes a rule.
+ */
 @Serializable
 data class GameSpec(val gameId: String, val gameVersion: String, val title: String, val language: String,
     val conceptRefs: List<String>, val evidenceRefs: List<EvidenceRef>, val teachingSetting: String,
-    val stages: List<GameStage>, val requiredCapabilities: Set<String>, val schema: String = GAME_SCHEMA)
+    val stages: List<GameStage>, val requiredCapabilities: Set<String>, val schema: String = GAME_SCHEMA,
+    val intro: List<IntroScene> = emptyList(), val learn: String? = null)
 
 /** These descriptors are also the source for generation prompts and capability negotiation. */
 object MechanicRegistry {
@@ -170,6 +200,8 @@ object MechanicRegistry {
         require(spec.stages.size in stageCount && spec.stages.distinctBy { it.stageId }.size == spec.stages.size)
         require(spec.evidenceRefs.isNotEmpty() && spec.evidenceRefs.distinctBy { it.evidenceId }.size == spec.evidenceRefs.size)
         spec.evidenceRefs.forEach { it.validate() }
+        require(spec.intro.size <= 8 && spec.learn.orEmpty().length <= 200) { "Intro too long" }
+        spec.intro.forEach { it.validate() }
         val evidenceIds = spec.evidenceRefs.map { it.evidenceId }.toSet()
         require(spec.requiredCapabilities == spec.stages.map { capability(it.mechanicId) }.toSet()) { "Unsupported or missing capability" }
         require(!spec.stages.first().transfer && spec.stages.last().transfer) { "Missing practice/transfer stage" }

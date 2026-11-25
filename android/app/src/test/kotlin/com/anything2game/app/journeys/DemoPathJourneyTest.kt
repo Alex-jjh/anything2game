@@ -328,7 +328,7 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         playground(); shelfLoaded()
         assertFalse("nothing to continue on a fresh Playground", has("resume_game"))
         assertTrue("fresh games say New", badgeOn("game_partition", str(R.string.playground_new)))
-        tap(rule.onNodeWithTag("game_partition")); waitForTag("split_submit")
+        openGame(rule.onNodeWithTag("game_partition")); waitForTag("split_submit")
         val id = "locker-search-en"
         playPartitionStage(id, slideFirst = true)
         waitForTag("game_result"); waitForTag("game_stars"); waitForText(str(R.string.games_won))
@@ -337,7 +337,7 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         back(); waitForTag("home_PLAYGROUND")
         waitForTag("resume_game")
         assertTrue(badgeOn("game_partition", str(R.string.playground_continue)))
-        tap(rule.onNodeWithTag("resume_game")); waitForTag("game_advance")
+        openGame(rule.onNodeWithTag("resume_game")); waitForTag("game_advance")
         assertTrue("won round is still shown after coming back", has("game_stars"))
         tap(rule.onNodeWithTag("game_advance")); waitForTag("new_conditions")
         waitForText(str(R.string.games_transfer))
@@ -358,22 +358,22 @@ class DemoPathJourneyTest : LearnJourneyBase() {
 
     @Test fun journey4_allocation_game_through_both_stages_with_a_real_drag() {
         playground()
-        waitForTag("game_allocation"); tap(rule.onNodeWithTag("game_allocation")); waitForTag("token_tray")
+        waitForTag("game_allocation"); openGame(rule.onNodeWithTag("game_allocation")); waitForTag("token_tray")
         val id = "workshop-en"
         // One token by dragging, the rest by the place buttons.
         val tray = rule.onNodeWithTag("token_tray"); val origin = tray.fetchSemanticsNode().boundsInRoot.topLeft
         val zone = rule.onNodeWithTag("place_SECOND").fetchSemanticsNode().boundsInRoot.center - origin
         tray.performTouchInput { down(Offset(20f, 20f)); moveTo(Offset(50f, 40f)); moveTo(Offset(90f, 80f)); moveTo(zone); up() }
-        waitForText("5 tokens left")
+        waitForText("5 helpers left")
         val (f1, s1) = allocationNeeds(id, 0)
         placeTokens(f1, s1 - 1)
-        waitForText("0 tokens left")
+        waitForText("0 helpers left")
         tap(rule.onNodeWithTag("allocation_submit"))
         waitForTag("game_stars"); waitForText(str(R.string.games_won))
         tap(rule.onNodeWithTag("game_advance")); waitForTag("new_conditions")
         val (f2, s2) = allocationNeeds(id, 1)
         placeTokens(f2, s2)
-        waitForText("0 tokens left")
+        waitForText("0 helpers left")
         tap(rule.onNodeWithTag("allocation_submit"))
         waitForText(str(R.string.games_complete)); waitForTag("game_stars")
         val stars = deps.homePreferences.bestStars(versionOf(id))
@@ -386,22 +386,22 @@ class DemoPathJourneyTest : LearnJourneyBase() {
 
     @Test fun journey4_a_lost_round_can_be_retried_and_gives_no_stars_or_completion() {
         playground()
-        waitForTag("game_allocation"); tap(rule.onNodeWithTag("game_allocation")); waitForTag("place_FIRST")
+        waitForTag("game_allocation"); openGame(rule.onNodeWithTag("game_allocation")); waitForTag("place_FIRST")
         placeTokens(6, 0)            // all tokens to one zone: the goal is missed
-        waitForText("0 tokens left")
+        waitForText("0 helpers left")
         waitFor("deliver enabled") { runCatching { rule.onNodeWithTag("allocation_submit").assertIsEnabled(); true }.getOrDefault(false) }
         tap(rule.onNodeWithTag("allocation_submit"))
         waitForTag("retry_round")
         assertFalse(has("game_stars")); assertFalse(has("game_advance"))
         assertTrue(textShown(str(R.string.games_lost)) || textShown(str(R.string.games_stamp_miss)))
-        tap(rule.onNodeWithTag("retry_round")); waitForText("6 tokens left")
+        tap(rule.onNodeWithTag("retry_round")); waitForText("6 helpers left")
         assertEquals(0, deps.homePreferences.bestStars(versionOf("workshop-en")))
         assertTrue(projectionNow().completed.isEmpty())
     }
 
     @Test fun journey4_peeking_into_a_game_does_not_turn_it_into_continue() {
         playground()
-        waitForTag("game_partition"); tap(rule.onNodeWithTag("game_partition")); waitForTag("split_submit")
+        waitForTag("game_partition"); openGame(rule.onNodeWithTag("game_partition")); waitForTag("split_submit")
         back(); waitForTag("home_PLAYGROUND"); shelfLoaded()
         assertFalse("a game never played is not 'Continue'", has("resume_game"))
         assertFalse(badgeOn("game_partition", str(R.string.playground_continue)))
@@ -420,12 +420,12 @@ class DemoPathJourneyTest : LearnJourneyBase() {
             assertTrue("the debug API port is free to spy on", spy.listening)
             playground()
             addGame("git bisect")
-            waitForTag("game_board"); waitForText("Hunt the broken commit"); rule.onNodeWithTag("demo_badge").assertExists()
+            waitForGame(); waitForText("Hunt the broken commit"); rule.onNodeWithTag("demo_badge").assertExists()
             assertTrue(textShown(str(R.string.games_demo_badge)))
             back(); waitForTag("home_PLAYGROUND")
-            addGame("Opportunity Cost  "); waitForTag("game_board"); waitForText("Two workshops"); rule.onNodeWithTag("demo_badge").assertExists()
+            addGame("Opportunity Cost  "); waitForGame(); waitForText("Two workshops"); rule.onNodeWithTag("demo_badge").assertExists()
             back(); waitForTag("home_PLAYGROUND")
-            addGame("机会成本"); waitForTag("game_board"); rule.onNodeWithTag("demo_badge").assertExists()
+            addGame("机会成本"); waitForGame(); rule.onNodeWithTag("demo_badge").assertExists()
             assertEquals("no request to the server", 0, spy.hits.get())
         }
     }
@@ -434,14 +434,14 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         RuntimeEnvironment.setQualifiers("+zh")
         Spy().use { spy ->
             playground()
-            addGame("git bisect"); waitForTag("game_board"); waitForTag("demo_badge")
+            addGame("git bisect"); waitForGame(); waitForTag("demo_badge")
             waitForText(specOf("git-bisect-zh").title)
             back(); waitForTag("home_PLAYGROUND")
-            addGame("机会成本"); waitForTag("game_board")
+            addGame("机会成本"); waitForGame()
             waitForText(specOf("workshop-zh").title)
             back(); waitForTag("home_PLAYGROUND")
             addGame("量子色动力学"); waitForTag("chooser"); waitForText(str(R.string.add_choose))
-            tap(rule.onNodeWithTag("chooser_farm-crops-zh")); waitForTag("game_board"); waitForTag("demo_badge")
+            tap(rule.onNodeWithTag("chooser_farm-crops-zh")); waitForGame(); waitForTag("demo_badge")
             assertEquals(0, spy.hits.get())
         }
     }
@@ -511,7 +511,7 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         waitFor("a tab bar") { has("tab_PLAYGROUND") }
         tap(rule.onNodeWithTag("tab_PLAYGROUND")); waitForTag("home_PLAYGROUND")
         assertNoJargon("Playground", collectAllText("home_PLAYGROUND"))
-        tap(rule.onNodeWithTag("game_partition")); waitForTag("split_submit")
+        openGame(rule.onNodeWithTag("game_partition")); waitForTag("split_submit")
         assertNoJargon("a game board", collectAllText("game_board"))
         back(); openMe()
         assertNoJargon("Me", collectAllText("home_PROFILE"))
@@ -612,16 +612,16 @@ class DemoPathJourneyTest : LearnJourneyBase() {
     @Test fun journey7_font_scale_two_on_both_game_boards_keeps_every_control_reachable() {
         RuntimeEnvironment.setFontScale(2f)
         playground()
-        waitForTag("game_partition"); tap(rule.onNodeWithTag("game_partition")); waitForTag("split_submit")
+        waitForTag("game_partition"); openGame(rule.onNodeWithTag("game_partition")); waitForTag("split_submit")
         tap(rule.onNodeWithTag("cut_3"))
         val cutTexts = clipped()
         assertTrue("clipped texts on the 200% partition board: $cutTexts", cutTexts.isEmpty())
         tap(rule.onNodeWithTag("split_submit"))
         waitFor("question spent") { run("locker-search-en")!!.checkpoint.actions.size == 1 }
         back(); waitForTag("home_PLAYGROUND"); waitForTag("game_allocation")
-        tap(rule.onNodeWithTag("game_allocation")); waitForTag("place_FIRST")
+        openGame(rule.onNodeWithTag("game_allocation")); waitForTag("place_FIRST")
         placeTokens(1, 1)
-        waitForText("4 tokens left")
+        waitForText("4 helpers left")
         val texts = clipped()
         assertTrue("clipped texts on the 200% allocation board: $texts", texts.isEmpty())
         placeTokens(2, 2)
@@ -633,7 +633,7 @@ class DemoPathJourneyTest : LearnJourneyBase() {
 
     @Test fun journey8_partition_game_keeps_its_state_through_rotation_recreation_and_a_process_restart() {
         playground()
-        waitForTag("game_partition"); tap(rule.onNodeWithTag("game_partition")); waitForTag("cut_4")
+        waitForTag("game_partition"); openGame(rule.onNodeWithTag("game_partition")); waitForTag("cut_4")
         tap(rule.onNodeWithTag("cut_6"))
         val n0 = run("locker-search-en")!!.checkpoint.actions.size
         tap(rule.onNodeWithTag("split_submit")); waitFor("asked") { run("locker-search-en")!!.checkpoint.actions.size > n0 }
@@ -643,7 +643,7 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         waitForTag("split_submit")
         val after = run("locker-search-en")!!.board as PartitionBoard
         assertEquals(before, after)
-        assertTrue("the cut being chosen survives rotation", textShown(str(R.string.games_split, (before.low + before.high) / 2)))
+        assertTrue("the cut being chosen survives rotation", textShown(str(R.string.games_pick, (before.low + before.high) / 2)))
         RuntimeEnvironment.setQualifiers("+port"); rule.waitForIdle()
         scenario!!.recreate(); waitForTag("split_submit")
         assertEquals(before, run("locker-search-en")!!.board)
@@ -651,7 +651,7 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         restartProcess()
         waitFor("home after restart") { has("home_SPACES") || has("home_PLAYGROUND") || has("game_board") }
         if (!has("home_PLAYGROUND") && !has("game_board")) { tap(rule.onNodeWithTag("tab_PLAYGROUND")); waitForTag("home_PLAYGROUND") }
-        if (!has("game_board")) { waitForTag("resume_game"); tap(rule.onNodeWithTag("resume_game")) }
+        if (!has("game_board")) { waitForTag("resume_game"); openGame(rule.onNodeWithTag("resume_game")) }
         waitForTag("split_submit")
         assertEquals("the board is where it was", before, run("locker-search-en")!!.board)
         waitForText(str(R.string.games_queries_left, before.queriesLeft, "questions"))
@@ -755,7 +755,7 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         assertEquals(game.title, textOf("route_sheet_title"))
         assertTrue(textOf("route_sheet_kind").startsWith(str(R.string.route_kind_game)))
         startFromSheet(game)
-        waitForTag("game_board"); waitForText(game.title)
+        waitForGame(); waitForText(game.title)
         assertFalse("no Back-to button before the game is finished", has("back_to_space"))
         if (mechanic == "partition") {
             playPartitionStage(id); waitForTag("game_stars"); tap(rule.onNodeWithTag("game_advance")); waitForTag("new_conditions")
@@ -784,7 +784,7 @@ class DemoPathJourneyTest : LearnJourneyBase() {
 
     @Test fun journey9_a_game_opened_from_the_playground_has_no_back_to_space_button() {
         playground(); shelfLoaded()
-        tap(rule.onNodeWithTag("game_allocation")); waitForTag("token_tray")
+        openGame(rule.onNodeWithTag("game_allocation")); waitForTag("token_tray")
         val id = "workshop-en"
         val (f1, s1) = allocationNeeds(id, 0); placeTokens(f1, s1)
         deliver(); waitForTag("game_stars"); tap(rule.onNodeWithTag("game_advance")); waitForTag("new_conditions")
@@ -908,11 +908,11 @@ class DemoPathJourneyTest : LearnJourneyBase() {
         // The concept is the primary chip; how it plays is small secondary text.
         val chip = rule.onNode(hasTestTag("concept_chip") and hasAnyAncestor(hasTestTag("game_partition")), useUnmergedTree = true)
         assertEquals("Binary search", chip.fetchSemanticsNode().config[SemanticsProperties.Text].joinToString(""))
-        val mechanism = rule.onNode(hasTestTag("mechanism_label") and hasAnyAncestor(hasTestTag("game_allocation")), useUnmergedTree = true)
-        assertEquals(str(R.string.mechanism_allocation), mechanism.fetchSemanticsNode().config[SemanticsProperties.Text].joinToString(""))
+        val learn = rule.onNode(hasTestTag("learn_line") and hasAnyAncestor(hasTestTag("game_allocation")), useUnmergedTree = true)
+        assertEquals(ReviewedGames.catalog.first { it.key == "workshop" }.spec("en").learn, learn.fetchSemanticsNode().config[SemanticsProperties.Text].joinToString(""))
         val allocationChip = rule.onNode(hasTestTag("concept_chip") and hasAnyAncestor(hasTestTag("game_allocation")), useUnmergedTree = true)
         assertEquals("Opportunity cost", allocationChip.fetchSemanticsNode().config[SemanticsProperties.Text].joinToString(""))
-        assertTrue("the concept chip comes before the mechanism text", chip.fetchSemanticsNode().boundsInRoot.top < rule.onNode(hasTestTag("mechanism_label") and hasAnyAncestor(hasTestTag("game_partition")), useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.top)
+        assertTrue("the concept chip comes before the line about what you learn", chip.fetchSemanticsNode().boundsInRoot.top < rule.onNode(hasTestTag("learn_line") and hasAnyAncestor(hasTestTag("game_partition")), useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.top)
     }
 
     @Test fun journey9_the_demo_badge_is_on_the_result_and_not_in_the_add_sheet_header() {

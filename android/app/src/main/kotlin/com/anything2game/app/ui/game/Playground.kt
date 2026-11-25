@@ -45,6 +45,8 @@ internal fun Playground(deps: AppDependencies, language: String, padding: Paddin
     var failure by remember { mutableStateOf<String?>(null) }
     var reload by remember { mutableIntStateOf(0) }
     var adding by rememberSaveable { mutableStateOf(false) }
+    var looking by rememberSaveable { mutableStateOf<String?>(null) }
+    var source by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(language, reload) {
         try {
             games = requireNotNull(deps.content).games().map { (manifest, spec, origin) ->
@@ -59,13 +61,26 @@ internal fun Playground(deps: AppDependencies, language: String, padding: Paddin
         } catch (e: CancellationException) { throw e }
         catch (e: Exception) { failure = e.message }
     }
-    PlaygroundContent(games, failure, language, padding, adding, { adding = it }, onRetry = { reload++ }, onOpen = onOpen)
+    Box(Modifier.fillMaxSize()) {
+    PlaygroundContent(games, failure, language, padding, adding, { adding = it }, onRetry = { reload++ }, onOpen = onOpen, onQuickLook = { looking = it.spec.gameId })
+    // A second look from a tile: Play opens the game, Close comes back to the shelf.
+    games?.firstOrNull { it.spec.gameId == looking && it.spec.intro.isNotEmpty() }?.let { g ->
+        Box(Modifier.fillMaxSize().padding(padding)) {
+            GameIntro(g.spec, replay = true, onPlay = { deps.homePreferences.markIntroSeen(g.version); looking = null; onOpen(g.version) },
+                onSkip = { looking = null }, onExit = { looking = null }, onSource = { source = it.evidenceId })
+            g.spec.evidenceRefs.firstOrNull { it.evidenceId == source }?.let { ref ->
+                com.anything2game.app.ui.space.ActivityEvidence(requireNotNull(deps.materials), ref) { source = null }
+            }
+        }
+    }
+    }
 }
 
 /** The stateless Playground layout, so the tests and screenshots render exactly what the app shows. */
 @Composable
 internal fun PlaygroundContent(games: List<InstalledGame>?, failure: String?, language: String, padding: PaddingValues, adding: Boolean,
-    setAdding: (Boolean) -> Unit, onRetry: () -> Unit, onOpen: (ContentVersion) -> Unit, previewStep: Int? = null, previewTopic: String? = null) {
+    setAdding: (Boolean) -> Unit, onRetry: () -> Unit, onOpen: (ContentVersion) -> Unit, previewStep: Int? = null, previewTopic: String? = null,
+    onQuickLook: (InstalledGame) -> Unit = {}) {
     Box(Modifier.fillMaxSize().padding(padding)) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 20.dp).testTag("home_PLAYGROUND"),
             verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -80,7 +95,7 @@ internal fun PlaygroundContent(games: List<InstalledGame>?, failure: String?, la
             games.orEmpty().chunked(2).forEach { pair ->
                 // One height per row: the tiles of a pair stretch to the taller one, so the grid has no ragged gaps.
                 Row(Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    pair.forEach { GameTile(it, language, Modifier.weight(1f).fillMaxHeight()) { onOpen(it.version) } }
+                    pair.forEach { GameTile(it, language, Modifier.weight(1f).fillMaxHeight(), onQuickLook = { g -> onQuickLook(g) }) { onOpen(it.version) } }
                     if (pair.size == 1) Spacer(Modifier.weight(1f))
                 }
             }
@@ -94,7 +109,7 @@ internal fun PlaygroundContent(games: List<InstalledGame>?, failure: String?, la
 }
 
 @Composable
-internal fun GameTile(card: InstalledGame, language: String, modifier: Modifier, onClick: () -> Unit) {
+internal fun GameTile(card: InstalledGame, language: String, modifier: Modifier, onQuickLook: (InstalledGame) -> Unit = {}, onClick: () -> Unit) {
     val skin = A2g.skin
     val spec = card.spec
     val partition = spec.stages.first().config is PartitionConfig
@@ -118,8 +133,8 @@ internal fun GameTile(card: InstalledGame, language: String, modifier: Modifier,
             // The concept leads (what the game teaches); how it plays is small secondary text.
             card.entry?.let { PixelTag(it.conceptName(language), Modifier.testTag("concept_chip"), fill = if (partition) skin.evidenceSoft else skin.correctSoft, large = true) }
             Text(spec.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = skin.ink, maxLines = 2)
-            Text(stringResource(if (partition) R.string.mechanism_partition else R.string.mechanism_allocation), Modifier.testTag("mechanism_label"),
-                style = MaterialTheme.typography.labelSmall, color = skin.inkMuted)
+            // What the player will learn, in one line; the way it plays is the Quick look's business.
+            spec.learn?.let { Text(it, Modifier.testTag("learn_line"), style = MaterialTheme.typography.bodySmall, color = skin.inkMuted) }
             when (card.origin) {
                 PackOrigin.PRESET -> Unit
                 PackOrigin.IMPORT -> Text(stringResource(R.string.games_imported), color = skin.inkMuted, style = MaterialTheme.typography.labelMedium)
@@ -130,7 +145,14 @@ internal fun GameTile(card: InstalledGame, language: String, modifier: Modifier,
             if (spec.language != language) Text(java.util.Locale.forLanguageTag(spec.language).getDisplayLanguage(LocalConfiguration.current.locales[0]),
                 style = MaterialTheme.typography.labelMedium)
             Spacer(Modifier.weight(1f))
-            StarsRow(card.stars, size = 22.dp, modifier = Modifier.semantics { contentDescription = stars })
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                StarsRow(card.stars, size = 22.dp, modifier = Modifier.semantics { contentDescription = stars })
+                if (spec.intro.isNotEmpty()) Row(Modifier.heightIn(min = 40.dp).clickable(role = androidx.compose.ui.semantics.Role.Button) { onQuickLook(card) }
+                    .testTag("quick_look_${spec.gameId}"), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    PixelSprite(Sprites.sparkle, 16.dp)
+                    Text(stringResource(R.string.intro_quick_look), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = skin.ink)
+                }
+            }
         }
     }
 }
